@@ -143,11 +143,11 @@ def _process(raw: dict) -> dict:
 
             processed.append({
                 "start_number": race["competitor"]["startNumber"],
+                "name": race["competitor"]["name"],
                 "laps_count": len(laps),
                 "total_time": total_time,
                 "id": race["id"],
                 "distance_id": dist_id,
-                "name": race["competitor"]["name"],
                 "category": race["competitor"].get("category") or None,
                 "heat": race["heat"],
                 "lane": lane,
@@ -204,28 +204,43 @@ def _process(raw: dict) -> dict:
     }
 
 
-def _diff(prev: dict | None, curr: dict) -> tuple[list[dict], list[dict]]:
-    """Return (changed_distance_metas, changed_competitor_updates)."""
+async def _update_cache_and_diff(curr: dict) -> tuple[bool, list[dict], list[dict]]:
+    """
+    Compare curr against per-race cached entries. Update cache for anything
+    that changed. Returns (name_changed, changed_distance_metas, changed_competitor_updates).
+    """
     dist_updates: list[dict] = []
     comp_updates: list[dict] = []
-    prev_dists = (prev or {}).get("distances", {})
-    prev_comps = (prev or {}).get("competitors", {})
 
+    prev_name = await cache.get("event_name")
+    name_changed = curr["name"] != prev_name
+    if name_changed:
+        await cache.set("event_name", curr["name"])
+
+    all_race_ids: list[str] = []
     for dist_id, dist in curr["distances"].items():
-        if prev_dists.get(dist_id) != dist:
+        prev_dist = await cache.get(f"dist:{dist_id}")
+        if prev_dist != dist:
+            await cache.set(f"dist:{dist_id}", dist)
             dist_updates.append(dist)
-        prev_dist_comps = prev_comps.get(dist_id, {})
+
         for race_id, comp in curr["competitors"].get(dist_id, {}).items():
-            if prev_dist_comps.get(race_id) == comp:
-                continue  # unchanged
-            is_new = race_id not in prev_dist_comps
+            all_race_ids.append(race_id)
+            prev_comp = await cache.get(f"race:{race_id}")
+            if prev_comp == comp:
+                continue
+            is_new = prev_comp is None
             if not comp.get("total_time") and not is_new:
-                prev_comp = prev_dist_comps[race_id]
-                if comp.get("invalid_reason") == prev_comp.get("invalid_reason") and comp.get("remark") == prev_comp.get("remark"):
+                if (comp.get("invalid_reason") == prev_comp.get("invalid_reason")
+                        and comp.get("remark") == prev_comp.get("remark")):
                     continue  # suppress no-time updates after initial appearance
+            await cache.set(f"race:{race_id}", comp)
             comp_updates.append(comp)
 
-    return dist_updates, comp_updates
+    await cache.set("all_dist_ids", list(curr["distances"].keys()))
+    await cache.set("all_race_ids", all_race_ids)
+
+    return name_changed, dist_updates, comp_updates
 
 
 # ── WebSocket connection manager ──────────────────────────────────────────────
@@ -247,14 +262,17 @@ class ConnectionManager:
             },
         })
 
-        state: dict | None = await cache.get("processed_state")
-        if state:
+        event_name = await cache.get("event_name")
+        if event_name:
             logger.info("Replaying latest state to new client")
-            await ws.send_json({"type": "event_name", "data": {"name": state["name"]}})
-            for dist in state["distances"].values():
-                await ws.send_json({"type": "distance_meta", "data": dist})
-            for dist_comps in state["competitors"].values():
-                for comp in dist_comps.values():
+            await ws.send_json({"type": "event_name", "data": {"name": event_name}})
+            for dist_id in (await cache.get("all_dist_ids") or []):
+                dist = await cache.get(f"dist:{dist_id}")
+                if dist:
+                    await ws.send_json({"type": "distance_meta", "data": dist})
+            for race_id in (await cache.get("all_race_ids") or []):
+                comp = await cache.get(f"race:{race_id}")
+                if comp:
                     await ws.send_json({"type": "competitor_update", "data": comp})
 
     def disconnect(self, ws: WebSocket) -> None:
@@ -293,28 +311,25 @@ async def fetch_data_loop() -> None:
                 if resp.status_code == 200:
                     raw = resp.json()
                     curr = _process(raw)
-                    prev: dict | None = await cache.get("processed_state")
-                    if curr != prev:
-                        logger.info("New data — computing diff")
-                        dist_updates, comp_updates = _diff(prev, curr)
-                        await cache.set("processed_state", curr)
+                    name_changed, dist_updates, comp_updates = await _update_cache_and_diff(curr)
 
-                        if prev is None or prev.get("name") != curr["name"]:
-                            await manager.broadcast({"type": "event_name", "data": {"name": curr["name"]}})
+                    if name_changed:
+                        await manager.broadcast({"type": "event_name", "data": {"name": curr["name"]}})
 
-                        for dist in dist_updates:
-                            await manager.broadcast({"type": "distance_meta", "data": dist})
-                        for comp in comp_updates:
-                            logger.info(
-                                "competitor_update: #%s %s — laps=%s total_time=%s (%s)",
-                                comp["start_number"],
-                                comp["name"],
-                                comp["laps_count"],
-                                comp["total_time"],
-                                comp["formatted_total_time"],
-                            )
-                            await manager.broadcast({"type": "competitor_update", "data": comp})
+                    for dist in dist_updates:
+                        await manager.broadcast({"type": "distance_meta", "data": dist})
+                    for comp in comp_updates:
+                        logger.info(
+                            "competitor_update: #%s %s — laps=%s total_time=%s (%s)",
+                            comp["start_number"],
+                            comp["name"],
+                            comp["laps_count"],
+                            comp["total_time"],
+                            comp["formatted_total_time"],
+                        )
+                        await manager.broadcast({"type": "competitor_update", "data": comp})
 
+                    if dist_updates or comp_updates or name_changed:
                         logger.info(
                             "Broadcast: %d distance_meta, %d competitor_update",
                             len(dist_updates), len(comp_updates),
@@ -400,7 +415,13 @@ async def set_interval(request: Request):
 @app.post("/manage/reset")
 async def reset_data(request: Request):
     await check_management_password(request)
-    await cache.set("processed_state", None)
+    for race_id in (await cache.get("all_race_ids") or []):
+        await cache.delete(f"race:{race_id}")
+    for dist_id in (await cache.get("all_dist_ids") or []):
+        await cache.delete(f"dist:{dist_id}")
+    await cache.delete("event_name")
+    await cache.delete("all_race_ids")
+    await cache.delete("all_dist_ids")
     return {"reset": True}
 
 

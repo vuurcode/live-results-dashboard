@@ -301,7 +301,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       result.push({ label: `Heat ${cur.heat}`, races: cur.races });
       i++;
     }
-    return result;
+    return result.reverse();
   }
 
   /** Lane color per slot index, derived from any non-null race across all heat groups. */
@@ -466,8 +466,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!distance.isMassStart) {
       const heatGroups = this.mergedHeatGroups(distance);
       const currentIdx = heatGroups.findIndex(g =>
-        g.races.some(r => r != null && distance.distanceMeters != null &&
-          !this.isTimedFinished(r, distance.distanceMeters))
+        g.races.some(r => r != null && this.isRecentUpdate(r.lastUpdated))
       );
       if (currentIdx === -1) return;
       const targetHeat = heatGroups[Math.max(0, currentIdx - 1)];
