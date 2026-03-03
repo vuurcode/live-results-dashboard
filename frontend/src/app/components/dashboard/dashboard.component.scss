@@ -443,6 +443,8 @@
   position: absolute;
   inset: 0;
   display: flex;
+  // Hide lane colour strips whenever cards aren't 4-wide
+  @media (max-width: 900px) { display: none; }
 }
 .timed-heat-lane-bg {
   flex: 0 0 25%;

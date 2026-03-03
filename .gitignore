@@ -1,7 +1,6 @@
 .idea/
 .agents/
 example.json
-backend_management_password.txt
 /compose.override.yml
 /tunnel/
 /container-data/

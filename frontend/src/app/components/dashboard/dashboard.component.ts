@@ -397,7 +397,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.currentFollowKey = null;
   }
 
-  /** True when a timed race counts as complete: all laps done OR has an invalid_reason. */
+/** True when a timed race counts as complete: all laps done OR has an invalid_reason. */
   private timedRaceComplete(race: CompetitorUpdate, distanceMeters: number): boolean {
     return !!race.invalid_reason || this.isTimedFinished(race, distanceMeters);
   }
