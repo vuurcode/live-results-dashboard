@@ -4,6 +4,8 @@ import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
 import { ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
 import { Observable, map, Subscription } from 'rxjs';
+import { TranslateService, TranslationKey } from '../../services/translate.service';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 import {
   AccordionModule,
   AlertModule,
@@ -67,6 +69,7 @@ export const groupCardAnimation = trigger('groupCard', [
     GridModule,
     SharedModule,
     FormsModule,
+    TranslatePipe,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
@@ -140,7 +143,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private titleSub: Subscription | null = null;
 
-  constructor(public dataService: DataService, private titleService: Title) {
+  constructor(public dataService: DataService, private titleService: Title, public ts: TranslateService) {
     this.status$ = this.dataService.status$;
     this.eventName$ = this.dataService.eventName$;
     this.errors$ = this.dataService.errors$;
@@ -176,7 +179,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.titleSub = this.dataService.eventName$.subscribe(name => {
-      this.titleService.setTitle(name ? `${name} | Live Results Dashboard` : 'Live Results Dashboard');
+      const pageTitle = this.ts.t('pageTitle');
+      this.titleService.setTitle(name ? `${name} | ${pageTitle}` : pageTitle);
     });
     this.resetSub = this.dataService.reset$.subscribe(() => {
       this.initialLiveId = null;
@@ -287,9 +291,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Returns the display name for a standings group. */
   groupDisplayName(group: StandingsGroup, isFirst: boolean, anyFinished = false): string {
-    if (group.isOthers) return 'Tail of the race';
-    if (isFirst && !anyFinished) return 'Head of the race';
-    return 'Group ' + group.groupNumber;
+    if (group.isOthers) return this.ts.t('tailOfRace');
+    if (isFirst && !anyFinished) return this.ts.t('headOfRace');
+    return this.ts.t('groupLabel', { n: group.groupNumber });
   }
 
   /**
@@ -343,14 +347,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const nxtHasYB = nxt.races[2] !== null || nxt.races[3] !== null;
         if (nxtNoWR && nxtHasYB) {
           result.push({
-            label: `Heat ${cur.heat} & ${nxt.heat}`,
+            label: this.ts.t('heatMergedLabel', { a: cur.heat, b: nxt.heat }),
             races: [cur.races[0], cur.races[1], nxt.races[2], nxt.races[3]],
           });
           i += 2;
           continue;
         }
       }
-      result.push({ label: `Heat ${cur.heat}`, races: cur.races });
+      result.push({ label: this.ts.t('heatLabel', { n: cur.heat }), races: cur.races });
       i++;
     }
     return result;
@@ -404,20 +408,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return `${secs}.${msPart}`;
   }
 
-  private static readonly TIMED_LABEL_MAP: Record<string, string> = {
-    PR:  'New PB',
-    FL:  'Fall',
-    DQ:  'Disqualified',
-    DNS: 'Did not start',
-    DNF: 'Did not finish',
-    WDR: 'Withdrawn',
-    TRC: 'New Track Record',
+  private readonly REMARK_KEY_MAP: Record<string, TranslationKey> = {
+    PR:  'remarkNewPb',
+    FL:  'remarkFall',
+    DQ:  'remarkDisqualified',
+    DNS: 'remarkDidNotStart',
+    DNF: 'remarkDidNotFinish',
+    WDR: 'remarkWithdrawn',
+    TRC: 'remarkNewTrackRecord',
   };
 
   /** Full description for a remark or invalid_reason code, or null if unknown. */
   timedLabelTitle(code: string | null): string | null {
     if (!code) return null;
-    return DashboardComponent.TIMED_LABEL_MAP[code.toUpperCase()] ?? null;
+    const key = this.REMARK_KEY_MAP[code.toUpperCase()];
+    return key ? this.ts.t(key) : null;
   }
 
   onFollowChange(event: Event): void {
@@ -476,7 +481,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   timedWatermarkText(race: CompetitorUpdate, distanceMeters?: number): string | null {
     const code = race.invalid_reason || race.remark || null;
     if (!code) return null;
-    const label = DashboardComponent.TIMED_LABEL_MAP[code.toUpperCase()] ?? code;
+    const label = this.timedLabelTitle(code) ?? code;
     if (code.toUpperCase() === 'PR' && distanceMeters != null) {
       const cmp = this.timedPrComparison(race, distanceMeters);
       if (cmp) return `${label}\n${cmp.faster ? '-' : '+'} ${cmp.diff}`;

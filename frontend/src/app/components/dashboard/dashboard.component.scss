@@ -270,7 +270,7 @@
   overflow: hidden;
   border: 1px solid rgba(0,0,0,0.05);
   &.race-finished::before {
-    content: 'Finished';
+    content: attr(data-finished-label);
     position: absolute;
     top: 50%;
     right: 9rem;

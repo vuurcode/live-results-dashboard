@@ -1,4 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
+import { TranslateService } from './translate.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { BehaviorSubject, Subject } from 'rxjs';
 import {
@@ -158,7 +159,7 @@ export class DataService {
   private renderLoopRunning = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private ngZone: NgZone, private http: HttpClient) {
+  constructor(private ngZone: NgZone, private http: HttpClient, private ts: TranslateService) {
     this.connect();
   }
 
@@ -423,7 +424,7 @@ export class DataService {
           const lapDiff = leader.laps_count - r.laps_count;
           if (lapDiff > 0 || !r.total_time || !leader.total_time) {
             const diff = lapDiff > 0 ? lapDiff : 1;
-            r.gap_to_above = `+${diff} lap${diff === 1 ? '' : 's'}`;
+            r.gap_to_above = `+${diff} ${this.ts.t(diff === 1 ? 'lapUnit' : 'lapsUnit')}`;
           } else {
             r.gap_to_above = `+${this._timeDiff(leader.total_time, r.total_time).toFixed(3)}s`;
           }
@@ -440,7 +441,7 @@ export class DataService {
         const lapDiff = groups[0].laps - group.laps;
         if (lapDiff > 0) {
           // Behind the leader by at least one lap: express gap in laps vs leader
-          gapToGroupAhead = `+${lapDiff} lap${lapDiff === 1 ? '' : 's'}`;
+          gapToGroupAhead = `+${lapDiff} ${this.ts.t(lapDiff === 1 ? 'lapUnit' : 'lapsUnit')}`;
         } else if (prevLast.total_time && first.total_time) {
           gapToGroupAhead = `+${this._timeDiff(prevLast.total_time, first.total_time).toFixed(3)}s`;
         }
@@ -480,7 +481,7 @@ export class DataService {
         } else {
           const lapDiff = (othersLeader?.laps_count ?? 0) - r.laps_count;
           if (lapDiff > 0) {
-            r.gap_to_above = `+${lapDiff} lap${lapDiff === 1 ? '' : 's'}`;
+            r.gap_to_above = `+${lapDiff} ${this.ts.t(lapDiff === 1 ? 'lapUnit' : 'lapsUnit')}`;
           } else if (othersLeader?.total_time && r.total_time) {
             r.gap_to_above = `+${this._timeDiff(othersLeader.total_time, r.total_time).toFixed(3)}s`;
           } else {
@@ -494,7 +495,7 @@ export class DataService {
       const tailLaps = othersRaces[0]?.laps_count ?? 0;
       const tailLapDiff = headLaps - tailLaps;
       const tailGap = tailLapDiff >= 1
-        ? `+${tailLapDiff} lap${tailLapDiff === 1 ? '' : 's'}`
+        ? `+${tailLapDiff} ${this.ts.t(tailLapDiff === 1 ? 'lapUnit' : 'lapsUnit')}`
         : null;
 
       dist.standingsGroups.push({

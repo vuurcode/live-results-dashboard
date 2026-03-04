@@ -19,13 +19,13 @@
       <!-- Display settings (collapsible) -->
       <div class="topbar-settings-group d-flex align-items-center">
         <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="displaySettingsOpen = !displaySettingsOpen">
-          Display <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
+          {{ 'displaySettings' | translate }} <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
           <div class="d-flex align-items-center gap-2 ms-1">
             <div class="topbar-section-sep"></div>
             <div class="setting-group ms-1">
-              <label class="small text-white-50 text-nowrap mb-0 setting-label" for="followInput">Automatically follow &amp; scroll</label>
+              <label class="small text-white-50 text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
               <input
                 id="followInput"
                 type="checkbox"
@@ -34,8 +34,8 @@
                 (change)="onFollowChange($event)"
               />
               <div class="setting-popover">
-                <div class="setting-popover-title">Automatically follow &amp; scroll</div>
-                <div class="setting-popover-body">Automatically scroll to keep the live distance in view as results come in.</div>
+                <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
               </div>
             </div>
           </div>
@@ -45,13 +45,13 @@
       @if (hasMassStart$ | async) {
         <div class="topbar-settings-group d-flex align-items-center">
           <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="massStartSettingsOpen = !massStartSettingsOpen">
-            Mass Start <span class="topbar-group-arrow" [class.open]="massStartSettingsOpen">▾</span>
+            {{ 'massStartSettings' | translate }} <span class="topbar-group-arrow" [class.open]="massStartSettingsOpen">▾</span>
           </button>
           @if (massStartSettingsOpen) {
             <div class="d-flex align-items-center gap-2 ms-1">
               <div class="topbar-section-sep"></div>
               <div class="setting-group ms-1">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="groupThresholdInput">Max seconds gap between groups</label>
+                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
                 <input
                   id="groupThresholdInput"
                   type="number"
@@ -62,12 +62,12 @@
                 />
                 <span class="small text-white-50">s</span>
                 <div class="setting-popover">
-                  <div class="setting-popover-title">Max seconds gap between groups</div>
-                  <div class="setting-popover-body">Minimum time difference (in seconds) between two competitors <strong>on the same lap</strong> for them to be placed in <strong>separate</strong> standings groups. <br><br>Lower values create more groups; 0 puts every competitor in their own group.<br><br>For comparison: Marathon races maintain a <strong>two second gap</strong> to indicate when a group is formed and which competitors are part of it.</div>
+                  <div class="setting-popover-title">{{ 'maxGapPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
                 </div>
               </div>
               <div class="setting-group ms-2">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="maxGroupsInput">Max groups</label>
+                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
                 <input
                   id="maxGroupsInput"
                   type="number"
@@ -77,12 +77,12 @@
                   (change)="onMaxGroupsChange($event)"
                 />
                 <div class="setting-popover">
-                  <div class="setting-popover-title">Max groups</div>
-                  <div class="setting-popover-body">Maximum number of standings groups to display in the group strip. Groups are based on the <i>Max seconds gap between groups</i> set to the left. <br><br>Competitors beyond the last group are collected into a "Tail of the race" group. <br><br>Set to 0 to disable grouping entirely.</div>
+                  <div class="setting-popover-title">{{ 'maxGroupsPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
                 </div>
               </div>
               <div class="setting-group ms-2">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="lapVarianceInput">Lap Δ</label>
+                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
                 <input
                   id="lapVarianceInput"
                   type="number"
@@ -93,13 +93,13 @@
                 />
                 <span class="small text-white-50">%</span>
                 <div class="setting-popover">
-                  <div class="setting-popover-title">Lap variance threshold</div>
-                  <div class="setting-popover-body">Percentage difference between <strong>consecutive lap times</strong> used to colour lap badges. <br><br><span class="popover-badge popover-badge-green">green</span> → Within threshold <br><span class="popover-badge popover-badge-orange">orange</span> → Slower than threshold <br><span class="popover-badge popover-badge-purple">purple</span> → Faster than threshold</div>
-                  <div class="setting-popover-body setting-popover-example">E.g. at 5%: a previous lap of 30.0 s means slower &gt; 31.5 s turns orange, faster &lt; 28.5 s turns purple.</div>
+                  <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
+                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample')"></div>
                 </div>
               </div>
               <div class="setting-group ms-2">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="showLapTimesInput">Lap times</label>
+                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="showLapTimesInput">{{ 'lapTimesLabel' | translate }}</label>
                 <input
                   id="showLapTimesInput"
                   type="checkbox"
@@ -108,8 +108,8 @@
                   (change)="onShowLapTimesChange($event)"
                 />
                 <div class="setting-popover">
-                  <div class="setting-popover-title">Show lap times</div>
-                  <div class="setting-popover-body">Show or hide the lap time badge strip on each mass-start competitor row. Hiding lap times gives a cleaner view during busy races.</div>
+                  <div class="setting-popover-title">{{ 'showLapTimesPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('showLapTimesPopoverBody')"></div>
                 </div>
               </div>
             </div>
@@ -137,14 +137,14 @@
             <ng-template cTemplateId="accordionHeader">
               <div class="d-flex w-100 align-items-center gap-2 me-3">
                 @if (distance.isLive) {
-                  <c-badge color="danger" class="glowing-badge flex-shrink-0">Live</c-badge>
+                  <c-badge color="danger" class="glowing-badge flex-shrink-0">{{ 'badgeLive' | translate }}</c-badge>
                 } @else if (isDistanceDone(distance)) {
-                  <c-badge color="dark" class="flex-shrink-0">Done</c-badge>
+                  <c-badge color="dark" class="flex-shrink-0">{{ 'badgeDone' | translate }}</c-badge>
                 }
                 <span class="flex-grow-1 d-flex align-items-center gap-1 flex-wrap">
                   {{ distance.name }}
                   @if (distance.isMassStart && distance.totalLaps) {
-                    <small class="text-muted">({{ distance.totalLaps }} laps)</small>
+                    <small class="text-muted">({{ distance.totalLaps }} {{ 'lapsUnit' | translate }})</small>
                   }
                   @if (!distance.isMassStart && distance.distanceMeters) {
                     <small class="text-muted">({{ distance.distanceMeters }}m)</small>
@@ -190,9 +190,9 @@
                                   @if (!firstGroup && group.gapToGroupAhead) {
                                     <span class="gap-badge text-nowrap">{{ group.gapToGroupAhead }}</span>
                                   } @else if (firstGroup && !distance.anyFinished) {
-                                    <c-badge color="success" style="font-size:0.65em">Leader</c-badge>
+                                    <c-badge color="success" style="font-size:0.65em">{{ 'badgeLeader' | translate }}</c-badge>
                                   } @else if (race.is_final_lap) {
-                                    <c-badge color="primary" style="font-size:0.65em">Final lap</c-badge>
+                                    <c-badge color="primary" style="font-size:0.65em">{{ 'badgeFinalLap' | translate }}</c-badge>
                                   }
                                 } @else {
                                   <span class="text-muted fst-italic ms-1" style="font-size:0.75em;white-space:nowrap">{{ race.gap_to_above }}</span>
@@ -319,6 +319,7 @@
                         <div
                           class="race-item race-item-laps d-flex align-items-center p-2 mb-1 rounded"
                           [attr.data-race-id]="race.id"
+                          [attr.data-finished-label]="race.finished_rank != null ? ('finished' | translate) : null"
                           [class.flash-update]="isRecentUpdate(race.lastUpdated)"
                           [class.pos-up]="race.position_change === 'up'"
                           [class.pos-down]="race.position_change === 'down'"
@@ -331,7 +332,7 @@
                             <c-badge class="start-num-badge badge-black">{{ padStartNumber(race.start_number) }}</c-badge>
                             <span class="race-name-fixed">{{ race.name }}</span>
                             @if (isRaceLeader(race, distance)) {
-                              <c-badge color="success" style="font-size:0.7em">Leader</c-badge>
+                              <c-badge color="success" style="font-size:0.7em">{{ 'badgeLeader' | translate }}</c-badge>
                             }
                           </div>
                           <!-- Centre column: lap time badges (toggled by setting) always in strip, counter after -->
@@ -356,11 +357,7 @@
                             <!-- Lap counter: remaining laps after this round -->
                             @if (distance.totalLaps && race.finished_rank == null) {
                               @let remaining = distance.totalLaps - race.laps_count - 1;
-                              <span class="laps-counter-text">{{ remaining }}<span class="laps-counter-total"> more lap{{ remaining !== 1 ? 's' : '' }} <span style="text-decoration:underline">after</span> this round</span></span>
-                            }
-                            <!-- Final lap badge moved here: displayed to the right of the lap counter -->
-                            @if (race.is_final_lap) {
-                              <c-badge color="primary" class="final-lap-badge">Final lap</c-badge>
+                              <span class="laps-counter-text" [innerHTML]="ts.html(remaining === 1 ? 'moreLapAfterRound' : 'moreLapsAfterRound', { n: remaining })"></span>
                             }
                           </div>
                           <div class="d-flex align-items-center gap-2">
@@ -385,7 +382,7 @@
                         @if (distance.finishingLineAfter && race.id === distance.finishingLineAfter) {
                           <div class="finishing-line d-flex align-items-center gap-2">
                             <div class="finishing-line-bar flex-grow-1"></div>
-                            <span class="finishing-line-label">Lap completed</span>
+                            <span class="finishing-line-label">{{ 'lapCompleted' | translate }}</span>
                             <div class="finishing-line-bar flex-grow-1"></div>
                           </div>
                         }
