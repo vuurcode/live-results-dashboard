@@ -266,7 +266,25 @@
   transition: outline 0.1s;
 }
 .race-item {
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(0,0,0,0.05);
+  &.race-finished::before {
+    content: 'Finished';
+    position: absolute;
+    top: 50%;
+    right: 9rem;
+    transform: translateY(-50%) rotate(-20deg);
+    font-size: 1rem;
+    font-weight: 1000;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+    color: rgba(0, 150, 80, 0.22);
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 0;
+  }
 }
 .race-item-group {
   border: 1px solid transparent;
@@ -277,8 +295,11 @@
   align-items: center;
   border: 1px solid rgba(0,0,0,0.05);
   cursor: pointer;
-  transition: outline 0.1s;
+  transition: outline 0.1s, background-color 0.1s;
   gap: 0.5rem;
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
 }
 // Left column: fixed width so all badge strips start at the same horizontal offset
 .race-item-left {
@@ -411,9 +432,7 @@
   opacity: 0.85 !important; /* milder dimming so timed-distance content remains readable */
 }
 
-/* Keep badges fully visible and colored */
-.race-finished .lap-time-badge,
-.race-finished .lap-time-placeholder,
+/* Keep badges visible and colored on finished rows */
 .race-finished .start-num-badge,
 .race-finished .final-lap-badge {
   opacity: 0.85 !important;
@@ -613,6 +632,25 @@
   opacity: 0.85;
   color: #6c757d;
 }
+// Orange gap-from-leader badge shown on finished mass-start rows, left of total time
+.mass-finish-gap-badge {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6em !important;
+  line-height: 1;
+  padding: 0.18em 0.4em;
+  border-radius: 0.25rem;
+  min-height: 1.6rem;
+  height: auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  background-color: #fd7e14 !important;
+  color: #fff !important;
+  .time-decimal { color: #fff !important; opacity: 0.75; }
+}
+
 .mass-finished-label {
   font-size: 0.7em;
   font-weight: 700;

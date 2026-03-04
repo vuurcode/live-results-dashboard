@@ -571,6 +571,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Returns a formatted "+SS.mmm" or "+M:SS.mmm" string for a finished mass-start
+   * competitor's gap from the race winner, or null if they are the winner / gap unknown.
+   */
+  massFinishGapFromLeader(race: CompetitorUpdate, distance: ProcessedDistance): string | null {
+    if (race.finished_rank == null || race.finished_rank === 1) return null;
+    const leader = distance.processedRaces.find(r => r.finished_rank === 1);
+    if (!leader?.total_time || !race.total_time) return null;
+    const diff = this._parseSeconds(race.total_time) - this._parseSeconds(leader.total_time);
+    if (diff <= 0) return null;
+    const totalMs = Math.floor(diff * 1000);
+    const ms = totalMs % 1000;
+    const secs = Math.floor(totalMs / 1000) % 60;
+    const mins = Math.floor(totalMs / 60000);
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const msPart = String(ms).padStart(3, '0');
+    return mins > 0 ? `+${mins}:${pad2(secs)}.${msPart}` : `+${secs}.${msPart}`;
+  }
+
+  /**
    * Returns the number of pending (not-yet-completed) laps for a mass-start competitor.
    * = totalLaps - lap_times.length, clamped to 0.
    */
