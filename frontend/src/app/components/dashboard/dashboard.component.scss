@@ -236,12 +236,6 @@
   50%       { opacity: 0.4; }
 }
 .pulse-badge { animation: badgePulse 1.2s ease-in-out infinite; }
-// Small badge in accordion header for race counts / PR / TRC
-.accordion-count-badge {
-  font-size: 0.75em !important;
-  padding: 0.2em 0.55em !important;
-  flex-shrink: 0;
-}
 // ===== START NUMBER BADGES =====
 .start-num-badge,
 .badge-black {
@@ -471,11 +465,11 @@
   position: absolute;
   inset: 0;
   display: flex;
-  // Hide lane colour strips whenever cards aren't 4-wide
-  @media (max-width: 900px) { display: none; }
+  // Hide lane colour strips when cards stack to single column
+  @media (max-width: 600px) { display: none; }
 }
 .timed-heat-lane-bg {
-  flex: 0 0 25%;
+  flex: 1 1 0;
   background: color-mix(in srgb, var(--lane-color, transparent) 10%, transparent);
 }
 .timed-heat-label-text,
@@ -504,7 +498,7 @@
   min-width: 2em;
   background: transparent !important;
 }
-// 4 lane columns per row, stacking to 2 then 1 on narrow viewports
+// 4 lane columns per row, collapsing directly to 1 column on narrow viewports
 .timed-competitors-row {
   display: flex;
   flex-wrap: wrap;
@@ -512,9 +506,9 @@
   justify-content: flex-start;
 }
 .timed-lane-col {
-  flex: 0 0 25%;
-  @media (max-width: 900px) { flex: 0 0 50%; }
-  @media (max-width: 500px) { flex: 0 0 100%; }
+  flex: 1 1 0;
+  min-width: 0;
+  @media (max-width: 600px) { flex: 0 0 100%; }
   padding: 0.4rem 0.25rem 1rem;
   background: color-mix(in srgb, var(--lane-color, transparent) 10%, transparent);
 }

@@ -360,6 +360,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return result;
   }
 
+  /** Removes trailing null slots from a races array. */
+  trimmedRaces(races: (CompetitorUpdate | null)[]): (CompetitorUpdate | null)[] {
+    let last = races.length - 1;
+    while (last >= 0 && races[last] === null) last--;
+    return races.slice(0, last + 1);
+  }
+
+  /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */
+  distanceMaxLaneCount(distance: ProcessedDistance): number {
+    return Math.max(0, ...this.mergedHeatGroups(distance).map(g => this.trimmedRaces(g.races).length));
+  }
+
   /** Lane color per slot index, derived from any non-null race across all heat groups. */
   heatGroupLaneColors(distance: ProcessedDistance): (string | null)[] {
     const colors: (string | null)[] = [];

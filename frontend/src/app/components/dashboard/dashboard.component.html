@@ -149,11 +149,7 @@
                   @if (!distance.isMassStart && distance.distanceMeters) {
                     <small class="text-muted">({{ distance.distanceMeters }}m)</small>
                   }
-                  @if (!distance.isMassStart && distance.processedRaces.length > 0) {
-                    @let completed = timedCompletedCount(distance);
-                    @let total = distance.processedRaces.length;
-                    <c-badge color="success" class="flex-shrink-0 accordion-count-badge">{{ completed }}/{{ total }}</c-badge>
-                  }
+
                 </span>
               </div>
             </ng-template>
@@ -213,6 +209,7 @@
                   <c-col [xs]="12">
                     @let lapSchedule = distance.distanceMeters ? timedDistanceLapSchedule(distance.distanceMeters) : [];
                     @let laneColors = heatGroupLaneColors(distance);
+                    @let maxLanes = distanceMaxLaneCount(distance);
                     @for (displayGroup of mergedHeatGroups(distance); track displayGroup.label) {
                       <div class="timed-heat-row"
                            [class.timed-heat-row-active]="isActiveHeatRow(distance.id, displayGroup.label)"
@@ -220,14 +217,14 @@
                            [attr.data-distance-id]="distance.id">
                         <div class="timed-heat-label">
                           <div class="timed-heat-lane-bgs" aria-hidden="true">
-                            @for (race of displayGroup.races; track $index) {
+                            @for (race of displayGroup.races.slice(0, maxLanes); track $index) {
                               <div class="timed-heat-lane-bg" [style.--lane-color]="race?.lane ?? laneColors[$index] ?? null"></div>
                             }
                           </div>
                           <span class="timed-heat-label-text">{{ displayGroup.label }}</span>
                         </div>
                         <div class="timed-competitors-row">
-                          @for (race of displayGroup.races; track $index) {
+                          @for (race of displayGroup.races.slice(0, maxLanes); track $index) {
                             <div class="timed-lane-col" [style.--lane-color]="race?.lane ?? laneColors[$index] ?? null">
                             @if (race) {
                             <div
