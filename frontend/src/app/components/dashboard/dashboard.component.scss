@@ -418,15 +418,9 @@
 .race-finished .rank-label,
 .race-finished .laps-counter-text,
 .race-finished .laps-counter-total,
-.race-finished .timed-lap-dist,
-.race-finished .timed-lap-time,
-.race-finished .timed-lap-time-group,
-.race-finished .timed-comp-name,
-.race-finished .timed-comp-header,
-.race-finished .timed-comp-body,
 .race-finished .race-time,
 .race-finished .standings-gap-label {
-  opacity: 0.85 !important; /* milder dimming so timed-distance content remains readable */
+  opacity: 0.85 !important;
 }
 
 /* Keep badges visible and colored on finished rows */
@@ -538,7 +532,7 @@
     left: 50%;
     width: 90%;
     transform: translate(-50%, -50%) rotate(-20deg);
-    font-size: 1rem;
+    font-size: 1.5rem;
     font-weight: 1000;
     text-transform: uppercase;
     letter-spacing: 0.08em;
