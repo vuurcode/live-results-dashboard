@@ -460,7 +460,7 @@
   inset: 0;
   display: flex;
   // Hide lane colour strips when cards stack to single column
-  @media (max-width: 600px) { display: none; }
+  @media (max-width: 800px) { display: none; }
 }
 .timed-heat-lane-bg {
   flex: 1 1 0;
@@ -502,7 +502,7 @@
 .timed-lane-col {
   flex: 1 1 0;
   min-width: 0;
-  @media (max-width: 600px) { flex: 0 0 100%; }
+  @media (max-width: 800px) { flex: 0 0 100%; }
   padding: 0.4rem 0.25rem 1rem;
   background: color-mix(in srgb, var(--lane-color, transparent) 10%, transparent);
 }
