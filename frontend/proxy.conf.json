@@ -1,0 +1,7 @@
+{
+  "/ws": {
+    "target": "ws://backend:5000",
+    "ws": true,
+    "changeOrigin": true
+  }
+}

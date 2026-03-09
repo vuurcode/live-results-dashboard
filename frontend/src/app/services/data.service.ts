@@ -34,7 +34,9 @@ const STORAGE_KEY_FOLLOW = 'follow';
 export class DataService {
   private socket$: WebSocketSubject<any> | null = null;
   private readonly BACKEND_URL = (() => {
-    const base = (window as any).BACKEND_URL;
+    const raw = (window as any).BACKEND_URL;
+    // Ignore unsubstituted template placeholder (env-inject.js not processed by envsubst)
+    const base = raw && !raw.startsWith('${') ? raw : null;
     if (base) {
       const wsUrl = base.replace(/^http/, 'ws') + '/ws';
       // Mixed content: page is HTTPS but WS target is ws:// — use nginx proxy on current host
@@ -43,10 +45,14 @@ export class DataService {
       }
       return wsUrl;
     }
+    // Fall back to /ws on the current host — works with nginx proxy (prod) and ng proxy (dev)
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    return `${proto}://${window.location.hostname}:5000/ws`;
+    return `${proto}://${window.location.host}/ws`;
   })();
-  private readonly BACKEND_HTTP_URL: string = (window as any).BACKEND_URL ?? `http://${window.location.hostname}:5000`;
+  private readonly BACKEND_HTTP_URL: string = (() => {
+    const raw = (window as any).BACKEND_URL;
+    return raw && !raw.startsWith('${') ? raw : `${window.location.protocol}//${window.location.host}`;
+  })();
 
   private _status = new BehaviorSubject<BackendStatus>({ status: 'Disconnected', url: '', interval: null });
   public status$ = this._status.asObservable();
