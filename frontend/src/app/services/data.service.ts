@@ -35,8 +35,16 @@ export class DataService {
   private socket$: WebSocketSubject<any> | null = null;
   private readonly BACKEND_URL = (() => {
     const base = (window as any).BACKEND_URL;
-    if (base) return base.replace(/^http/, 'ws') + '/ws';
-    return `ws://${window.location.hostname}:5000/ws`;
+    if (base) {
+      const wsUrl = base.replace(/^http/, 'ws') + '/ws';
+      // Mixed content: page is HTTPS but WS target is ws:// — use nginx proxy on current host
+      if (window.location.protocol === 'https:' && wsUrl.startsWith('ws://')) {
+        return `wss://${window.location.host}/ws`;
+      }
+      return wsUrl;
+    }
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${proto}://${window.location.hostname}:5000/ws`;
   })();
   private readonly BACKEND_HTTP_URL: string = (window as any).BACKEND_URL ?? `http://${window.location.hostname}:5000`;
 
