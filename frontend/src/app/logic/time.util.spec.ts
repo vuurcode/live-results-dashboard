@@ -5,6 +5,8 @@ import {
   formatDurationSeconds,
   truncateLapTime,
   splitLapTime,
+  splitFormattedTime,
+  isRecentUpdate,
 } from './time.util';
 
 describe('parseSeconds', () => {
@@ -79,5 +81,33 @@ describe('splitLapTime', () => {
 
   it('returns an empty decimal part when there is no dot', () => {
     expect(splitLapTime('23')).toEqual(['23', '']);
+  });
+});
+
+describe('splitFormattedTime', () => {
+  it('splits without truncating', () => {
+    expect(splitFormattedTime('1:23.456')).toEqual(['1:23', '.456']);
+  });
+
+  it('returns an empty decimal part when there is no dot', () => {
+    expect(splitFormattedTime('23')).toEqual(['23', '']);
+  });
+
+  it('returns two empty strings for falsy input', () => {
+    expect(splitFormattedTime('')).toEqual(['', '']);
+  });
+});
+
+describe('isRecentUpdate', () => {
+  it('is true within the last second', () => {
+    expect(isRecentUpdate(1000, 1500)).toBe(true);
+  });
+
+  it('is false at or beyond one second', () => {
+    expect(isRecentUpdate(1000, 2000)).toBe(false);
+  });
+
+  it('is false for an undefined timestamp', () => {
+    expect(isRecentUpdate(undefined, 1000)).toBe(false);
   });
 });

@@ -52,3 +52,20 @@ export function splitLapTime(t: string): [string, string] {
   if (dot === -1) return [truncated, ''];
   return [truncated.substring(0, dot), truncated.substring(dot)];
 }
+
+/**
+ * Splits an already-formatted time string into [integerPart, decimalPart]
+ * without truncating, e.g. "1:23.456" -> ["1:23", ".456"].
+ */
+export function splitFormattedTime(t: string): [string, string] {
+  if (!t) return ['', ''];
+  const dot = t.indexOf('.');
+  if (dot === -1) return [t, ''];
+  return [t.substring(0, dot), '.' + t.substring(dot + 1)];
+}
+
+/** True when a timestamp is within the last second, used to trigger flash-update styling. */
+export function isRecentUpdate(timestamp: number | undefined, now = Date.now()): boolean {
+  if (!timestamp) return false;
+  return now - timestamp < 1000;
+}
