@@ -311,6 +311,14 @@ manager = ConnectionManager()
 POLLING_ACTIVE = True
 _upstream_user_agent: str | None = None
 _upstream_user_agent_lock = asyncio.Lock()
+_MAX_USER_AGENT_LENGTH = 256
+
+
+def _sanitize_user_agent(ua: str) -> str:
+    """Strip control characters (CR/LF included) and cap length before an
+    unauthenticated inbound header value is reused as an outbound one."""
+    cleaned = "".join(ch for ch in ua if ch.isprintable())
+    return cleaned[:_MAX_USER_AGENT_LENGTH]
 
 
 async def fetch_data_loop() -> None:
@@ -383,8 +391,10 @@ async def capture_user_agent(request: Request, call_next):
     global _upstream_user_agent
     ua = request.headers.get("user-agent")
     if ua:
-        async with _upstream_user_agent_lock:
-            _upstream_user_agent = ua
+        sanitized = _sanitize_user_agent(ua)
+        if sanitized:
+            async with _upstream_user_agent_lock:
+                _upstream_user_agent = sanitized
     return await call_next(request)
 
 
