@@ -8,7 +8,6 @@ import {
   ProcessedDistance,
   StandingsGroup,
 } from '../models/data.models';
-import { HttpClient } from '@angular/common/http';
 import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
 
 export interface BackendStatus {
@@ -177,7 +176,6 @@ export class DataService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   private ngZone = inject(NgZone);
-  private http = inject(HttpClient);
   private ts = inject(TranslateService);
 
   constructor() {
