@@ -38,7 +38,11 @@ async def _replay_loop() -> None:
         return
     log.info("Replay: %d files, interval=%.1fs", len(files), DATA_SAMPLE_INTERVAL)
     for i, path in enumerate(files, 1):
-        _state = json.loads(path.read_text())
+        try:
+            _state = json.loads(path.read_text())
+        except json.JSONDecodeError as e:
+            log.error("Replay: skipping unparseable sample %s: %s", path.name, e)
+            continue
         log.info("Replay: loaded %s (%d/%d)", path.name, i, len(files))
         await asyncio.sleep(DATA_SAMPLE_INTERVAL)
     log.info("Replay complete — broadcasting last sample indefinitely")
