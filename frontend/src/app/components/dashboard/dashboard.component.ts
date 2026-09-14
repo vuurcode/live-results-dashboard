@@ -25,6 +25,24 @@ import {
   state,
 } from '@angular/animations';
 import { FormsModule } from '@angular/forms';
+import {
+  parseSeconds,
+  truncateLapTime as truncateLapTimeUtil,
+  splitLapTime as splitLapTimeUtil,
+  formatDurationSeconds,
+} from '../../logic/time.util';
+import {
+  timedDistanceLapSchedule as timedDistanceLapScheduleUtil,
+  timedDistanceTotalLaps as timedDistanceTotalLapsUtil,
+  isTimedFinished as isTimedFinishedUtil,
+  timedRaceComplete as timedRaceCompleteUtil,
+  mergeHeatGroups,
+  trimmedRaces as trimmedRacesUtil,
+  heatGroupLaneColors as heatGroupLaneColorsUtil,
+  timedPrComparison as timedPrComparisonUtil,
+  massFinishGapFromLeader as massFinishGapFromLeaderUtil,
+  pendingLapCount as pendingLapCountUtil,
+} from '../../logic/heats.util';
 
 // raceListAnimation: tracks list identity changes so Angular re-applies
 // per-row CSS classes (pos-up / pos-down) on reorder.
@@ -130,8 +148,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
    */
   lapBadgeColor(lapTimes: string[], i: number): string {
     if (i === 0 || !lapTimes[i - 1]) return 'lap-badge-normal';
-    const curr = this._parseSeconds(lapTimes[i]);
-    const prev = this._parseSeconds(lapTimes[i - 1]);
+    const curr = parseSeconds(lapTimes[i]);
+    const prev = parseSeconds(lapTimes[i - 1]);
     if (!prev) return 'lap-badge-normal';
     const threshold = this.dataService.lapVarianceThreshold / 100;
     const ratio = (curr - prev) / prev;
@@ -314,19 +332,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
    *      distanceMeters=100  → [100]
    */
   timedDistanceLapSchedule(distanceMeters: number): number[] {
-    const firstLap = distanceMeters % 400 || 400;
-    const laps: number[] = [firstLap];
-    let cumulative = firstLap;
-    while (cumulative < distanceMeters) {
-      cumulative += 400;
-      laps.push(cumulative);
-    }
-    return laps;
+    return timedDistanceLapScheduleUtil(distanceMeters);
   }
 
   /** Total number of expected laps for a timed distance. */
   timedDistanceTotalLaps(distanceMeters: number): number {
-    return this.timedDistanceLapSchedule(distanceMeters).length;
+    return timedDistanceTotalLapsUtil(distanceMeters);
   }
 
   /**
@@ -334,37 +345,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * first has only white/red lanes and the second has only yellow/blue lanes.
    */
   mergedHeatGroups(distance: ProcessedDistance): { label: string; races: (CompetitorUpdate | null)[] }[] {
-    const result: { label: string; races: (CompetitorUpdate | null)[] }[] = [];
-    const groups = distance.heatGroups;
-    let i = 0;
-    while (i < groups.length) {
-      const cur = groups[i];
-      const curHasWR = cur.races[0] !== null || cur.races[1] !== null;
-      const curNoYB = cur.races[2] === null && cur.races[3] === null;
-      if (curHasWR && curNoYB && i + 1 < groups.length) {
-        const nxt = groups[i + 1];
-        const nxtNoWR = nxt.races[0] === null && nxt.races[1] === null;
-        const nxtHasYB = nxt.races[2] !== null || nxt.races[3] !== null;
-        if (nxtNoWR && nxtHasYB) {
-          result.push({
-            label: this.ts.t('heatMergedLabel', { a: cur.heat, b: nxt.heat }),
-            races: [cur.races[0], cur.races[1], nxt.races[2], nxt.races[3]],
-          });
-          i += 2;
-          continue;
-        }
-      }
-      result.push({ label: this.ts.t('heatLabel', { n: cur.heat }), races: cur.races });
-      i++;
-    }
-    return result;
+    return mergeHeatGroups(
+      distance.heatGroups,
+      (n) => this.ts.t('heatLabel', { n }),
+      (a, b) => this.ts.t('heatMergedLabel', { a, b }),
+    );
   }
 
   /** Removes trailing null slots from a races array. */
   trimmedRaces(races: (CompetitorUpdate | null)[]): (CompetitorUpdate | null)[] {
-    let last = races.length - 1;
-    while (last >= 0 && races[last] === null) last--;
-    return races.slice(0, last + 1);
+    return trimmedRacesUtil(races);
   }
 
   /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */
@@ -374,18 +364,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Lane color per slot index, derived from any non-null race across all heat groups. */
   heatGroupLaneColors(distance: ProcessedDistance): (string | null)[] {
-    const colors: (string | null)[] = [];
-    for (const group of this.mergedHeatGroups(distance)) {
-      group.races.forEach((race, i) => {
-        if (race && !colors[i]) colors[i] = race.lane;
-      });
-    }
-    return colors;
+    return heatGroupLaneColorsUtil(this.mergedHeatGroups(distance));
   }
 
   /** True when the competitor has completed all laps for the timed distance. */
   isTimedFinished(race: CompetitorUpdate, distanceMeters: number): boolean {
-    return race.laps_count >= this.timedDistanceTotalLaps(distanceMeters);
+    return isTimedFinishedUtil(race, distanceMeters);
   }
 
   /**
@@ -405,19 +389,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!race.lap_times || race.lap_times.length <= lapIndex) return null;
     let total = 0;
     for (let i = 0; i <= lapIndex; i++) {
-      total += this._parseSeconds(race.lap_times[i]);
+      total += parseSeconds(race.lap_times[i]);
     }
-    // format as [H:]MM:SS.mmm or SS.mmm
-    const totalMs = Math.floor(total * 1000);
-    const ms = totalMs % 1000;
-    const secs = Math.floor(totalMs / 1000) % 60;
-    const mins = Math.floor(totalMs / 60000) % 60;
-    const hrs = Math.floor(totalMs / 3600000);
-    const pad2 = (n: number) => String(n).padStart(2, '0');
-    const msPart = String(ms).padStart(3, '0');
-    if (hrs > 0) return `${hrs}:${pad2(mins)}:${pad2(secs)}.${msPart}`;
-    if (mins > 0) return `${mins}:${pad2(secs)}.${msPart}`;
-    return `${secs}.${msPart}`;
+    return formatDurationSeconds(total);
   }
 
   private readonly REMARK_KEY_MAP: Record<string, TranslationKey> = {
@@ -452,7 +426,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
 /** True when a timed race counts as complete: all laps done OR has an invalid_reason. */
   private timedRaceComplete(race: CompetitorUpdate, distanceMeters: number): boolean {
-    return !!race.invalid_reason || this.isTimedFinished(race, distanceMeters);
+    return timedRaceCompleteUtil(race, distanceMeters);
   }
 
   /** Number of completed races in a timed distance. */
@@ -542,11 +516,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * 3-decimal diff string, or null if comparison is not applicable.
    */
   timedPrComparison(race: CompetitorUpdate, distanceMeters: number): { faster: boolean; diff: string } | null {
-    if (!race.personal_record || !race.total_time || !this.isTimedFinished(race, distanceMeters)) return null;
-    const prSecs = this._parseSeconds(race.personal_record);
-    const totalSecs = this._parseSeconds(race.total_time);
-    const diff = Math.abs(prSecs - totalSecs);
-    return { faster: totalSecs < prSecs, diff: diff.toFixed(3) };
+    return timedPrComparisonUtil(race.personal_record, race.total_time, race, distanceMeters);
   }
 
   private _scrollToFollow(distance: ProcessedDistance): void {
@@ -578,23 +548,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private _parseSeconds(t: string): number {
-    const parts = t.split(':');
-    if (parts.length === 3) return +parts[0] * 3600 + +parts[1] * 60 + parseFloat(parts[2]);
-    if (parts.length === 2) return +parts[0] * 60 + parseFloat(parts[1]);
-    return parseFloat(parts[0]);
-  }
-
   /**
    * Truncates (not rounds) a formatted lap time string to `decimals` decimal places.
    * e.g. truncateLapTime("23.456", 1) → "23.4"
    *      truncateLapTime("1:23.456", 1) → "1:23.4"
    */
   truncateLapTime(t: string, decimals = 1): string {
-    if (!t) return t;
-    const dot = t.lastIndexOf('.');
-    if (dot === -1) return t;
-    return t.substring(0, dot + 1 + decimals);
+    return truncateLapTimeUtil(t, decimals);
   }
 
   /**
@@ -602,10 +562,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * e.g. "1:23.456" → ["1:23", ".4"]
    */
   splitLapTime(t: string): [string, string] {
-    const truncated = this.truncateLapTime(t, 1);
-    const dot = truncated.lastIndexOf('.');
-    if (dot === -1) return [truncated, ''];
-    return [truncated.substring(0, dot), truncated.substring(dot)];
+    return splitLapTimeUtil(t);
   }
 
   /**
@@ -613,18 +570,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * competitor's gap from the race winner, or null if they are the winner / gap unknown.
    */
   massFinishGapFromLeader(race: CompetitorUpdate, distance: ProcessedDistance): string | null {
-    if (race.finished_rank == null || race.finished_rank === 1) return null;
     const leader = distance.processedRaces.find(r => r.finished_rank === 1);
-    if (!leader?.total_time || !race.total_time) return null;
-    const diff = this._parseSeconds(race.total_time) - this._parseSeconds(leader.total_time);
-    if (diff <= 0) return null;
-    const totalMs = Math.floor(diff * 1000);
-    const ms = totalMs % 1000;
-    const secs = Math.floor(totalMs / 1000) % 60;
-    const mins = Math.floor(totalMs / 60000);
-    const pad2 = (n: number) => String(n).padStart(2, '0');
-    const msPart = String(ms).padStart(3, '0');
-    return mins > 0 ? `+${mins}:${pad2(secs)}.${msPart}` : `+${secs}.${msPart}`;
+    return massFinishGapFromLeaderUtil(race.finished_rank, race.total_time, leader?.total_time);
   }
 
   /**
@@ -632,7 +579,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * = totalLaps - lap_times.length, clamped to 0.
    */
   pendingLapCount(race: CompetitorUpdate, totalLaps: number): number {
-    return Math.max(0, totalLaps - (race.lap_times?.length ?? 0));
+    return pendingLapCountUtil(race.lap_times?.length ?? 0, totalLaps);
   }
 
   /**

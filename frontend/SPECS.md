@@ -36,14 +36,6 @@ Each component:
 - [x] **Lap times** toggle: checkbox in Mass Start settings (default on); when unchecked the lap-time badge strip (including placeholders) is hidden but the **lap counter badge remains visible and vertically aligned across all rows**; setting persisted in localStorage
 - [x] Hide the Mass Start settings group entirely when there is no mass start in any of the distances
 
-### Management popup (frontend)
-- [x] Add popup for managing backend settings: data source URL, interval, reset button, start/stop toggle
-- [x] Display latest backend "status" info (URL, interval, polling state) in the popup
-- [x] Trigger popup by clicking the "connected" status badge
-- [x] Backend `error` messages (e.g. source returned `success: false`) set the connection status badge to **Error** (danger color) and surface the message as a warning inside the management popup; they are not shown as dismissible alerts
-- [x] Frontend reads current backend settings (URL, interval, polling state) from backend on popup open and after save/reset
-- [x] Management settings popup floats in a window visually similar to the server updates panel (same style, z-index, and animation)
-
 #### Rendering
 - [x] HTML page title: `<event name> | Live Results Dashboard`; updated reactively when event name changes
 - [x] Top bar: event `name` + connection status badge; dark/black background

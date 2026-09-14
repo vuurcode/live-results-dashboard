@@ -9,6 +9,7 @@ import {
   StandingsGroup,
 } from '../models/data.models';
 import { HttpClient } from '@angular/common/http';
+import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
 
 export interface BackendStatus {
   status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error';
@@ -18,8 +19,6 @@ export interface BackendStatus {
 }
 
 const RENDER_INTERVAL_MS = 250;
-const LANE_ORDER: Record<string, number> = { white: 0, red: 1, yellow: 2, blue: 3 };
-const LANE_ORDER_KEYS = Object.keys(LANE_ORDER); // ['white','red','yellow','blue']
 const DEFAULT_GROUP_THRESHOLD = 2.0;
 const MAX_GROUP_THRESHOLD = 10.0;
 const DEFAULT_MAX_GROUPS = 4;
@@ -337,7 +336,7 @@ export class DataService {
       target.is_final_lap = target.laps_remaining === 1;
 
       // Recompute positions and resort immediately — before highlight and finishing line
-      this._recomputePositions(distComps);
+      recomputePositions(Array.from(distComps.values()));
       dist.processedRaces = Array.from(distComps.values()).sort((a, b) => a.position - b.position);
 
       // Set finishing line to this competitor; persists until the next update moves it
@@ -361,172 +360,13 @@ export class DataService {
     return true;
   }
 
-  /** Sorts all competitors for a distance and assigns position + position_change. */
-  private _recomputePositions(distComps: Map<string, CompetitorUpdate>) {
-    const all = Array.from(distComps.values());
-    all.sort((a, b) => {
-      if (b.laps_count !== a.laps_count) return b.laps_count - a.laps_count;
-      if (!a.total_time && !b.total_time) return 0;
-      if (!a.total_time) return 1;
-      if (!b.total_time) return -1;
-      return this._parseSeconds(a.total_time) - this._parseSeconds(b.total_time);
-    });
-    all.forEach((r, i) => {
-      const newPos = i + 1;
-      if (r.position && r.position !== newPos) {
-        r.position_change = newPos < r.position ? 'up' : 'down';
-      } else {
-        r.position_change = null;
-      }
-      r.position = newPos;
-    });
-  }
-
-
-  private _timeDiff(a: string, b: string): number {
-    if (!a || !b) return 9999;
-    return Math.abs(this._parseSeconds(a) - this._parseSeconds(b));
-  }
-
-  parseSeconds(t: string): number { return this._parseSeconds(t); }
-
-  private _parseSeconds(t: string): number {
-    const parts = t.split(':');
-    if (parts.length === 3) return +parts[0] * 3600 + +parts[1] * 60 + parseFloat(parts[2]);
-    if (parts.length === 2) return +parts[0] * 60 + parseFloat(parts[1]);
-    return parseFloat(parts[0]);
-  }
-
   private _recomputeGroups(dist: ProcessedDistance) {
-    const threshold = this._groupThreshold.value;
-    const maxG = this._maxGroups.value;
-    dist.processedRaces.forEach(r => { r.group_number = null; r.gap_to_above = null; });
-
-    // maxGroups = 0 means hide the group strip and all separators entirely
-    if (maxG === 0) {
-      dist.standingsGroups = [];
-      return;
-    }
-
-    const unfinished = dist.processedRaces.filter(r => r.finished_rank == null && r.total_time);
-
-
-    let groups: { laps: number; races: CompetitorUpdate[] }[] = [];
-    let cur: { laps: number; races: CompetitorUpdate[] } | null = null;
-
-    for (const r of unfinished) {
-      if (!cur) {
-        cur = { laps: r.laps_count, races: [r] };
-        groups.push(cur);
-      } else if (
-        r.laps_count === cur.laps &&
-        this._timeDiff(cur.races[cur.races.length - 1].total_time, r.total_time) <= threshold
-      ) {
-        cur.races.push(r);
-      } else {
-        cur = { laps: r.laps_count, races: [r] };
-        groups.push(cur);
-      }
-    }
-
-    const leaderTime = groups[0]?.races[0]?.total_time ?? null;
-
-    dist.standingsGroups = groups.map((group, gi) => {
-      const gnum = gi + 1;
-      group.races.forEach((r, ri) => {
-        r.group_number = gnum;
-        if (ri === 0) {
-          r.gap_to_above = null;
-        } else {
-          const leader = group.races[0];
-          const lapDiff = leader.laps_count - r.laps_count;
-          if (lapDiff > 0 || !r.total_time || !leader.total_time) {
-            const diff = lapDiff > 0 ? lapDiff : 1;
-            r.gap_to_above = `+${diff} ${this.ts.t(diff === 1 ? 'lapUnit' : 'lapsUnit')}`;
-          } else {
-            r.gap_to_above = `+${this._timeDiff(leader.total_time, r.total_time).toFixed(3)}s`;
-          }
-        }
-      });
-
-      const first = group.races[0];
-      let gapToGroupAhead: string | null = null;
-      let timeBehindLeader: string | null = null;
-
-      if (gi > 0) {
-        const prevGroup = groups[gi - 1];
-        const prevLast = prevGroup.races[prevGroup.races.length - 1];
-        const lapDiff = groups[0].laps - group.laps;
-        if (lapDiff > 0) {
-          // Behind the leader by at least one lap: express gap in laps vs leader
-          gapToGroupAhead = `+${lapDiff} ${this.ts.t(lapDiff === 1 ? 'lapUnit' : 'lapsUnit')}`;
-        } else if (prevLast.total_time && first.total_time) {
-          gapToGroupAhead = `+${this._timeDiff(prevLast.total_time, first.total_time).toFixed(3)}s`;
-        }
-        if (leaderTime && first.total_time) {
-          timeBehindLeader = `+${this._timeDiff(leaderTime, first.total_time).toFixed(3)}s`;
-        }
-      }
-
-      return {
-        groupNumber: gnum,
-        laps: group.laps,
-        leaderTime: first.total_time ? first.formatted_total_time : null,
-        gapToGroupAhead,
-        timeBehindLeader,
-        isLastGroup: false,
-        isOthers: false,
-        races: group.races,
-      } as StandingsGroup;
-    });
-
-    if (dist.standingsGroups.length > 0) {
-      dist.standingsGroups[dist.standingsGroups.length - 1].isLastGroup = true;
-    }
-
-    // Collect overflow competitors into synthetic Others group
-    if (maxG > 0 && dist.standingsGroups.length > maxG) {
-      const overflowGroups = dist.standingsGroups.slice(maxG);
-      const othersRaces = overflowGroups.flatMap(g => g.races);
-      dist.standingsGroups = dist.standingsGroups.slice(0, maxG);
-      dist.standingsGroups[dist.standingsGroups.length - 1].isLastGroup = false;
-
-      // Recompute gap_to_above for all overflow races relative to the overflow leader
-      const othersLeader = othersRaces[0];
-      othersRaces.forEach((r, ri) => {
-        if (ri === 0) {
-          r.gap_to_above = null;
-        } else {
-          const lapDiff = (othersLeader?.laps_count ?? 0) - r.laps_count;
-          if (lapDiff > 0) {
-            r.gap_to_above = `+${lapDiff} ${this.ts.t(lapDiff === 1 ? 'lapUnit' : 'lapsUnit')}`;
-          } else if (othersLeader?.total_time && r.total_time) {
-            r.gap_to_above = `+${this._timeDiff(othersLeader.total_time, r.total_time).toFixed(3)}s`;
-          } else {
-            r.gap_to_above = null;
-          }
-        }
-      });
-
-      // Compute lap deficit of the tail group leader vs the first (head) group
-      const headLaps = groups[0]?.laps ?? 0;
-      const tailLaps = othersRaces[0]?.laps_count ?? 0;
-      const tailLapDiff = headLaps - tailLaps;
-      const tailGap = tailLapDiff >= 1
-        ? `+${tailLapDiff} ${this.ts.t(tailLapDiff === 1 ? 'lapUnit' : 'lapsUnit')}`
-        : null;
-
-      dist.standingsGroups.push({
-        groupNumber: maxG + 1,
-        laps: tailLaps,
-        leaderTime: null,
-        gapToGroupAhead: tailGap,
-        timeBehindLeader: null,
-        isLastGroup: true,
-        isOthers: true,
-        races: othersRaces,
-      });
-    }
+    dist.standingsGroups = recomputeGroups(
+      dist.processedRaces,
+      this._groupThreshold.value,
+      this._maxGroups.value,
+      (n) => this.ts.t(n === 1 ? 'lapUnit' : 'lapsUnit'),
+    ) as StandingsGroup[];
   }
 
   private _scheduleGroupDebounce(distId: string) {
@@ -549,17 +389,7 @@ export class DataService {
   }
 
   private _resolveRaces(distId: string, ids: string[], pinnedByLane = false): (CompetitorUpdate | null)[] {
-    const distComps = this.competitorMap.get(distId);
-    if (!distComps) return pinnedByLane ? Array(LANE_ORDER_KEYS.length).fill(null) : [];
-    const resolved = ids.map(id => distComps.get(id)).filter((c): c is CompetitorUpdate => !!c);
-    if (!pinnedByLane) return resolved;
-    // Build fixed-slot array: one slot per known lane in LANE_ORDER_KEYS
-    const slots: (CompetitorUpdate | null)[] = LANE_ORDER_KEYS.map(lane =>
-      resolved.find(c => c.lane?.toLowerCase() === lane) ?? null
-    );
-    // Append any competitors whose lane is not in LANE_ORDER
-    const extra = resolved.filter(c => !(c.lane?.toLowerCase() in LANE_ORDER));
-    return [...slots, ...extra];
+    return resolveRaces(ids, this.competitorMap.get(distId), pinnedByLane);
   }
 
   private _publishState() {
