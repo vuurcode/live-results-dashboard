@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import { TranslateService } from './translate.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -176,7 +176,11 @@ export class DataService {
   private renderLoopRunning = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private ngZone: NgZone, private http: HttpClient, private ts: TranslateService) {
+  private ngZone = inject(NgZone);
+  private http = inject(HttpClient);
+  private ts = inject(TranslateService);
+
+  constructor() {
     this.connect();
   }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { en, nl, Translations } from '../i18n/translations';
 
@@ -6,12 +6,11 @@ export type TranslationKey = keyof Translations;
 
 @Injectable({ providedIn: 'root' })
 export class TranslateService {
-  private readonly translations: Translations;
-
-  constructor(private sanitizer: DomSanitizer) {
+  private sanitizer = inject(DomSanitizer);
+  private readonly translations: Translations = (() => {
     const lang = (navigator.language || 'en').toLowerCase();
-    this.translations = lang.startsWith('nl') ? nl : en;
-  }
+    return lang.startsWith('nl') ? nl : en;
+  })();
 
   t(key: TranslationKey, params?: Record<string, string | number>): string {
     let str: string = this.translations[key] ?? key;

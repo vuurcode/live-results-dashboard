@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
@@ -92,6 +92,7 @@ export const groupCardAnimation = trigger('groupCard', [
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   animations: [raceListAnimation, groupCardAnimation],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   sortedDistances$: Observable<ProcessedDistance[]>;
@@ -161,7 +162,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private titleSub: Subscription | null = null;
 
-  constructor(public dataService: DataService, private titleService: Title, public ts: TranslateService) {
+  public dataService = inject(DataService);
+  private titleService = inject(Title);
+  public ts = inject(TranslateService);
+  private cdr = inject(ChangeDetectorRef);
+
+  constructor() {
     this.status$ = this.dataService.status$;
     this.eventName$ = this.dataService.eventName$;
     this.errors$ = this.dataService.errors$;
@@ -204,6 +210,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.initialLiveId = null;
       this.liveEventNumber = null;
       this.currentFollowKey = null;
+      this.cdr.markForCheck();
     });
     this.followScrollSub = this.sortedDistances$.subscribe(distances => {
       if (!this.dataService.follow) return;
@@ -214,6 +221,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.initialLiveId = live.id;
         this.liveEventNumber = live.eventNumber;
         this.currentFollowKey = null;
+        this.cdr.markForCheck();
         requestAnimationFrame(() => {
           const el = document.querySelector(`[data-distance-header="${live.id}"]`) as HTMLElement | null;
           if (!el) return;
@@ -239,6 +247,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }
       this.activeHeatKey = result;
+      this.cdr.markForCheck();
     });
   }
 
