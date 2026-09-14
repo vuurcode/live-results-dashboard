@@ -15,5 +15,9 @@
   "cleanupPeriodDays": 30,
   "includeCoAuthoredBy": true,
   "respectGitignore": true,
-  "showTurnDuration": true
+  "showTurnDuration": true,
+  "statusLine": {
+    "type": "command",
+    "command": "/app/.claude/statusline.sh"
+  }
 }
