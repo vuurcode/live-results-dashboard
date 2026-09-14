@@ -14,9 +14,9 @@ WebSocket message types (backend → frontend):
 """
 
 import asyncio
+import logging
 import os
 import re
-import logging
 from contextlib import asynccontextmanager
 
 import httpx
@@ -121,7 +121,7 @@ def _process(raw: dict) -> dict:
             total_time = ""
             formatted_total_time = ""
             if laps:
-                total_time = sorted(laps, key=lambda l: l["time"])[-1]["time"]
+                total_time = max(laps, key=lambda l: _parse_seconds(l["time"]))["time"]
                 formatted_total_time = _format_time(total_time)
 
             lane = "black" if is_mass_start else (race.get("lane") or "black")
@@ -310,6 +310,7 @@ manager = ConnectionManager()
 
 POLLING_ACTIVE = True
 _upstream_user_agent: str | None = None
+_upstream_user_agent_lock = asyncio.Lock()
 
 
 async def fetch_data_loop() -> None:
@@ -319,7 +320,9 @@ async def fetch_data_loop() -> None:
                 await asyncio.sleep(0.5)
                 continue
             try:
-                headers = {"User-Agent": _upstream_user_agent} if _upstream_user_agent else {}
+                async with _upstream_user_agent_lock:
+                    ua = _upstream_user_agent
+                headers = {"User-Agent": ua} if ua else {}
                 resp = await client.get(DATA_SOURCE_URL, headers=headers)
                 if resp.status_code == 200:
                     raw = resp.json()
@@ -374,10 +377,14 @@ app = FastAPI(lifespan=lifespan)
 
 @app.middleware("http")
 async def capture_user_agent(request: Request, call_next):
+    """Mirror the most recent inbound User-Agent onto outbound DATA_SOURCE_URL
+    fetches — some upstream data sources apply UA-based bot filtering and
+    reject requests carrying httpx's default identifier."""
     global _upstream_user_agent
     ua = request.headers.get("user-agent")
     if ua:
-        _upstream_user_agent = ua
+        async with _upstream_user_agent_lock:
+            _upstream_user_agent = ua
     return await call_next(request)
 
 
