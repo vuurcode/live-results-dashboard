@@ -4,75 +4,30 @@ import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
 import { ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
 import { Observable, map, Subscription } from 'rxjs';
-import { TranslateService, TranslationKey } from '../../services/translate.service';
+import { TranslateService } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
+import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
+import { TimedHeatCardComponent } from '../timed-heat-card/timed-heat-card.component';
+import { MassStartRaceRowComponent } from '../mass-start-race-row/mass-start-race-row.component';
 import {
   AccordionModule,
   AlertModule,
   BadgeModule,
   ButtonModule,
-  CardModule,
   GridModule,
   SharedModule,
 } from '@coreui/angular';
-import {
-  trigger,
-  transition,
-  style,
-  animate,
-  query,
-  stagger,
-  state,
-} from '@angular/animations';
 import { FormsModule } from '@angular/forms';
-import {
-  parseSeconds,
-  truncateLapTime as truncateLapTimeUtil,
-  splitLapTime as splitLapTimeUtil,
-  formatDurationSeconds,
-} from '../../logic/time.util';
+import { isRecentUpdate } from '../../logic/time.util';
 import {
   timedDistanceLapSchedule as timedDistanceLapScheduleUtil,
   timedDistanceTotalLaps as timedDistanceTotalLapsUtil,
-  isTimedFinished as isTimedFinishedUtil,
   timedRaceComplete as timedRaceCompleteUtil,
   mergeHeatGroups,
   trimmedRaces as trimmedRacesUtil,
   heatGroupLaneColors as heatGroupLaneColorsUtil,
-  timedPrComparison as timedPrComparisonUtil,
-  massFinishGapFromLeader as massFinishGapFromLeaderUtil,
-  pendingLapCount as pendingLapCountUtil,
 } from '../../logic/heats.util';
-
-// raceListAnimation: tracks list identity changes so Angular re-applies
-// per-row CSS classes (pos-up / pos-down) on reorder.
-export const raceListAnimation = trigger('raceList', [
-  transition('* => *', [
-    query(':enter', [
-      style({ opacity: 0 }),
-      stagger(0, [animate('150ms ease-out', style({ opacity: 1 }))]),
-    ], { optional: true }),
-  ]),
-]);
-
-/**
- * Group card leave animations:
- *  'last'   — the tail group merged into the group ahead: slide right (toward head) + fade
- *  'normal' — a group was disbanded (members finished): fade out in place
- */
-export const groupCardAnimation = trigger('groupCard', [
-  state('last',   style({ opacity: 1, transform: 'translateX(0)' })),
-  state('normal', style({ opacity: 1, transform: 'translateX(0)' })),
-  // last group: slide toward head (right in the row-reversed strip) + fade
-  transition('last => void', [
-    animate('420ms cubic-bezier(0.4, 0, 0.2, 1)',
-      style({ opacity: 0, transform: 'translateX(60px)' })),
-  ]),
-  // disbanded group: fade out in place
-  transition('normal => void', [
-    animate('350ms ease-in', style({ opacity: 0 })),
-  ]),
-]);
+import { raceListAnimation } from './dashboard.animations';
 
 @Component({
   selector: 'app-dashboard',
@@ -83,15 +38,17 @@ export const groupCardAnimation = trigger('groupCard', [
     AlertModule,
     BadgeModule,
     ButtonModule,
-    CardModule,
     GridModule,
     SharedModule,
     FormsModule,
     TranslatePipe,
+    GroupStripCardComponent,
+    TimedHeatCardComponent,
+    MassStartRaceRowComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
-  animations: [raceListAnimation, groupCardAnimation],
+  animations: [raceListAnimation],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -138,27 +95,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onShowLapTimesChange(event: Event): void {
     this.dataService.setShowMassStartLapTimes((event.target as HTMLInputElement).checked);
   }
-
-  /**
-   * Returns a CSS class name for a lap time badge based on variance vs the previous lap.
-   * First lap: always 'lap-badge-normal' (green).
-   * Subsequent laps: compare to previous lap using the lapVarianceThreshold (%).
-   *   > threshold% slower  → 'lap-badge-slow'   (orange)
-   *   > threshold% faster  → 'lap-badge-fast'   (purple)
-   *   within threshold     → 'lap-badge-normal' (green)
-   */
-  lapBadgeColor(lapTimes: string[], i: number): string {
-    if (i === 0 || !lapTimes[i - 1]) return 'lap-badge-normal';
-    const curr = parseSeconds(lapTimes[i]);
-    const prev = parseSeconds(lapTimes[i - 1]);
-    if (!prev) return 'lap-badge-normal';
-    const threshold = this.dataService.lapVarianceThreshold / 100;
-    const ratio = (curr - prev) / prev;
-    if (ratio > threshold)  return 'lap-badge-slow';   // current slower  → orange
-    if (ratio < -threshold) return 'lap-badge-fast';   // current faster  → purple
-    return 'lap-badge-normal';
-  }
-
 
   private titleSub: Subscription | null = null;
 
@@ -263,32 +199,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.activeHeatKey?.distanceId === distanceId && this.activeHeatKey?.label === label;
   }
 
-  isRecentUpdate(timestamp: number | undefined): boolean {
-    if (!timestamp) return false;
-    return Date.now() - timestamp < 1000;
-  }
-
-  padStartNumber(n: string): string {
-    return n ?? '';
-  }
-
   badgeTextClass(lane: string): string {
     const light = ['white', 'yellow', 'orange', 'pink', 'lime'];
     return light.includes((lane || '').toLowerCase()) ? 'text-dark' : 'text-white';
-  }
-
-  splitFormattedTime(t: string): [string, string] {
-    if (!t) return ['', ''];
-    const dot = t.indexOf('.');
-    if (dot === -1) return [t, ''];
-    return [t.substring(0, dot), '.' + t.substring(dot + 1)];
-  }
-
-  /** Returns [base, superscript] for ordinal, e.g. ordinalSuffix(1) → ['1','st'] */
-  ordinalSuffix(n: number): [string, string] {
-    const s = ['th', 'st', 'nd', 'rd'];
-    const v = n % 100;
-    return [String(n), s[(v - 20) % 10] ?? s[v] ?? s[0]];
   }
 
   /** Stable animation state key — changes whenever the sort order of the list changes. */
@@ -322,16 +235,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (isFirst && !anyFinished) return this.ts.t('headOfRace');
     return this.ts.t('groupLabel', { n: group.groupNumber });
   }
-
-  /**
-   * Returns true when the competitor is the leader of the head group
-   * (group_number === 1, gap_to_above === null) and no one has finished yet.
-   */
-  isRaceLeader(race: CompetitorUpdate, distance: ProcessedDistance): boolean {
-    if (distance.anyFinished) return false;
-    return race.group_number === 1 && race.gap_to_above == null && race.finished_rank == null && !!race.total_time;
-  }
-
 
   /**
    * Returns the ordered list of cumulative distances (in metres) at which
@@ -376,57 +279,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return heatGroupLaneColorsUtil(this.mergedHeatGroups(distance));
   }
 
-  /** True when the competitor has completed all laps for the timed distance. */
-  isTimedFinished(race: CompetitorUpdate, distanceMeters: number): boolean {
-    return isTimedFinishedUtil(race, distanceMeters);
-  }
-
-  /**
-   * Returns the lapTime string for the nth lap (0-based) of a timed competitor,
-   * or null if that lap has not been completed yet.
-   */
-  timedLapTime(race: CompetitorUpdate, lapIndex: number): string | null {
-    return race.lap_times?.[lapIndex] ?? null;
-  }
-
-  /**
-   * Returns the cumulative total time up to and including lap `lapIndex` as a
-   * formatted string (e.g. "1:23.456"), summing individual split lap_times.
-   * Returns null if the lap has not been completed yet.
-   */
-  timedCumulativeTime(race: CompetitorUpdate, lapIndex: number): string | null {
-    if (!race.lap_times || race.lap_times.length <= lapIndex) return null;
-    let total = 0;
-    for (let i = 0; i <= lapIndex; i++) {
-      total += parseSeconds(race.lap_times[i]);
-    }
-    return formatDurationSeconds(total);
-  }
-
-  private readonly REMARK_KEY_MAP: Record<string, TranslationKey> = {
-    PR:  'remarkNewPb',
-    FL:  'remarkFall',
-    DQ:  'remarkDisqualified',
-    DNS: 'remarkDidNotStart',
-    DNF: 'remarkDidNotFinish',
-    WDR: 'remarkWithdrawn',
-    TR:  'remarkNewTrackRecord',
-    TRC: 'remarkTrackRecordCourse',
-  };
-
-  /** Split a space-separated remark string into individual codes. */
-  splitRemarks(remark: string | null): string[] {
-    if (!remark) return [];
-    return remark.trim().split(/\s+/);
-  }
-
-  /** Full description for a remark or invalid_reason code, or null if unknown. */
-  timedLabelTitle(code: string | null): string | null {
-    if (!code) return null;
-    const key = this.REMARK_KEY_MAP[code.toUpperCase()];
-    return key ? this.ts.t(key) : null;
-  }
-
   onFollowChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.dataService.setFollow(checked);
@@ -458,76 +310,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return false;
   }
 
-  /** Count of timed races whose remark contains the given code (case-insensitive, space-separated). */
-  timedRemarkCount(distance: ProcessedDistance, remark: string): number {
-    const upper = remark.toUpperCase();
-    return distance.processedRaces.filter(r =>
-      this.splitRemarks(r.remark).some(v => v.toUpperCase() === upper)
-    ).length;
-  }
-
-  /** Color variant for a timed card based on invalid_reason/remark values. */
-  timedCardColor(race: CompetitorUpdate): 'pr' | 'trc' | 'red' | 'orange' | null {
-    if (race.invalid_reason) {
-      return race.invalid_reason.toUpperCase() === 'DQ' ? 'red' : 'orange';
-    }
-    if (race.remark) {
-      const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
-      if (parts.some(v => v === 'TR' || v === 'TRC')) return 'trc';
-      if (parts.some(v => v === 'PR')) return 'pr';
-      return 'orange';
-    }
-    return null;
-  }
-
-  /** Watermark text: invalid_reason takes priority over remark; resolved via label map.
-   *  PR remarks are rendered as a DOM overlay instead (returns null).
-   *  TR/TRC get priority; TRC appends the category on a second line. */
-  timedWatermarkText(race: CompetitorUpdate, distanceMeters?: number): string | null {
-    if (race.invalid_reason) {
-      return this.timedLabelTitle(race.invalid_reason) ?? race.invalid_reason;
-    }
-    if (!race.remark) return null;
-    const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
-    // PR watermark is rendered as a DOM overlay to support smaller decimal formatting
-    if (parts.every(v => v === 'PR')) return null;
-    // TR/TRC get dedicated watermark treatment
-    const trcCode = parts.find(v => v === 'TR' || v === 'TRC');
-    if (trcCode) {
-      const label = this.timedLabelTitle(trcCode) ?? trcCode;
-      if (trcCode === 'TRC' && race.category) {
-        return `${label}\n${race.category}`;
-      }
-      return label;
-    }
-    // Other non-PR remark
-    const firstNonPr = parts.find(v => v !== 'PR');
-    if (firstNonPr) {
-      return this.timedLabelTitle(firstNonPr) ?? firstNonPr;
-    }
-    return null;
-  }
-
-  /** CSS class for the remark badge (PR/TR/TRC → purple, else orange). */
-  remarkBadgeClass(remark: string): string {
-    const v = remark.toUpperCase();
-    return (v === 'PR' || v === 'TR' || v === 'TRC') ? 'timed-badge-purple' : 'timed-badge-orange';
-  }
-
-  /** CSS class for the invalid_reason badge (DQ → red, else orange). */
-  invalidBadgeClass(reason: string): string {
-    return reason.toUpperCase() === 'DQ' ? 'timed-badge-red' : 'timed-badge-orange';
-  }
-
-  /**
-   * Compares the competitor's total time against their personal best once
-   * the final lap of a timed distance is complete. Returns the sign and
-   * 3-decimal diff string, or null if comparison is not applicable.
-   */
-  timedPrComparison(race: CompetitorUpdate, distanceMeters: number): { faster: boolean; diff: string } | null {
-    return timedPrComparisonUtil(race.personal_record, race.total_time, race, distanceMeters);
-  }
-
   private _scrollToFollow(distance: ProcessedDistance): void {
     let key: string;
     let selector: string;
@@ -535,7 +317,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!distance.isMassStart) {
       const heatGroups = this.mergedHeatGroups(distance);
       const currentIdx = heatGroups.findIndex(g =>
-        g.races.some(r => r != null && this.isRecentUpdate(r.lastUpdated))
+        g.races.some(r => r != null && isRecentUpdate(r.lastUpdated))
       );
       if (currentIdx === -1) return;
       const targetHeat = heatGroups[Math.max(0, currentIdx - 2)];
@@ -555,52 +337,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const top = el.getBoundingClientRect().top + window.scrollY;
       window.scrollTo({ top, behavior: 'smooth' });
     });
-  }
-
-  /**
-   * Truncates (not rounds) a formatted lap time string to `decimals` decimal places.
-   * e.g. truncateLapTime("23.456", 1) → "23.4"
-   *      truncateLapTime("1:23.456", 1) → "1:23.4"
-   */
-  truncateLapTime(t: string, decimals = 1): string {
-    return truncateLapTimeUtil(t, decimals);
-  }
-
-  /**
-   * Like truncateLapTime but returns [integerPart, decimalPart] for split rendering.
-   * e.g. "1:23.456" → ["1:23", ".4"]
-   */
-  splitLapTime(t: string): [string, string] {
-    return splitLapTimeUtil(t);
-  }
-
-  /**
-   * Returns a formatted "+SS.mmm" or "+M:SS.mmm" string for a finished mass-start
-   * competitor's gap from the race winner, or null if they are the winner / gap unknown.
-   */
-  massFinishGapFromLeader(race: CompetitorUpdate, distance: ProcessedDistance): string | null {
-    const leader = distance.processedRaces.find(r => r.finished_rank === 1);
-    return massFinishGapFromLeaderUtil(race.finished_rank, race.total_time, leader?.total_time);
-  }
-
-  /**
-   * Returns the number of pending (not-yet-completed) laps for a mass-start competitor.
-   * = totalLaps - lap_times.length, clamped to 0.
-   */
-  pendingLapCount(race: CompetitorUpdate, totalLaps: number): number {
-    return pendingLapCountUtil(race.lap_times?.length ?? 0, totalLaps);
-  }
-
-  /**
-   * Returns d-none classes so card at groupIndex is hidden when viewport is too narrow.
-   * xs shows 1, sm shows 2, md shows 3, lg shows 4, xl shows 5+
-   */
-  groupCardClass(groupIndex: number): string {
-    if (groupIndex === 0) return '';
-    if (groupIndex === 1) return 'd-none d-sm-block';
-    if (groupIndex === 2) return 'd-none d-md-block';
-    if (groupIndex === 3) return 'd-none d-lg-block';
-    return 'd-none d-xl-block';
   }
 
 }

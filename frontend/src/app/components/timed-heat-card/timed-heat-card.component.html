@@ -1,0 +1,89 @@
+<div class="timed-heat-row"
+     [class.timed-heat-row-active]="active"
+     [attr.data-heat-label]="label"
+     [attr.data-distance-id]="distanceId">
+  <div class="timed-heat-label">
+    <div class="timed-heat-lane-bgs" aria-hidden="true">
+      @for (race of races.slice(0, maxLanes); track $index) {
+        <div class="timed-heat-lane-bg" [style.--lane-color]="race?.lane ?? laneColors[$index] ?? null"></div>
+      }
+    </div>
+    <span class="timed-heat-label-text">{{ label }}</span>
+  </div>
+  <div class="timed-competitors-row">
+    @for (race of races.slice(0, maxLanes); track $index) {
+      <div class="timed-lane-col" [style.--lane-color]="race?.lane ?? laneColors[$index] ?? null">
+      @if (race) {
+      <div
+          class="timed-competitor-card"
+          [class.race-finished]="distanceMeters != null && isTimedFinished(race, distanceMeters)"
+          [class.timed-card-pr]="timedCardColor(race) === 'pr'"
+          [class.timed-card-trc]="timedCardColor(race) === 'trc'"
+          [class.timed-card-red]="timedCardColor(race) === 'red'"
+          [class.timed-card-orange]="timedCardColor(race) === 'orange'"
+          [attr.data-watermark]="timedWatermarkText(race, distanceMeters ?? undefined)"
+        >
+        @if (timedCardColor(race) === 'pr') {
+          @let prCmp = distanceMeters ? timedPrComparison(race, distanceMeters) : null;
+          <div class="timed-watermark timed-watermark-pr" aria-hidden="true">
+            <div>{{ ts.t('remarkNewPb') }}</div>
+            @if (prCmp) {
+              <div>{{ prCmp.faster ? '-' : '+' }} {{ splitFormattedTime(prCmp.diff)[0] }}<small class="timed-watermark-decimal">{{ splitFormattedTime(prCmp.diff)[1] }}</small></div>
+            }
+          </div>
+        }
+        <!-- Card title: name + status badge left; PB + diff badges right -->
+        <div class="timed-comp-header">
+          <span class="timed-comp-name">{{ race.name }}</span>
+          @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
+            <c-badge [ngClass]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkCode }}</c-badge>
+          }
+          @if (race.invalid_reason) {
+            <c-badge [ngClass]="invalidBadgeClass(race.invalid_reason)" [title]="timedLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
+          }
+          @if (race.personal_record) {
+            <div class="ms-auto d-flex align-items-center gap-1">
+              @if (distanceMeters) {
+                @let prComp = timedPrComparison(race, distanceMeters);
+                @if (prComp) {
+                  <c-badge [color]="prComp.faster ? '' : 'warning'" class="timed-pr-diff-badge" [class.timed-pr-diff-faster]="prComp.faster">{{ prComp.faster ? '-' : '+' }} {{ splitFormattedTime(prComp.diff)[0] }}<small class="time-decimal">{{ splitFormattedTime(prComp.diff)[1] }}</small></c-badge>
+                }
+              }
+              <c-badge class="timed-split-badge">{{ ts.t('pbLabel') }} {{ splitFormattedTime(truncateLapTime(race.personal_record, 3))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, 3))[1] }}</small></c-badge>
+            </div>
+          }
+        </div>
+        <!-- Card body: one row per lap distance -->
+        <div class="timed-comp-body">
+          @for (lapDist of lapSchedule; track lapDist; let i = $index) {
+            @let splitTime = timedLapTime(race, i);
+            @let cumTime = timedCumulativeTime(race, i);
+            <div class="timed-lap-row" [class.timed-lap-done]="splitTime !== null"
+                 [class.timed-flash-update]="isRecentUpdate(race.lastUpdated) && i === race.laps_count - 1">
+              <span class="timed-lap-dist">{{ lapDist }}m</span>
+              <span class="timed-lap-time-group">
+                @if (splitTime) {
+                  <!-- Gray split time badge - omit for first lap -->
+                  @if (i > 0) {
+                    <c-badge class="timed-split-badge">{{ splitFormattedTime(truncateLapTime(splitTime, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(splitTime, 1))[1] }}</small></c-badge>
+                  }
+                  <!-- Main cumulative total time (3 decimals) -->
+                  <span class="timed-lap-time">
+                    <span class="race-time">{{ splitFormattedTime(truncateLapTime(cumTime!, 3))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(cumTime!, 3))[1] }}</small></span>
+                  </span>
+                } @else {
+                  <span class="timed-static-placeholder"></span>
+                }
+              </span>
+            </div>
+          }
+        </div>
+      </div>
+      } @else {
+        <!-- Empty placeholder to preserve lane column position -->
+        <div class="timed-competitor-card timed-lane-placeholder"></div>
+      }
+      </div>
+    }
+  </div>
+</div>
