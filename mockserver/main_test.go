@@ -150,3 +150,26 @@ func TestReset(t *testing.T) {
 		t.Errorf("reset unknown: %d, want 404", code)
 	}
 }
+
+func TestCatalogEndpoints(t *testing.T) {
+	ts, base := newTestServer(t, time.Hour)
+	writeSamples(t, base, "m1", `{"a":1}`)
+	_ = os.MkdirAll(filepath.Join(base, "empty"), 0o755) // no samples: not listed
+
+	code, body := do(t, "GET", ts.URL+"/api/venues")
+	if code != 200 || !strings.Contains(body, `"SpeedSkating.LongTrack"`) || !strings.Contains(body, `"NED"`) {
+		t.Fatalf("venues: %d %s", code, body)
+	}
+	code, body = do(t, "GET", ts.URL+"/api/competitions")
+	if code != 200 {
+		t.Fatalf("competitions: %d %s", code, body)
+	}
+	for _, want := range []string{`"id":"m1"`, `"id":"mock-tomorrow"`, `"id":"mock-last-week"`, `"id":"mock-other-venue"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("competitions missing %s", want)
+		}
+	}
+	if strings.Contains(body, `"id":"empty"`) {
+		t.Error("competition without samples must not be listed")
+	}
+}

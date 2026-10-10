@@ -7,6 +7,9 @@
 // Matches replay independently of each other.
 //
 //	GET  /api/matches                    ids of the available matches (also a health check)
+//	GET  /api/venues                     synthetic venues (one Dutch long-track venue, plus distractors)
+//	GET  /api/competitions               one competition per match, running today, plus synthetic ones
+//	                                     (tomorrow, last week, other venue) to exercise filtering
 //	GET  /api/data?competitionId=<id>    current sample of a match; starts its replay on first use
 //	POST /api/reset[?competitionId=<id>] restart one started match, or all of them
 package main
@@ -246,8 +249,63 @@ func (s *server) handleReset(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"reset": true, "matches": ids})
 }
 
+func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
+	venue := func(code, name, city, country, discipline string) map[string]any {
+		return map[string]any{
+			"address":    map[string]any{"city": city, "countryCode": country},
+			"name":       name,
+			"code":       code,
+			"discipline": discipline,
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode([]any{
+		venue("TST", "Test Ice Rink", "Testville", "NED", "SpeedSkating.LongTrack"),
+		venue("TST", "Test Inline Track", "Testville", "NED", "SpeedSkating.Inline"),
+		venue("OTH", "Other Rink", "Elsewhere", "GER", "SpeedSkating.LongTrack"),
+	})
+}
+
+// handleCompetitions lists every available match as running today, plus a few
+// synthetic ones that the backend's filters must drop or keep out of "today".
+func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
+	entries, _ := os.ReadDir(s.cfg.baseDir)
+	now := time.Now().UTC()
+	comp := func(id, venue string, start, end time.Time) map[string]any {
+		return map[string]any{
+			"id": id, "code": "MOCK-" + id, "name": "Mock match " + id,
+			"venue":           map[string]any{"code": venue},
+			"discipline":      "SpeedSkating.LongTrack",
+			"timeZone":        "W. Europe Standard Time",
+			"extra":           "Synthetic mock data",
+			"allowToSendLive": true,
+			"starts":          start.Format(time.RFC3339),
+			"ends":            end.Format(time.RFC3339),
+			"settings":        map[string]any{"paymentProviderKey": "mock-secret-never-exposed"},
+		}
+	}
+	list := []any{}
+	for _, e := range entries {
+		if e.IsDir() && matchIDRe.MatchString(e.Name()) {
+			if files, _ := s.sampleFiles(e.Name()); len(files) > 0 {
+				list = append(list, comp(e.Name(), "TST", now.Add(-time.Hour), now.Add(3*time.Hour)))
+			}
+		}
+	}
+	day := 24 * time.Hour
+	list = append(list,
+		comp("mock-tomorrow", "TST", now.Add(day), now.Add(day+3*time.Hour)),
+		comp("mock-last-week", "TST", now.Add(-7*day), now.Add(-7*day+3*time.Hour)),
+		comp("mock-other-venue", "OTH", now.Add(-time.Hour), now.Add(3*time.Hour)),
+	)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(list)
+}
+
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/venues", s.handleVenues)
+	mux.HandleFunc("GET /api/competitions", s.handleCompetitions)
 	mux.HandleFunc("GET /api/matches", s.handleMatches)
 	mux.HandleFunc("GET /api/data", s.handleData)
 	mux.HandleFunc("POST /api/reset", s.handleReset)
