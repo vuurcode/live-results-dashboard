@@ -23,9 +23,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -45,6 +47,11 @@ type config struct {
 	defaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	maxCompetitions      int           // distinct competitions followed at once
 	idleGrace            time.Duration // how long an empty competition keeps polling before it is closed
+
+	catalogURL      string        // base URL serving /api/venues and /api/competitions
+	catalogTTL      time.Duration // how long the competitions list is cached; venues are cached forever
+	venueCountry    string        // only venues in this country (ISO 3166 alpha-3, as the upstream uses)
+	venueDiscipline string        // only venues and competitions of this discipline
 }
 
 func (c config) interval() time.Duration {
@@ -60,6 +67,21 @@ func loadConfig() config {
 		defaultCompetitionID: os.Getenv("DEFAULT_COMPETITION_ID"),
 		maxCompetitions:      25,
 		idleGrace:            30 * time.Second,
+
+		catalogURL:      os.Getenv("CATALOG_URL"),
+		catalogTTL:      24 * time.Hour,
+		venueCountry:    getenv("VENUE_COUNTRY_CODE", "NED"),
+		venueDiscipline: getenv("VENUE_DISCIPLINE", "SpeedSkating.LongTrack"),
+	}
+	if cfg.catalogURL == "" {
+		cfg.catalogURL = originOf(cfg.dataSourceURL)
+	}
+	if v := os.Getenv("CATALOG_TTL_SECONDS"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
+			cfg.catalogTTL = time.Duration(f * float64(time.Second))
+		} else {
+			slog.Warn("Ignoring invalid CATALOG_TTL_SECONDS", "value", v)
+		}
 	}
 	if v := os.Getenv("MAX_COMPETITIONS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -83,6 +105,15 @@ func loadConfig() config {
 		}
 	}
 	return cfg
+}
+
+// originOf returns scheme://host of a URL, or "" if it has none.
+func originOf(raw string) string {
+	u, err := url.Parse(strings.ReplaceAll(raw, "{id}", "x"))
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 func getenv(key, fallback string) string {
@@ -202,6 +233,11 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", m.serveWS)
+	if cat, err := newCatalog(cfg, ua); err != nil {
+		slog.Error("Match list disabled", "err", err)
+	} else {
+		mux.HandleFunc("GET /api/matches/today", cat.serveToday)
+	}
 	srv := &http.Server{
 		Addr:              cfg.listenAddr,
 		Handler:           ua.middleware(mux),
