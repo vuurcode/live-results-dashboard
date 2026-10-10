@@ -1,23 +1,81 @@
+# Weekly, major versions only, one grouped pull request per ecosystem and directory.
+# (Security updates are separate from these version updates and are not limited by the ignore rules.)
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /frontend
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      npm-frontend-majors:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: gomod
     directory: /backend/src
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      gomod-backend-src-majors:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: gomod
     directory: /mockserver
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      gomod-mockserver-majors:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: docker
     directory: /backend
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      docker-backend-majors:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: docker
     directory: /frontend
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      docker-frontend-majors:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: docker
     directory: /mockserver
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      docker-mockserver-majors:
+        patterns: ["*"]
+        update-types: ["major"]
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      github-actions-root-majors:
+        patterns: ["*"]
+        update-types: ["major"]
