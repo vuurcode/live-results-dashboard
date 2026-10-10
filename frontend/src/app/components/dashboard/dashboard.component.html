@@ -16,6 +16,21 @@
       >{{ status.status }}</c-badge>
     }
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
+      @if (todayMatches$ | async; as matches) {
+        @if (matches.length > 0) {
+          <div class="setting-group topbar-matches">
+            <label class="small text-white-50 text-nowrap mb-0 setting-label" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
+            <select id="matchSelect" class="form-select form-select-sm topbar-match-select" (change)="onMatchChange($event)">
+              @if (!dataService.competitionId || !isTodayMatch(matches, dataService.competitionId)) {
+                <option value="" selected disabled>–</option>
+              }
+              @for (m of matches; track m.id) {
+                <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.name }} · {{ m.venue.city }}</option>
+              }
+            </select>
+          </div>
+        }
+      }
       <!-- Display settings (collapsible) -->
       <div class="topbar-settings-group d-flex flex-wrap align-items-center">
         <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="displaySettingsOpen = !displaySettingsOpen">

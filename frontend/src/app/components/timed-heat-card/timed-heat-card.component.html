@@ -36,7 +36,7 @@
         <div class="timed-comp-header">
           <span class="timed-comp-name">{{ race.name }}</span>
           @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
-            <c-badge [ngClass]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkCode }}</c-badge>
+            <c-badge [ngClass]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
           }
           @if (race.invalid_reason) {
             <c-badge [ngClass]="invalidBadgeClass(race.invalid_reason)" [title]="timedLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>

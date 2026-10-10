@@ -123,6 +123,11 @@ export class TimedHeatCardComponent {
     return null;
   }
 
+  /** Badge text: the upstream code `PR` is shown as the local term (PB in English, PR in Dutch); other codes are international. */
+  remarkBadgeText(code: string): string {
+    return code === 'PR' ? this.ts.t('remarkShortPb') : code;
+  }
+
   /** CSS class for the remark badge (PR/TR/TRC → purple, else orange). */
   remarkBadgeClass(remark: string): string {
     const v = remark.toUpperCase();

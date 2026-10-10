@@ -3,5 +3,9 @@
     "target": "ws://backend:5000",
     "ws": true,
     "changeOrigin": true
+  },
+  "/api": {
+    "target": "http://backend:5000",
+    "changeOrigin": true
   }
 }

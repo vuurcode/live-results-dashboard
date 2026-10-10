@@ -11,6 +11,7 @@ import {
   StandingsGroup,
 } from '../models/data.models';
 import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
+import { TodayMatch } from '../models/data.models';
 import { competitionIdFromSearch, withCompetitionId } from '../logic/competition.util';
 
 export interface BackendStatus {
@@ -56,6 +57,18 @@ export class DataService {
     const raw = (window as BackendWindow).BACKEND_URL;
     return raw && !raw.startsWith('${') ? raw : `${window.location.protocol}//${window.location.host}`;
   })();
+
+  /** Matches happening today, from the backend; an empty list when it cannot be loaded. */
+  async todayMatches(): Promise<TodayMatch[]> {
+    try {
+      const res = await fetch(`${this.BACKEND_HTTP_URL}/api/matches/today`);
+      if (!res.ok) return [];
+      const list: unknown = await res.json();
+      return Array.isArray(list) ? (list as TodayMatch[]) : [];
+    } catch {
+      return [];
+    }
+  }
 
   private _status = new BehaviorSubject<BackendStatus>({ status: 'Disconnected', url: '', interval: null });
   public status$ = this._status.asObservable();

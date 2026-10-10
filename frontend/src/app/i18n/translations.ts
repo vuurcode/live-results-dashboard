@@ -6,6 +6,7 @@ export interface Translations {
   displaySettings: string;
   massStartSettings: string;
   // Follow setting
+  todayMatchesLabel: string;
   followLabel: string;
   followPopoverTitle: string;
   followPopoverBody: string;
@@ -46,6 +47,7 @@ export interface Translations {
   // Timed personal best label and remarks
   pbLabel: string;
   remarkNewPb: string;
+  remarkShortPb: string;
   remarkFall: string;
   remarkDisqualified: string;
   remarkDidNotStart: string;
@@ -62,6 +64,7 @@ export const en: Translations = {
   pageTitle: 'Live Results Dashboard',
   displaySettings: 'Display',
   massStartSettings: 'Mass Start',
+  todayMatchesLabel: 'Matches today',
   followLabel: 'Automatically follow & scroll',
   followPopoverTitle: 'Automatically follow & scroll',
   followPopoverBody: 'Automatically scroll to keep the live distance in view as results come in.',
@@ -98,6 +101,7 @@ export const en: Translations = {
   finished: 'Finished',
   pbLabel: 'PB:',
   remarkNewPb: 'New PB',
+  remarkShortPb: 'PB',
   remarkFall: 'Fall',
   remarkDisqualified: 'Disqualified',
   remarkDidNotStart: 'Did not start',
@@ -113,6 +117,7 @@ export const nl: Translations = {
   pageTitle: 'Live Resultaten Dashboard',
   displaySettings: 'Weergave',
   massStartSettings: 'Massastart',
+  todayMatchesLabel: 'Wedstrijden vandaag',
   followLabel: 'Automatisch volgen & scrollen',
   followPopoverTitle: 'Automatisch volgen & scrollen',
   followPopoverBody: 'Scroll automatisch mee om de live afstand in beeld te houden terwijl resultaten binnenkomen.',
@@ -149,6 +154,7 @@ export const nl: Translations = {
   finished: 'Gefinisht',
   pbLabel: 'PR:',
   remarkNewPb: 'Nieuw PR',
+  remarkShortPb: 'PR',
   remarkFall: 'Val',
   remarkDisqualified: 'Gediskwalificeerd',
   remarkDidNotStart: 'Niet gestart',

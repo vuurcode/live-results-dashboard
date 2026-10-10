@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDe
 import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
-import { ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
-import { Observable, map, Subscription } from 'rxjs';
+import { TodayMatch, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
+import { Observable, defer, from, map, Subscription } from 'rxjs';
 import { TranslateService } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
@@ -74,6 +74,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Hide mass start settings if no mass start present
   hasMassStart$: Observable<boolean>;
+
+  /** Matches happening today, for the match picker in the top bar. */
+  readonly todayMatches$: Observable<TodayMatch[]> = defer(() => from(this.dataService.todayMatches()));
+
+  /** Open another match; the page reads its competitionId on load. */
+  onMatchChange(event: Event): void {
+    const id = (event.target as HTMLSelectElement).value;
+    if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
+  }
+
+  isTodayMatch(matches: TodayMatch[], id: string): boolean {
+    return matches.some((m) => m.id === id);
+  }
 
   selectRace(id: string): void {
     this.selectedRaceId = this.selectedRaceId === id ? null : id;

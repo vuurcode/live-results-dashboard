@@ -50,6 +50,17 @@
   .topbar-group-btn { min-height: 2rem; }
   .threshold-checkbox { width: 1.5rem; height: 1.5rem; }
 }
+.topbar-match-select {
+  max-width: 16rem;
+  background-color: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+  color: #fff;
+  option { color: #212529; }
+}
+@media (max-width: 767.98px) {
+  .topbar-matches { flex: 1 1 100%; }
+  .topbar-match-select { max-width: none; flex: 1 1 auto; min-height: 2rem; }
+}
 // Section label before the settings group
 .topbar-section-label {
   font-size: 0.7rem;

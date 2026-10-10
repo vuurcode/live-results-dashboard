@@ -111,3 +111,16 @@ export type BackendMessage =
   | { type: 'reset' }
   | { type: 'distance_meta'; data: DistanceMeta }
   | { type: 'competitor_update'; data: CompetitorUpdate };
+
+/** One entry of the backend's `/api/matches/today` list; `id` is the competitionId to follow. */
+export interface TodayMatch {
+  id: string;
+  code: string;
+  name: string;
+  /** ISO start time (UTC) */
+  start: string;
+  end?: string;
+  extra?: string;
+  allowToSendLive: boolean;
+  venue: { code: string; name: string; city: string };
+}

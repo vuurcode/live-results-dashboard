@@ -8,8 +8,9 @@ export type TranslationKey = keyof Translations;
 export class TranslateService {
   private sanitizer = inject(DomSanitizer);
   private readonly translations: Translations = (() => {
-    const lang = (navigator.language || 'en').toLowerCase();
-    return lang.startsWith('nl') ? nl : en;
+    const dutch = (navigator.language || 'en').toLowerCase().startsWith('nl');
+    document.documentElement.lang = dutch ? 'nl' : 'en';
+    return dutch ? nl : en;
   })();
 
   t(key: TranslationKey, params?: Record<string, string | number>): string {

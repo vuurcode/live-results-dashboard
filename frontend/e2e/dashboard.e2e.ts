@@ -119,3 +119,13 @@ test.describe('mass start', () => {
     await expect(row).not.toHaveClass(/race-selected/);
   });
 });
+
+test('lists the matches of today and opens the chosen one', async ({ page }) => {
+  await page.goto('/?competitionId=e2e-timed');
+  const select = page.getByLabel('Matches today');
+  await expect(select.locator('option')).toHaveCount(3); // the three fixture matches; the mock's other-day and other-venue entries are filtered out
+  await expect(select).toHaveValue('e2e-timed');
+  await select.selectOption('e2e-mass');
+  await page.waitForURL(/competitionId=e2e-mass/);
+  await expect(page.getByLabel('Matches today')).toHaveValue('e2e-mass');
+});
