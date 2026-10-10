@@ -28,7 +28,7 @@
   filter: brightness(0) invert(1);
 }
 :host ::ng-deep .accordion-button:not(.collapsed) .text-muted {
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: #b4bcc4 !important; // 5.7:1 on the #2c3e50 expanded header (rgba white 0.5 gave 4.1:1)
 }
 // ===== TOP BAR =====
 .topbar {
@@ -320,7 +320,7 @@
   font-size: 0.75rem;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
-  color: #6c757d;
+  color: #454c52;
   white-space: nowrap;
   line-height: 1;
 }
@@ -539,7 +539,7 @@
     line-height: 1.25;
     text-align: center;
     pointer-events: none;
-    &.timed-watermark-pr { color: rgba(111, 66, 193, 0.80); }
+    &.timed-watermark-pr { color: rgba(111, 66, 193, 0.85); } // 4.7:1 on white (0.80 gave 4.2:1)
     .timed-watermark-decimal { font-size: 0.65em; }
   }
   &[data-watermark]::before {
@@ -561,20 +561,20 @@
   }
   &.timed-card-pr {
     border: 2px solid #6f42c1;
-    &::before { color: rgba(111, 66, 193, 0.80); }
+    &::before { color: rgba(111, 66, 193, 0.85); }
   }
   &.timed-card-trc {
     border: 4px solid #6f42c1;
     animation: trcRainbow 2s linear infinite;
     &::before { animation: trcRainbowText 2s linear infinite; }
   }
+  // DQ / DNF / Fall etc. are marked by the border, watermark and badge, not by fading the card:
+  // the old card-wide opacity 0.7 made every badge and grey label on these cards fail contrast.
   &.timed-card-red {
-    opacity: 0.7;
     border: 2px solid red;
     &::before { color: rgba(255, 0, 0, 0.80); }
   }
   &.timed-card-orange {
-    opacity: 0.7;
     border: 2px solid #c45e00;
     &::before { color: rgba(200, 100, 0, 0.80); }
   }
@@ -587,9 +587,9 @@
   white-space: nowrap;
   color: #fff !important;
 }
-.timed-badge-purple { background-color: #6f42c1 !important; }
-.timed-badge-red    { background-color: red !important; }
-.timed-badge-orange { background-color: #fd7e14 !important; }
+.timed-badge-purple { background-color: #6f42c1 !important; } // white: 6.5:1
+.timed-badge-red    { background-color: #c93434 !important; } // white: 5.2:1 (pure red gave 4.0:1)
+.timed-badge-orange { background-color: #fd7e14 !important; color: #212529 !important; } // dark text: 6.0:1 (white gave 2.6:1)
 // Card title: badge + name + Finished badge inline after name
 .timed-comp-header {
   display: flex;
@@ -628,16 +628,15 @@
   padding: 0.18em 0.4em; /* slightly tighter than lap-time-badge */
   border-radius: 0.25rem;
   background-color: rgba(0,0,0,0.08); /* soft gray */
-  color: #6c757d; /* preserved gray text */
+  color: #454c52; /* 5.9:1 on the soft gray, also while the green update flash is showing */
   flex-shrink: 0;
   height: auto;
   min-height: 1.6rem;
 }
 
 .timed-split-badge .time-decimal {
-  font-size: 0.72em; /* smaller decimal inside the split badge */
-  opacity: 0.85;
-  color: #6c757d;
+  font-size: 0.8em; /* smaller decimal inside the split badge, still legible */
+  color: inherit; /* same colour as the badge text: no opacity, which would drop the contrast */
 }
 // Orange gap-from-leader badge shown on finished mass-start rows, left of total time
 .mass-finish-gap-badge {
@@ -654,8 +653,8 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   background-color: #fd7e14 !important;
-  color: #fff !important;
-  .time-decimal { color: #fff !important; opacity: 0.75; }
+  color: #212529 !important; // white on this orange is only 2.6:1; dark text gives 6.6:1
+  .time-decimal { color: #212529 !important; opacity: 0.9; }
 }
 
 .mass-finished-label {
@@ -684,7 +683,12 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   color: #fff !important;
-  .time-decimal { color: #fff !important; opacity: 0.75; }
+  .time-decimal { color: #fff !important; opacity: 0.9; }
+  // "Slower than PB" uses the yellow warning background: white text is only 1.9:1 on it
+  &.bg-warning {
+    color: #212529 !important;
+    .time-decimal { color: #212529 !important; opacity: 0.9; }
+  }
 }
 
 .timed-comp-body {
@@ -701,7 +705,7 @@
 }
 .timed-lap-dist {
   font-size: 0.7em;
-  color: #6c757d;
+  color: #565e64; // 5.5:1 on white
   white-space: nowrap;
   flex-shrink: 0;
   margin-right: 0.4rem;
@@ -781,7 +785,7 @@
 }
 .time-decimal {
   font-size: 0.78em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: #454c52; // 9:1 on white, still 4.9:1 on the green update flash after finished rows dim to 85% (CoreUI's translucent secondary colour gave 3.7:1)
 }
 // ===== GROUP GAP =====
 .group-gap-separator { text-align: center; margin: 0.5rem 0; }
@@ -892,7 +896,7 @@
 .standings-gap-label {
   font-size: 0.78em;
   font-style: italic;
-  color: var(--cui-secondary-color, #6c757d);
+  color: #454c52; // CoreUI's translucent secondary colour gave 3.7:1
   white-space: nowrap;
 }
 // Gap badge between groups — warning yellow (reverted)

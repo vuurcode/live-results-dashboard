@@ -2,7 +2,7 @@
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-4 py-2 d-flex align-items-center gap-3">
     @if (eventName$ | async; as name) {
-      <span class="fw-bold fs-5 topbar-title">{{ name }}</span>
+      <h1 class="fw-bold fs-5 m-0 topbar-title">{{ name }}</h1>
     } @else {
       <span class="skeleton-text skeleton-title topbar-title">&nbsp;</span>
     }

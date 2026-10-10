@@ -2,6 +2,15 @@
 
 @use '@coreui/coreui/scss/coreui';
 
+// Badge text is small (about 12px bold), so it needs 4.5:1 contrast. CoreUI's default
+// success (#1b9e3e) and danger (#e55353) backgrounds reach only 3.5:1 / 3.7:1 with white text.
+.badge.bg-success { background-color: #177d3c !important; } // 5.2:1 with white
+.badge.bg-danger  { background-color: #c93434 !important; } // 5.2:1 with white
+
+// CoreUI's .text-muted is a translucent grey (3.7:1 on white). This solid grey keeps 4.5:1 even
+// when finished rows dim their text to 85% opacity. Dark surfaces override it where needed.
+.text-muted { color: #565e64 !important; }
+
 // Skeleton styles moved from dashboard.component.scss for global use
 @keyframes shimmer {
   0%   { background-position: -400px 0; }

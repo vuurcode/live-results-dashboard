@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, afterEveryRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
@@ -104,8 +104,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private titleService = inject(Title);
   public ts = inject(TranslateService);
   private cdr = inject(ChangeDetectorRef);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
+    // CoreUI's accordion template puts aria-expanded on the collapsible region (a plain div), which
+    // ARIA does not allow there. The header button already exposes the expanded state, so drop it.
+    afterEveryRender(() => {
+      this.host.nativeElement
+        .querySelectorAll('.accordion-collapse[aria-expanded]')
+        .forEach(el => el.removeAttribute('aria-expanded'));
+    });
     this.status$ = this.dataService.status$;
     this.eventName$ = this.dataService.eventName$;
     this.errors$ = this.dataService.errors$;
