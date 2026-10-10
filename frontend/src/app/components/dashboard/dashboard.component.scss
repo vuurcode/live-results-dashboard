@@ -80,7 +80,19 @@
   .topbar-settings-group { max-width: 100%; }
   .topbar-section-sep { display: none; }
   .topbar-group-btn { min-height: 2rem; }
-  .threshold-checkbox { width: 1.5rem; height: 1.5rem; }
+  .setting-group .form-switch .form-check-input { height: 1.5rem; width: 2.75rem; }
+}
+.topbar-matches-title .topbar-match-select {
+  // white chevron: CoreUI's dark one disappears on the black bar (needs 3:1)
+  --cui-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-image: var(--cui-form-select-bg-img);
+  &:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: none; }
+  // takes the place of the event name: same look as the title
+  font-size: 1.25rem;
+  font-weight: 700;
+  background-color: transparent;
+  border-color: transparent;
+  padding-left: 0;
 }
 .topbar-match-select {
   width: 36rem;
@@ -92,7 +104,8 @@
 }
 @media (max-width: 767.98px) {
   .topbar-matches { flex: 1 1 100%; }
-  .topbar-match-select { max-width: none; flex: 1 1 auto; min-height: 2rem; }
+  .topbar-matches { min-width: 0; }
+  .topbar-match-select { width: 100%; max-width: 100%; min-height: 2rem; }
 }
 // Section label before the settings group
 .topbar-section-label {
@@ -161,11 +174,13 @@
   &.popover-badge-orange { background: #fd7e14; }
   &.popover-badge-purple { background: #6f42c1; }
 }
-.threshold-checkbox {
-  width: 1rem;
-  height: 1rem;
-  cursor: pointer;
-  accent-color: #0d6efd;
+.setting-group .form-switch {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  .form-check-input { margin: 0; float: none; cursor: pointer; }
 }
 .setting-popover {
   display: none;
@@ -284,11 +299,6 @@
 }
 .glowing-badge { animation: glowRed 1.5s infinite; }
 // Pulsing badge while connecting
-@keyframes badgePulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-.pulse-badge { animation: badgePulse 1.2s ease-in-out infinite; }
 // ===== START NUMBER BADGES =====
 .start-num-badge,
 .badge-black {
@@ -562,6 +572,7 @@
   border-radius: 0.375rem;
   background: #fff;
   overflow: hidden;
+  container-type: inline-size; // the watermarks size themselves from the card width (cqw)
   transition: outline 0.1s;
   position: relative;
   &.race-selected {
@@ -580,7 +591,7 @@
     left: 50%;
     width: 90%;
     transform: translate(-50%, -50%) rotate(-20deg);
-    font-size: 1.5rem;
+    font-size: clamp(1rem, 6.5cqw, 4rem); // follows the card width, so it scales with zoom and screen size
     font-weight: 1000;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -597,7 +608,7 @@
     left: 50%;
     width: 90%;
     transform: translate(-50%, -50%) rotate(-20deg);
-    font-size: 1rem;
+    font-size: clamp(0.8rem, 4.5cqw, 3rem);
     font-weight: 1000;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -740,14 +751,14 @@
 }
 
 .timed-comp-body {
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0; // the rows carry the side padding, so a highlighted row spans the whole card
 }
 // One lap row inside competitor card body
 .timed-lap-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.25rem 0;
+  padding: 0.25rem 0.5rem;
   border-bottom: 1px solid rgba(0,0,0,0.05);
   &:last-child { border-bottom: none; }
 }

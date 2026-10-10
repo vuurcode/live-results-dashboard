@@ -57,7 +57,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   sortedDistances$: Observable<ProcessedDistance[]>;
   eventName$: Observable<string>;
   errors$: Observable<string[]>;
-  status$: Observable<import('../../services/data.service').BackendStatus>;
   displayedGroups$: Observable<Map<string, StandingsGroup[]>>;
 
   initialLiveId: string | null = null;
@@ -83,6 +82,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onMatchChange(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
+  }
+
+  /** Only one settings group is open at a time. */
+  toggleSettingsGroup(group: 'display' | 'massStart'): void {
+    const open = group === 'display' ? !this.displaySettingsOpen : !this.massStartSettingsOpen;
+    this.displaySettingsOpen = group === 'display' && open;
+    this.massStartSettingsOpen = group === 'massStart' && open;
+  }
+
+  /** The start time is only worth showing until the match has begun. */
+  hasNotStarted(match: TodayMatch): boolean {
+    return new Date(match.start).getTime() > Date.now();
   }
 
   isTodayMatch(matches: TodayMatch[], id: string): boolean {
@@ -139,7 +150,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       observer.observe(bar);
       this.resizeObserver = observer;
     });
-    this.status$ = this.dataService.status$;
     this.eventName$ = this.dataService.eventName$;
     this.errors$ = this.dataService.errors$;
     this.displayedGroups$ = this.dataService.displayedGroups$;

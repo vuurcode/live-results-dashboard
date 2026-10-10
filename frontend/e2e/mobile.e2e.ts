@@ -8,10 +8,11 @@ for (const width of [320, 390]) {
       test(`${match}: no horizontal page scroll, settings open`, async ({ page }) => {
         await page.goto(`/?competitionId=${match}`);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-        for (const button of await page.locator('button.topbar-group-btn').all()) {
-          await button.click();
+        const buttons = page.locator('button.topbar-group-btn');
+        for (let i = 0; i < (await buttons.count()); i++) {
+          await buttons.nth(i).click(); // opening a group closes the other one
+          await expect(page.locator('.setting-group').first()).toBeVisible();
         }
-        await expect(page.locator('.setting-group').first()).toBeVisible();
 
         const { scrollWidth, clientWidth } = await page.evaluate(() => ({
           scrollWidth: document.documentElement.scrollWidth,
@@ -23,8 +24,9 @@ for (const width of [320, 390]) {
 
     test('settings controls are at least 24px (WCAG 2.5.8)', async ({ page }) => {
       await page.goto('/?competitionId=e2e-mass');
-      for (const button of await page.locator('button.topbar-group-btn').all()) {
-        await button.click();
+      const buttons = page.locator('button.topbar-group-btn');
+      for (let i = 0; i < (await buttons.count()); i++) {
+        await buttons.nth(i).click();
       }
       const small = await page.evaluate(() =>
         [...document.querySelectorAll('header button, header input')]

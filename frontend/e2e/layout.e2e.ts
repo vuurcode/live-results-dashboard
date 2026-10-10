@@ -79,4 +79,12 @@ test.describe('pinned titles', () => {
     expect(box.y).toBeGreaterThanOrEqual(barBottom - 1);
     expect(box.y).toBeLessThan(150);
   });
+
+  test('lap rows span the whole card, so a highlighted row is highlighted edge to edge', async ({ page }) => {
+    await page.goto('/?competitionId=e2e-timed');
+    const card = page.locator('.timed-competitor-card').first();
+    await expect(card.locator('.timed-lap-row').first()).toBeVisible();
+    const [cardBox, rowBox] = [await card.boundingBox(), await card.locator('.timed-lap-row').first().boundingBox()];
+    expect(rowBox!.width).toBeGreaterThanOrEqual(cardBox!.width - 2.5); // minus the card border
+  });
 });

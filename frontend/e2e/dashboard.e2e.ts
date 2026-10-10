@@ -18,7 +18,6 @@ test.describe('competition selection', () => {
     await page.goto('/?competitionId=e2e-mass');
     await expect(page.locator('.topbar-title')).toHaveText('E2E Mass Start Event');
     await expect(page).toHaveTitle('E2E Mass Start Event | Live Results Dashboard');
-    await expect(page.getByText('Connected', { exact: true })).toBeVisible();
   });
 
   test('uses the default competition when the URL names none', async ({ page, request }) => {
@@ -128,4 +127,34 @@ test('lists the matches of today and opens the chosen one', async ({ page }) => 
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);
   await expect(page.getByLabel('Matches today')).toHaveValue('e2e-mass');
+});
+
+test('the match picker replaces the event name, venue first, start time only before the start', async ({ page }) => {
+  await page.goto('/?competitionId=e2e-timed');
+  const select = page.getByLabel('Matches today');
+  await expect(select).toBeVisible();
+  // the event name is still the page heading, but visually hidden because the picker shows it
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Timed Event');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveClass(/visually-hidden/);
+  const labels = await select.locator('option').allTextContents();
+  const running = labels.find((l) => l.includes('E2E Timed Event'))!;
+  expect(running.trim()).toBe('Mock Ice Rink · E2E Timed Event'); // started: no time
+});
+
+test('only one settings group is open at a time, and the options are toggles', async ({ page, request }) => {
+  await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
+  await page.goto('/?competitionId=e2e-mass');
+  const display = page.getByRole('button', { name: /^Display/ });
+  const massStart = page.getByRole('button', { name: /^Mass Start/ });
+  await expect(display).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('switch', { name: 'Automatically follow & scroll' })).toBeVisible();
+
+  await massStart.click();
+  await expect(massStart).toHaveAttribute('aria-expanded', 'true');
+  await expect(display).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('switch', { name: 'Automatically follow & scroll' })).toHaveCount(0);
+  await expect(page.getByRole('switch', { name: 'Lap times' })).toBeVisible();
+
+  await display.click();
+  await expect(massStart).toHaveAttribute('aria-expanded', 'false');
 });

@@ -56,8 +56,8 @@ boundaries. Many badges here are ~9pt bold, which counts as normal text.
 **Live updates.** Results change every second or so. Do not put `aria-live` on the whole list —
 a screen reader would read every lap time. Prefer: a single polite live region that announces
 meaningful, throttled events (e.g. "Competitor E finished, 1st"), and leave routine lap-time
-updates silent. The connection status badge (Connected / Error) is a good candidate for
-`role="status"`.
+updates silent. Connection errors (shown as alerts) are a good candidate for `role="alert"`/`role="status"`;
+there is no always-on connection badge.
 
 **Motion.** Flash highlights, row swap animations, the pulsing placeholders and smooth
 auto-scroll should respect `@media (prefers-reduced-motion: reduce)` (disable or shorten them).

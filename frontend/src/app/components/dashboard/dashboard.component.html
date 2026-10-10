@@ -1,39 +1,32 @@
 <div class="d-flex flex-column min-vh-100">
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
+    @let matches = (todayMatches$ | async) ?? [];
+    @let picked = !!dataService.competitionId && isTodayMatch(matches, dataService.competitionId);
+    <!-- When the followed match is in today's list, the picker takes the place of the event name
+         (it shows the same name); the name stays in the page as a visually hidden heading. -->
     @if (eventName$ | async; as name) {
-      <h1 class="fw-bold fs-5 m-0 topbar-title">{{ name }}</h1>
-    } @else {
+      <h1 class="fw-bold fs-5 m-0 topbar-title" [class.visually-hidden]="picked">{{ name }}</h1>
+    } @else if (!picked) {
       <span class="skeleton-text skeleton-title topbar-title">&nbsp;</span>
     }
-    @if (status$ | async; as status) {
-      <c-badge
-        [color]="status.status === 'Connected' ? 'success'
-               : status.status === 'Connecting...' ? 'warning'
-               : status.status === 'Error' ? 'danger'
-               : 'secondary'"
-        [class.pulse-badge]="status.status === 'Connecting...'"
-      >{{ status.status }}</c-badge>
+    @if (matches.length > 0) {
+      <div class="topbar-matches d-flex align-items-center gap-2" [class.topbar-matches-title]="picked">
+        <label class="small text-white-50 text-nowrap mb-0 setting-label" [class.visually-hidden]="picked" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
+        <select id="matchSelect" class="form-select form-select-sm topbar-match-select" (change)="onMatchChange($event)">
+          @if (!picked) {
+            <option value="" selected disabled>–</option>
+          }
+          @for (m of matches; track m.id) {
+            <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.venue.name }} · {{ m.name }}@if (hasNotStarted(m)) { · {{ m.start | date: 'HH:mm' }}}</option>
+          }
+        </select>
+      </div>
     }
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
-      @if (todayMatches$ | async; as matches) {
-        @if (matches.length > 0) {
-          <div class="setting-group topbar-matches">
-            <label class="small text-white-50 text-nowrap mb-0 setting-label" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
-            <select id="matchSelect" class="form-select form-select-sm topbar-match-select" (change)="onMatchChange($event)">
-              @if (!dataService.competitionId || !isTodayMatch(matches, dataService.competitionId)) {
-                <option value="" selected disabled>–</option>
-              }
-              @for (m of matches; track m.id) {
-                <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.start | date: 'HH:mm' }} · {{ m.name }} · {{ m.venue.name }}</option>
-              }
-            </select>
-          </div>
-        }
-      }
       <!-- Display settings (collapsible) -->
       <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="displaySettingsOpen = !displaySettingsOpen">
+        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettingsGroup('display')" [attr.aria-expanded]="displaySettingsOpen">
           {{ 'displaySettings' | translate }} <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
@@ -41,13 +34,13 @@
             <div class="topbar-section-sep"></div>
             <div class="setting-group ms-1">
               <label class="small text-white-50 text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
-              <input
+              <div class="form-check form-switch"><input
                 id="followInput"
                 type="checkbox"
-                class="form-check-input threshold-checkbox"
+                class="form-check-input" role="switch"
                 [checked]="dataService.follow"
                 (change)="onFollowChange($event)"
-              />
+              /></div>
               <div class="setting-popover">
                 <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
                 <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
@@ -59,7 +52,7 @@
       <!-- Mass Start settings (collapsible) -->
       @if (hasMassStart$ | async) {
         <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-          <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="massStartSettingsOpen = !massStartSettingsOpen">
+          <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettingsGroup('massStart')" [attr.aria-expanded]="massStartSettingsOpen">
             {{ 'massStartSettings' | translate }} <span class="topbar-group-arrow" [class.open]="massStartSettingsOpen">▾</span>
           </button>
           @if (massStartSettingsOpen) {
@@ -115,13 +108,13 @@
               </div>
               <div class="setting-group ms-2">
                 <label class="small text-white-50 text-nowrap mb-0 setting-label" for="showLapTimesInput">{{ 'lapTimesLabel' | translate }}</label>
-                <input
+                <div class="form-check form-switch"><input
                   id="showLapTimesInput"
                   type="checkbox"
-                  class="form-check-input threshold-checkbox"
+                  class="form-check-input" role="switch"
                   [checked]="dataService.showMassStartLapTimes"
                   (change)="onShowLapTimesChange($event)"
-                />
+                /></div>
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'showLapTimesPopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('showLapTimesPopoverBody')"></div>
