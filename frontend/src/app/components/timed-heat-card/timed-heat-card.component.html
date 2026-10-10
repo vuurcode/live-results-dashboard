@@ -59,7 +59,7 @@
             @let splitTime = timedLapTime(race, i);
             @let cumTime = timedCumulativeTime(race, i);
             <div class="timed-lap-row" [class.timed-lap-done]="splitTime !== null"
-                 [class.timed-flash-update]="isRecentUpdate(race.lastUpdated) && i === race.laps_count - 1">
+                 [class.timed-flash-update]="isSplitFlashing(race.lastUpdated) && i === race.laps_count - 1">
               <span class="timed-lap-dist">{{ lapDist }}m</span>
               <span class="timed-lap-time-group">
                 @if (splitTime) {

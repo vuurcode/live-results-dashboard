@@ -198,7 +198,7 @@
   100% { background-color: transparent; }
 }
 .timed-flash-update {
-  animation: flashGreen 1s ease-in-out forwards;
+  animation: flashGreen 2s ease-in-out forwards; // keep in sync with SPLIT_FLASH_MS in timed-heat-card.component.ts
 }
 // ===== POSITION-CHANGE SWAP ANIMATION =====
 // Both rows translate simultaneously: the row moving up slides from below its
@@ -717,6 +717,9 @@
   align-items: center;
   gap: 0.25rem;
   margin-left: auto;
+  // Same height as the tallest content (the split badge, .timed-split-badge min-height), so rows
+  // don't resize when a time replaces the placeholder or when the first lap has no split badge.
+  min-height: 1.6rem;
 }
 .timed-lap-row.timed-lap-done .timed-lap-time {
   color: inherit;

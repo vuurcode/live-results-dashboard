@@ -61,8 +61,8 @@ export function splitFormattedTime(t: string): [string, string] {
   return [t.substring(0, dot), '.' + t.substring(dot + 1)];
 }
 
-/** True when a timestamp is within the last second, used to trigger flash-update styling. */
-export function isRecentUpdate(timestamp: number | undefined, now = Date.now()): boolean {
+/** True when a timestamp is within the last `windowMs` (default one second), used to trigger flash-update styling. */
+export function isRecentUpdate(timestamp: number | undefined, now = Date.now(), windowMs = 1000): boolean {
   if (!timestamp) return false;
-  return now - timestamp < 1000;
+  return now - timestamp < windowMs;
 }

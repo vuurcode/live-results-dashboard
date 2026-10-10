@@ -99,6 +99,11 @@ describe('splitFormattedTime', () => {
 });
 
 describe('isRecentUpdate', () => {
+  it('honours a custom window', () => {
+    expect(isRecentUpdate(1000, 2500, 2000)).toBe(true);
+    expect(isRecentUpdate(1000, 3000, 2000)).toBe(false);
+  });
+
   it('is true within the last second', () => {
     expect(isRecentUpdate(1000, 1500)).toBe(true);
   });

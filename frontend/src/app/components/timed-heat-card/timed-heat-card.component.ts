@@ -28,6 +28,10 @@ export class TimedHeatCardComponent {
   public ts = inject(TranslateService);
 
   isRecentUpdate = isRecentUpdate;
+
+  /** How long a new split keeps its green flash; must match the `flashGreen` duration in dashboard.component.scss. */
+  private readonly SPLIT_FLASH_MS = 2000;
+  isSplitFlashing = (lastUpdated: number | undefined): boolean => isRecentUpdate(lastUpdated, Date.now(), this.SPLIT_FLASH_MS);
   splitFormattedTime = splitFormattedTime;
   truncateLapTime = truncateLapTime;
   isTimedFinished = isTimedFinished;
