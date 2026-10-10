@@ -1,0 +1,134 @@
+{
+ "id": "e2e-pairs-event",
+ "name": "E2E Pairs Event",
+ "isInternational": false,
+ "success": true,
+ "errorMessage": null,
+ "errorMode": 0,
+ "resultUrl": null,
+ "distances": [
+  {
+   "id": "dist-500",
+   "name": "500 meter",
+   "eventNumber": 1.0,
+   "isLive": true,
+   "races": [
+    {
+     "id": "r1",
+     "competitor": {
+      "id": "c1",
+      "name": "Competitor A",
+      "startNumber": "1",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:09.8000000",
+     "personalRecord": "00:00:42.0000000",
+     "laps": [
+      {
+       "time": "00:00:09.8000000",
+       "lapTime": "00:00:09.8000000"
+      }
+     ]
+    },
+    {
+     "id": "r2",
+     "competitor": {
+      "id": "c2",
+      "name": "Competitor B",
+      "startNumber": "2",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:00:10.1000000",
+     "personalRecord": "00:00:41.5000000",
+     "laps": [
+      {
+       "time": "00:00:10.1000000",
+       "lapTime": "00:00:10.1000000"
+      }
+     ]
+    },
+    {
+     "id": "r3",
+     "competitor": {
+      "id": "c3",
+      "name": "Competitor C",
+      "startNumber": "3",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 2,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": "00:00:43.0000000",
+     "laps": []
+    },
+    {
+     "id": "r4",
+     "competitor": {
+      "id": "c4",
+      "name": "Competitor D",
+      "startNumber": "4",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 3,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": null,
+     "laps": []
+    },
+    {
+     "id": "r5",
+     "competitor": {
+      "id": "c5",
+      "name": "Competitor E",
+      "startNumber": "5",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 3,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": null,
+     "laps": []
+    }
+   ]
+  }
+ ]
+}
