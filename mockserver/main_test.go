@@ -153,7 +153,7 @@ func TestReset(t *testing.T) {
 
 func TestCatalogEndpoints(t *testing.T) {
 	ts, base := newTestServer(t, time.Hour)
-	writeSamples(t, base, "m1", `{"a":1}`)
+	writeSamples(t, base, "m1", `{"name":"Event One"}`)
 	_ = os.MkdirAll(filepath.Join(base, "empty"), 0o755) // no samples: not listed
 
 	code, body := do(t, "GET", ts.URL+"/api/venues")
@@ -164,7 +164,7 @@ func TestCatalogEndpoints(t *testing.T) {
 	if code != 200 {
 		t.Fatalf("competitions: %d %s", code, body)
 	}
-	for _, want := range []string{`"id":"m1"`, `"id":"mock-tomorrow"`, `"id":"mock-last-week"`, `"id":"mock-other-venue"`} {
+	for _, want := range []string{`"id":"m1"`, `"name":"Event One"`, `"code":"DEV"`, `"id":"mock-tomorrow"`, `"id":"mock-last-week"`, `"id":"mock-other-venue"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("competitions missing %s", want)
 		}

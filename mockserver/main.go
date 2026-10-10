@@ -7,7 +7,7 @@
 // Matches replay independently of each other.
 //
 //	GET  /api/matches                    ids of the available matches (also a health check)
-//	GET  /api/venues                     synthetic venues (one Dutch long-track venue, plus distractors)
+//	GET  /api/venues                     synthetic venues (DEV: a Dutch long-track venue that hosts every sample match, plus distractors)
 //	GET  /api/competitions               one competition per match, running today, plus synthetic ones
 //	                                     (tomorrow, last week, other venue) to exercise filtering
 //	GET  /api/data?competitionId=<id>    current sample of a match; starts its replay on first use
@@ -249,6 +249,22 @@ func (s *server) handleReset(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"reset": true, "matches": ids})
 }
 
+// eventName reads the event name from a match's first sample, falling back to its id.
+func (s *server) eventName(id string) string {
+	files, err := s.sampleFiles(id)
+	if err != nil || len(files) == 0 {
+		return id
+	}
+	b := readSample(files[0])
+	var head struct {
+		Name string `json:"name"`
+	}
+	if b == nil || json.Unmarshal(b, &head) != nil || head.Name == "" {
+		return id
+	}
+	return head.Name
+}
+
 func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
 	venue := func(code, name, city, country, discipline string) map[string]any {
 		return map[string]any{
@@ -260,8 +276,8 @@ func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode([]any{
-		venue("TST", "Test Ice Rink", "Testville", "NED", "SpeedSkating.LongTrack"),
-		venue("TST", "Test Inline Track", "Testville", "NED", "SpeedSkating.Inline"),
+		venue("DEV", "Mock Ice Rink", "Mockville", "NED", "SpeedSkating.LongTrack"),
+		venue("DEV", "Mock Inline Track", "Mockville", "NED", "SpeedSkating.Inline"),
 		venue("OTH", "Other Rink", "Elsewhere", "GER", "SpeedSkating.LongTrack"),
 	})
 }
@@ -271,9 +287,9 @@ func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
 func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
 	entries, _ := os.ReadDir(s.cfg.baseDir)
 	now := time.Now().UTC()
-	comp := func(id, venue string, start, end time.Time) map[string]any {
+	comp := func(id, name, venue string, start, end time.Time) map[string]any {
 		return map[string]any{
-			"id": id, "code": "MOCK-" + id, "name": "Mock match " + id,
+			"id": id, "code": "MOCK-" + id, "name": name,
 			"venue":           map[string]any{"code": venue},
 			"discipline":      "SpeedSkating.LongTrack",
 			"timeZone":        "W. Europe Standard Time",
@@ -288,15 +304,15 @@ func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
 	for _, e := range entries {
 		if e.IsDir() && matchIDRe.MatchString(e.Name()) {
 			if files, _ := s.sampleFiles(e.Name()); len(files) > 0 {
-				list = append(list, comp(e.Name(), "TST", now.Add(-time.Hour), now.Add(3*time.Hour)))
+				list = append(list, comp(e.Name(), s.eventName(e.Name()), "DEV", now.Add(-time.Hour), now.Add(3*time.Hour)))
 			}
 		}
 	}
 	day := 24 * time.Hour
 	list = append(list,
-		comp("mock-tomorrow", "TST", now.Add(day), now.Add(day+3*time.Hour)),
-		comp("mock-last-week", "TST", now.Add(-7*day), now.Add(-7*day+3*time.Hour)),
-		comp("mock-other-venue", "OTH", now.Add(-time.Hour), now.Add(3*time.Hour)),
+		comp("mock-tomorrow", "Mock match tomorrow", "DEV", now.Add(day), now.Add(day+3*time.Hour)),
+		comp("mock-last-week", "Mock match last week", "DEV", now.Add(-7*day), now.Add(-7*day+3*time.Hour)),
+		comp("mock-other-venue", "Mock match elsewhere", "OTH", now.Add(-time.Hour), now.Add(3*time.Hour)),
 	)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(list)
