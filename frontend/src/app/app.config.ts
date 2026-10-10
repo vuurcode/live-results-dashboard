@@ -4,8 +4,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
 import { routes } from './app.routes';
+import { BackendWindow } from './models/data.models';
 
-export const BACKEND_URL = (window as any).BACKEND_URL || '/api';
+export const BACKEND_URL = (window as BackendWindow).BACKEND_URL || '/api';
 
 export const appConfig: ApplicationConfig = {
   providers: [

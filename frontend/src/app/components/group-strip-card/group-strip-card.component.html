@@ -14,9 +14,14 @@
             [class.pos-down]="race.position_change === 'down'"
             [class.race-selected]="selectedRaceId === race.id"
             (click)="raceSelect.emit(race.id)"
+            role="button"
+            tabindex="0"
+            [attr.aria-pressed]="selectedRaceId === race.id"
+            (keydown.enter)="raceSelect.emit(race.id)"
+            (keydown.space)="$event.preventDefault(); raceSelect.emit(race.id)"
           >
             <div class="d-flex align-items-center gap-1">
-              <c-badge class="start-num-badge badge-black" style="font-size:0.75em">{{ race.start_number ?? '' }}</c-badge>
+              <c-badge class="start-num-badge badge-black" style="font-size:0.75em">{{ race.start_number }}</c-badge>
               <span class="small text-truncate strip-name">{{ race.name }}</span>
             </div>
             @if (firstRace) {

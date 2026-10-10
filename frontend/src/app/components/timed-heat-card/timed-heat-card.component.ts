@@ -1,16 +1,15 @@
 import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgClass } from '@angular/common';
 import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../models/data.models';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
-import { TranslatePipe } from '../../pipes/translate.pipe';
 import { parseSeconds, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
 @Component({
   selector: 'app-timed-heat-card',
   standalone: true,
-  imports: [CommonModule, BadgeModule, TranslatePipe],
+  imports: [NgClass, BadgeModule],
   templateUrl: './timed-heat-card.component.html',
   styleUrls: ['../dashboard/dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -99,7 +98,7 @@ export class TimedHeatCardComponent {
   /** Watermark text: invalid_reason takes priority over remark; resolved via label map.
    *  PR remarks are rendered as a DOM overlay instead (returns null).
    *  TR/TRC get priority; TRC appends the category on a second line. */
-  timedWatermarkText(race: CompetitorUpdate, distanceMeters?: number): string | null {
+  timedWatermarkText(race: CompetitorUpdate): string | null {
     if (race.invalid_reason) {
       return this.timedLabelTitle(race.invalid_reason) ?? race.invalid_reason;
     }

@@ -8,10 +8,15 @@
   [class.race-finished]="race.finished_rank != null"
   [class.race-selected]="selectedRaceId === race.id"
   (click)="raceSelect.emit(race.id)"
+  role="button"
+  tabindex="0"
+  [attr.aria-pressed]="selectedRaceId === race.id"
+  (keydown.enter)="raceSelect.emit(race.id)"
+  (keydown.space)="$event.preventDefault(); raceSelect.emit(race.id)"
 >
   <div class="race-item-left d-flex align-items-center gap-2">
     <span class="rank-label text-muted">{{ ordinalSuffix(raceIdx + 1)[0] }}<sup class="rank-sup">{{ ordinalSuffix(raceIdx + 1)[1] }}</sup></span>
-    <c-badge class="start-num-badge badge-black">{{ race.start_number ?? '' }}</c-badge>
+    <c-badge class="start-num-badge badge-black">{{ race.start_number }}</c-badge>
     <span class="race-name-fixed">{{ race.name }}</span>
     @if (isRaceLeader(race, distance)) {
       <c-badge color="success" style="font-size:0.7em">{{ 'badgeLeader' | translate }}</c-badge>

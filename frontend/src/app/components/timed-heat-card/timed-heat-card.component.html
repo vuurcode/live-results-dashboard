@@ -21,7 +21,7 @@
           [class.timed-card-trc]="timedCardColor(race) === 'trc'"
           [class.timed-card-red]="timedCardColor(race) === 'red'"
           [class.timed-card-orange]="timedCardColor(race) === 'orange'"
-          [attr.data-watermark]="timedWatermarkText(race, distanceMeters ?? undefined)"
+          [attr.data-watermark]="timedWatermarkText(race)"
         >
         @if (timedCardColor(race) === 'pr') {
           @let prCmp = distanceMeters ? timedPrComparison(race, distanceMeters) : null;

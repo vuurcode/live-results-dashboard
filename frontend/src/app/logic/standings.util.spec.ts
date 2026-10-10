@@ -45,7 +45,7 @@ describe('recomputePositions', () => {
     const fallen = comp({ laps_count: 4, total_time: '10.000', position: 1 });
     const steady = comp({ laps_count: 6, total_time: '10.000', position: 1 });
     // steady would sort first (most laps); risen second; fallen last
-    const sorted = recomputePositions([fallen, risen, steady]);
+    recomputePositions([fallen, risen, steady]);
     expect(steady.position).toBe(1);
     expect(steady.position_change).toBeNull(); // was already 1
     expect(risen.position).toBe(2);

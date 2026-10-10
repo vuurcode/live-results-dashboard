@@ -3,6 +3,8 @@ import { TranslateService } from './translate.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { BehaviorSubject, Subject } from 'rxjs';
 import {
+  BackendMessage,
+  BackendWindow,
   DistanceMeta,
   CompetitorUpdate,
   ProcessedDistance,
@@ -31,11 +33,11 @@ const STORAGE_KEY_FOLLOW = 'follow';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
-  private socket$: WebSocketSubject<any> | null = null;
+  private socket$: WebSocketSubject<BackendMessage> | null = null;
   /** Competition to follow, from the page URL (`?competitionId=...`); the backend falls back to its default. */
   public readonly competitionId = competitionIdFromSearch(window.location.search);
   private readonly BACKEND_URL = withCompetitionId((() => {
-    const raw = (window as any).BACKEND_URL;
+    const raw = (window as BackendWindow).BACKEND_URL;
     // Ignore unsubstituted template placeholder (env-inject.js not processed by envsubst)
     const base = raw && !raw.startsWith('${') ? raw : null;
     if (base) {
@@ -51,7 +53,7 @@ export class DataService {
     return `${proto}://${window.location.host}/ws`;
   })(), this.competitionId);
   private readonly BACKEND_HTTP_URL: string = (() => {
-    const raw = (window as any).BACKEND_URL;
+    const raw = (window as BackendWindow).BACKEND_URL;
     return raw && !raw.startsWith('${') ? raw : `${window.location.protocol}//${window.location.host}`;
   })();
 
@@ -84,14 +86,14 @@ export class DataService {
   setLapVarianceThreshold(value: number) {
     const clamped = Math.max(0, Math.round(value));
     this._lapVariance.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_LAP_VARIANCE, String(clamped)); } catch (e) { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY_LAP_VARIANCE, String(clamped)); } catch { /* noop */ }
   }
 
   private _loadLapVariance(): number {
     try {
       const v = localStorage.getItem(STORAGE_KEY_LAP_VARIANCE);
       if (v !== null) return Math.max(0, parseInt(v, 10));
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
     return DEFAULT_LAP_VARIANCE;
   }
 
@@ -100,14 +102,14 @@ export class DataService {
 
   setShowMassStartLapTimes(value: boolean) {
     this._showMassLapTimes.next(value);
-    try { localStorage.setItem(STORAGE_KEY_SHOW_LAP_TIMES, String(value)); } catch (e) { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY_SHOW_LAP_TIMES, String(value)); } catch { /* noop */ }
   }
 
   private _loadShowLapTimes(): boolean {
     try {
       const v = localStorage.getItem(STORAGE_KEY_SHOW_LAP_TIMES);
       if (v !== null) return v !== 'false';
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
     return true;
   }
 
@@ -116,26 +118,26 @@ export class DataService {
 
   setFollow(value: boolean) {
     this._follow.next(value);
-    try { localStorage.setItem(STORAGE_KEY_FOLLOW, String(value)); } catch (e) { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY_FOLLOW, String(value)); } catch { /* noop */ }
   }
 
   private _loadFollow(): boolean {
     try {
       const v = localStorage.getItem(STORAGE_KEY_FOLLOW);
       if (v !== null) return v !== 'false';
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
     return false;
   }
 
   setGroupThreshold(value: number) {
     const clamped = Math.min(MAX_GROUP_THRESHOLD, Math.max(0, value));
     this._groupThreshold.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_THRESHOLD, String(clamped)); } catch (e) { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY_THRESHOLD, String(clamped)); } catch { /* noop */ }
     for (const dist of this.distanceMap.values()) {
       if (dist.isMassStart) this._recomputeGroups(dist);
     }
     // Flush debounce timers and immediately apply new groups
-    for (const [distId, timer] of this._groupDebounceTimers) {
+    for (const timer of this._groupDebounceTimers.values()) {
       clearTimeout(timer);
     }
     this._groupDebounceTimers.clear();
@@ -146,7 +148,7 @@ export class DataService {
   setMaxGroups(value: number) {
     const clamped = Math.max(0, Math.round(value));
     this._maxGroups.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_MAX_GROUPS, String(clamped)); } catch (e) { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY_MAX_GROUPS, String(clamped)); } catch { /* noop */ }
     for (const dist of this.distanceMap.values()) {
       if (dist.isMassStart) this._recomputeGroups(dist);
     }
@@ -160,7 +162,7 @@ export class DataService {
     try {
       const v = localStorage.getItem(STORAGE_KEY_MAX_GROUPS);
       if (v !== null) return Math.max(0, parseInt(v, 10));
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
     return DEFAULT_MAX_GROUPS;
   }
 
@@ -168,13 +170,13 @@ export class DataService {
     try {
       const v = localStorage.getItem(STORAGE_KEY_THRESHOLD);
       if (v !== null) return parseFloat(v);
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
     return DEFAULT_GROUP_THRESHOLD;
   }
 
   private distanceMap = new Map<string, ProcessedDistance>();
   private competitorMap = new Map<string, Map<string, CompetitorUpdate>>();
-  private queue: any[] = [];
+  private queue: BackendMessage[] = [];
   private renderLoopRunning = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -189,10 +191,10 @@ export class DataService {
     if (this.socket$ && !this.socket$.closed) return;
     this._errors.next([]);
     this._status.next({ status: 'Connecting...', url: '', interval: null });
-    this.socket$ = webSocket({ url: this.BACKEND_URL, openObserver: { next: () => {} } });
+    this.socket$ = webSocket<BackendMessage>({ url: this.BACKEND_URL });
     this.socket$.subscribe({
-      next: (msg: any) => this._enqueue(msg),
-      error: (err: any) => this._handleError(err),
+      next: (msg) => this._enqueue(msg),
+      error: (err: unknown) => this._handleError(err),
       complete: () => this._handleDisconnect(),
     });
   }
@@ -209,7 +211,7 @@ export class DataService {
     window.location.reload();
   }
 
-  private _enqueue(msg: any) {
+  private _enqueue(msg: BackendMessage) {
     this.queue.push(msg);
     if (!this.renderLoopRunning) {
       this.renderLoopRunning = true;
@@ -226,7 +228,8 @@ export class DataService {
     const deadline = Date.now() + RENDER_INTERVAL_MS;
     let changed = false;
     while (this.queue.length > 0 && Date.now() < deadline) {
-      changed = this._applyMessage(this.queue.shift()) || changed;
+      const msg = this.queue.shift();
+      if (msg) changed = this._applyMessage(msg) || changed;
     }
     if (changed) {
       // Flush groups immediately so the strip renders on initial load
@@ -238,7 +241,7 @@ export class DataService {
     else this.renderLoopRunning = false;
   }
 
-  private _applyMessage(msg: any): boolean {
+  private _applyMessage(msg: BackendMessage): boolean {
     switch (msg.type) {
       case 'status':
         this._cancelReconnect();
@@ -264,9 +267,9 @@ export class DataService {
         this._applyReset();
         return false;
       case 'distance_meta':
-        return this._applyDistanceMeta(msg.data as DistanceMeta);
+        return this._applyDistanceMeta(msg.data);
       case 'competitor_update':
-        return this._applyCompetitorUpdate(msg.data as CompetitorUpdate);
+        return this._applyCompetitorUpdate(msg.data);
       default:
         return false;
     }
@@ -327,10 +330,11 @@ export class DataService {
       comp.is_final_lap = false;
       comp.group_number = existing?.group_number ?? null;
       comp.gap_to_above = existing?.gap_to_above ?? null;
-      // Update the competitor object in-place so the flash animation plays
-      // at the competitor's CURRENT row position.
+      // Replace the competitor with a new object (never mutate it): OnPush row components only
+      // re-render when their input reference changes. Rows are tracked by id, so the DOM item
+      // is kept and the flash animation still plays at the competitor's CURRENT row position.
       if (existing) {
-        Object.assign(existing, comp);
+        distComps.set(comp.id, { ...existing, ...comp });
       } else {
         distComps.set(comp.id, comp);
         dist.processedRaces = [...dist.processedRaces, comp];
@@ -433,7 +437,7 @@ export class DataService {
     }
   }
 
-  private _handleError(err: any) {
+  private _handleError(err: unknown) {
     console.error('WebSocket error:', err);
     this.addError('Connection to backend lost. Reconnecting in 5s…');
     this.socket$ = null;
