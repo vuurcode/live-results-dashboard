@@ -1,0 +1,23 @@
+{
+  "skill_name": "accessibility",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "can you check the dashboard for accessibility problems and fix the worst ones? screen reader and keyboard users have complained",
+      "expected_output": "Runs lint and the axe scan against the e2e fixtures, fixes root causes (badge contrast, accordion ARIA attribute, heading), re-runs the scan, and reports what remains open without claiming full compliance.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want to add a small 'Final lap' blue badge and a red/green indicator for whether a skater is faster than their PB to the timed heat cards. keep it consistent with the rest",
+      "expected_output": "Adds the UI with text/accessible-name equivalents for the colours, sufficient contrast, translated strings (EN and NL), and does not rely on colour alone, without the user asking for accessibility explicitly.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "the competitor rows update every second and a blind colleague says NVDA keeps reading numbers. what should we do?",
+      "expected_output": "Recommends silent routine updates plus one throttled polite live region for meaningful events (finish, reset, connection status), implements or outlines it, and adds an e2e check.",
+      "files": []
+    }
+  ]
+}
