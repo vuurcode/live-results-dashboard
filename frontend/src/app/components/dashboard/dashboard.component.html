@@ -25,7 +25,7 @@
                 <option value="" selected disabled>–</option>
               }
               @for (m of matches; track m.id) {
-                <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.name }} · {{ m.venue.city }}</option>
+                <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.start | date: 'HH:mm' }} · {{ m.name }} · {{ m.venue.name }}</option>
               }
             </select>
           </div>
