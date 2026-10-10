@@ -5,3 +5,4 @@ example.json
 /tunnel/
 /container-data/
 /mockserver/data/*
+/session-export/
