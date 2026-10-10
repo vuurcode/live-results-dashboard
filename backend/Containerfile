@@ -1,6 +1,21 @@
-FROM python:3.14-slim
-WORKDIR /app
-COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY src .
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
+# Build stage: image pinned by digest; modules pinned in go.mod and verified against go.sum
+FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
+
+WORKDIR /src
+ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
+
+COPY src/go.mod src/go.sum ./
+# Fails if go.sum is missing/incomplete (-mod=readonly), if a downloaded module
+# differs from its go.sum hash, or if the checksum database disagrees (default GONOSUMDB/GONOSUMCHECK unset).
+RUN go mod download && go mod verify
+
+COPY src/ ./
+RUN go build -trimpath -ldflags="-s -w" -o /backend .
+
+# Runtime stage: static binary only, plus CA certificates for HTTPS data sources
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /backend /backend
+USER 65532:65532
+EXPOSE 5000
+ENTRYPOINT ["/backend"]

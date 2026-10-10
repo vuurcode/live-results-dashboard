@@ -1,0 +1,121 @@
+package main
+
+import (
+	"log/slog"
+	"sync"
+	"time"
+)
+
+const queueSlack = 512 // headroom above the replay size before a client counts as too slow
+
+type client struct {
+	send chan []byte
+}
+
+// room is everything for one competition: its cached state, the clients
+// following it, and (via the manager) one polling loop shared by all of them.
+//
+// State updates and broadcasts happen under one lock, so a client that joins
+// either sees a change in its replay or receives it live — never both, never neither.
+type room struct {
+	id  string
+	url string
+	cfg config
+	log *slog.Logger
+
+	cancel   func() // stops the polling loop
+	idleTime *time.Timer
+
+	mu      sync.Mutex
+	st      *store
+	clients map[*client]struct{}
+}
+
+func newRoom(id, url string, cfg config, cancel func()) *room {
+	return &room{
+		id: id, url: url, cfg: cfg, cancel: cancel,
+		log:     slog.With("competition", id),
+		st:      newStore(),
+		clients: map[*client]struct{}{},
+	}
+}
+
+// apply diffs freshly processed data and broadcasts the changes.
+func (r *room) apply(curr *processedData) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	res := r.st.update(curr)
+	if res.reset {
+		r.log.Info("Broadcasting reset signal")
+	}
+	for _, c := range res.compUpdates {
+		r.log.Info("competitor_update",
+			"start_number", c.StartNumber, "name", c.Name,
+			"laps", c.LapsCount, "total_time", c.TotalTime, "formatted", c.FormattedTotalTime)
+	}
+	if len(res.messages) == 0 {
+		return
+	}
+	r.broadcastLocked(res.messages)
+	r.log.Info("Broadcast", "distance_meta", res.distUpdates, "competitor_update", len(res.compUpdates))
+}
+
+func (r *room) broadcastLocked(msgs [][]byte) {
+	for c := range r.clients {
+	send:
+		for _, m := range msgs {
+			select {
+			case c.send <- m:
+			default:
+				r.log.Warn("Client too slow, dropping")
+				r.dropLocked(c)
+				break send
+			}
+		}
+	}
+}
+
+func (r *room) dropLocked(c *client) {
+	if _, ok := r.clients[c]; ok {
+		delete(r.clients, c)
+		close(c.send)
+	}
+}
+
+// register adds a client whose queue is pre-loaded with the status message
+// followed by a replay of the latest state.
+func (r *room) register() *client {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	replay := r.st.replay()
+	c := &client{send: make(chan []byte, len(replay)+1+queueSlack)}
+	c.send <- wrap("status", marshal(map[string]any{
+		"competition_id":       r.id,
+		"data_source_url":      r.url,
+		"data_source_interval": r.cfg.dataSourceInterval,
+	}))
+	if len(replay) > 0 {
+		r.log.Info("Replaying latest state to new client", "messages", len(replay))
+	}
+	for _, m := range replay {
+		c.send <- m
+	}
+	r.clients[c] = struct{}{}
+	r.log.Info("Client connected", "active", len(r.clients))
+	return c
+}
+
+func (r *room) unregister(c *client) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.dropLocked(c)
+	r.log.Info("Client disconnected", "active", len(r.clients))
+}
+
+func (r *room) clientCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.clients)
+}
