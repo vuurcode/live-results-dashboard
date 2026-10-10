@@ -256,7 +256,8 @@ func (c *catalog) refresh(ctx context.Context) error {
 		}
 		return nil // stale data is better than none
 	}
-	err := c.reload(ctx)
+	// the fetch is shared by every waiting caller, so one caller disconnecting must not cancel it
+	err := c.reload(context.WithoutCancel(ctx))
 	if err != nil {
 		c.lastFailed = now
 		slog.Error("Catalog refresh failed", "err", err)
