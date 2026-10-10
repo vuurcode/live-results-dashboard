@@ -29,3 +29,8 @@ export const groupCardAnimation = trigger('groupCard', [
     animate('350ms ease-in', style({ opacity: 0 })),
   ]),
 ]);
+
+/** Stable animation state key — changes whenever the sort order of the list changes. */
+export function raceListKey(races: { id: string }[]): string {
+  return races.map(r => r.id).join(',');
+}

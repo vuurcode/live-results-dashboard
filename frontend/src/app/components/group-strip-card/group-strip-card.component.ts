@@ -1,16 +1,15 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { BadgeModule, CardModule } from '@coreui/angular';
-import { StandingsGroup, CompetitorUpdate } from '../../models/data.models';
+import { StandingsGroup } from '../../models/data.models';
 import { TranslateService } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { isRecentUpdate } from '../../logic/time.util';
-import { raceListAnimation, groupCardAnimation } from '../dashboard/dashboard.animations';
+import { raceListAnimation, groupCardAnimation, raceListKey } from '../dashboard/dashboard.animations';
 
 @Component({
   selector: 'app-group-strip-card',
   standalone: true,
-  imports: [CommonModule, BadgeModule, CardModule, TranslatePipe],
+  imports: [BadgeModule, CardModule, TranslatePipe],
   templateUrl: './group-strip-card.component.html',
   styleUrls: ['../dashboard/dashboard.component.scss'],
   animations: [raceListAnimation, groupCardAnimation],
@@ -18,7 +17,6 @@ import { raceListAnimation, groupCardAnimation } from '../dashboard/dashboard.an
 })
 export class GroupStripCardComponent {
   @Input({ required: true }) group!: StandingsGroup;
-  @Input() firstGroup = false;
   @Input() groupIndex = 0;
   @Input() anyFinished = false;
   @Input() selectedRaceId: string | null = null;
@@ -28,6 +26,10 @@ export class GroupStripCardComponent {
   private ts = inject(TranslateService);
 
   isRecentUpdate = isRecentUpdate;
+
+  get firstGroup(): boolean {
+    return this.groupIndex === 0;
+  }
 
   /** Returns d-none classes so card at groupIndex is hidden when viewport is too narrow. */
   groupCardClass(groupIndex: number): string {
@@ -45,8 +47,5 @@ export class GroupStripCardComponent {
     return this.ts.t('groupLabel', { n: group.groupNumber });
   }
 
-  /** Stable animation state key — changes whenever the sort order of the list changes. */
-  raceListKey(races: CompetitorUpdate[]): string {
-    return races.map(r => r.id).join(',');
-  }
+  raceListKey = raceListKey;
 }

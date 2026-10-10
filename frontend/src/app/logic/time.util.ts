@@ -47,10 +47,7 @@ export function truncateLapTime(t: string, decimals = 1): string {
  * e.g. "1:23.456" -> ["1:23", ".4"]
  */
 export function splitLapTime(t: string): [string, string] {
-  const truncated = truncateLapTime(t, 1);
-  const dot = truncated.lastIndexOf('.');
-  if (dot === -1) return [truncated, ''];
-  return [truncated.substring(0, dot), truncated.substring(dot)];
+  return splitFormattedTime(truncateLapTime(t, 1));
 }
 
 /**

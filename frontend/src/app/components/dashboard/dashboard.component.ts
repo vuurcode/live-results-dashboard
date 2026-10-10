@@ -26,8 +26,9 @@ import {
   mergeHeatGroups,
   trimmedRaces as trimmedRacesUtil,
   heatGroupLaneColors as heatGroupLaneColorsUtil,
+  type MergedHeatGroup,
 } from '../../logic/heats.util';
-import { raceListAnimation } from './dashboard.animations';
+import { raceListAnimation, raceListKey } from './dashboard.animations';
 
 @Component({
   selector: 'app-dashboard',
@@ -204,10 +205,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return light.includes((lane || '').toLowerCase()) ? 'text-dark' : 'text-white';
   }
 
-  /** Stable animation state key — changes whenever the sort order of the list changes. */
-  raceListKey(races: { id: string }[]): string {
-    return races.map(r => r.id).join(',');
-  }
+  raceListKey = raceListKey;
 
   /**
    * Returns true when the race at raceIdx is the first competitor of a new
@@ -270,13 +268,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */
-  distanceMaxLaneCount(distance: ProcessedDistance): number {
-    return Math.max(0, ...this.mergedHeatGroups(distance).map(g => this.trimmedRaces(g.races).length));
+  distanceMaxLaneCount(groups: MergedHeatGroup<CompetitorUpdate>[]): number {
+    return Math.max(0, ...groups.map(g => this.trimmedRaces(g.races).length));
   }
 
   /** Lane color per slot index, derived from any non-null race across all heat groups. */
-  heatGroupLaneColors(distance: ProcessedDistance): (string | null)[] {
-    return heatGroupLaneColorsUtil(this.mergedHeatGroups(distance));
+  heatGroupLaneColors(groups: MergedHeatGroup<CompetitorUpdate>[]): (string | null)[] {
+    return heatGroupLaneColorsUtil(groups);
   }
 
   onFollowChange(event: Event): void {

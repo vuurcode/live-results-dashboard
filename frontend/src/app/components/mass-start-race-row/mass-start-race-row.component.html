@@ -19,7 +19,7 @@
   </div>
   <!-- Centre column: lap time badges (toggled by setting) always in strip, counter after -->
   <div class="lap-times-strip">
-    @if (dataService.showMassStartLapTimes) {
+    @if (showLapTimes) {
       @for (lt of race.lap_times; track $index; let i = $index; let last = $last; let count = $count) {
         <span class="lap-time-badge {{ lapBadgeColor(race.lap_times, i) }}"
           [class.lap-badge-latest]="last"

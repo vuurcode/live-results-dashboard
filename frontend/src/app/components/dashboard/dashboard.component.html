@@ -160,10 +160,9 @@
                 @let dGroups = (displayedGroups$ | async)?.get(distance.id) ?? [];
                 @if (dGroups.length) {
                 <div class="groups-strip d-flex flex-row-reverse gap-2 mb-3 pb-1">
-                  @for (group of dGroups; track group.groupNumber; let firstGroup = $first; let groupIndex = $index) {
+                  @for (group of dGroups; track group.groupNumber; let groupIndex = $index) {
                     <app-group-strip-card
                       [group]="group"
-                      [firstGroup]="firstGroup"
                       [groupIndex]="groupIndex"
                       [anyFinished]="distance.anyFinished"
                       [selectedRaceId]="selectedRaceId"
@@ -178,9 +177,10 @@
                 @if (!distance.isMassStart) {
                   <c-col [xs]="12">
                     @let lapSchedule = distance.distanceMeters ? timedDistanceLapSchedule(distance.distanceMeters) : [];
-                    @let laneColors = heatGroupLaneColors(distance);
-                    @let maxLanes = distanceMaxLaneCount(distance);
-                    @for (displayGroup of mergedHeatGroups(distance); track displayGroup.label) {
+                    @let heatGroups = mergedHeatGroups(distance);
+                    @let laneColors = heatGroupLaneColors(heatGroups);
+                    @let maxLanes = distanceMaxLaneCount(heatGroups);
+                    @for (displayGroup of heatGroups; track displayGroup.label) {
                       <app-timed-heat-card
                         [label]="displayGroup.label"
                         [races]="displayGroup.races"
@@ -218,6 +218,8 @@
                           [distance]="distance"
                           [raceIdx]="raceIdx"
                           [selectedRaceId]="selectedRaceId"
+                          [showLapTimes]="dataService.showMassStartLapTimes"
+                          [lapVarianceThreshold]="dataService.lapVarianceThreshold"
                           (raceSelect)="selectRace($event)"
                         />
                         <!-- Inline finishing line: rendered below the last lap-completed competitor -->

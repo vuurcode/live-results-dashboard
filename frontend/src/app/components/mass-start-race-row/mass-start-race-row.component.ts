@@ -1,8 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
-import { DataService } from '../../services/data.service';
 import { TranslateService } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { parseSeconds, splitLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
@@ -11,7 +9,7 @@ import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount
 @Component({
   selector: 'app-mass-start-race-row',
   standalone: true,
-  imports: [CommonModule, BadgeModule, TranslatePipe],
+  imports: [BadgeModule, TranslatePipe],
   templateUrl: './mass-start-race-row.component.html',
   styleUrls: ['../dashboard/dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,10 +19,11 @@ export class MassStartRaceRowComponent {
   @Input({ required: true }) distance!: ProcessedDistance;
   @Input() raceIdx = 0;
   @Input() selectedRaceId: string | null = null;
+  @Input() showLapTimes = false;
+  @Input() lapVarianceThreshold = 0;
 
   @Output() raceSelect = new EventEmitter<string>();
 
-  public dataService = inject(DataService);
   public ts = inject(TranslateService);
 
   isRecentUpdate = isRecentUpdate;
@@ -60,7 +59,7 @@ export class MassStartRaceRowComponent {
     const curr = parseSeconds(lapTimes[i]);
     const prev = parseSeconds(lapTimes[i - 1]);
     if (!prev) return 'lap-badge-normal';
-    const threshold = this.dataService.lapVarianceThreshold / 100;
+    const threshold = this.lapVarianceThreshold / 100;
     const ratio = (curr - prev) / prev;
     if (ratio > threshold)  return 'lap-badge-slow';   // current slower  → orange
     if (ratio < -threshold) return 'lap-badge-fast';   // current faster  → purple

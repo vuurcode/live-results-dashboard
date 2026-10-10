@@ -5,7 +5,7 @@ import { CompetitorUpdate } from '../../models/data.models';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { parseSeconds, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
-import { isTimedFinished as isTimedFinishedUtil, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
+import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
 @Component({
   selector: 'app-timed-heat-card',
@@ -16,8 +16,8 @@ import { isTimedFinished as isTimedFinishedUtil, timedPrComparison as timedPrCom
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TimedHeatCardComponent {
-  @Input({ required: true }) label = '';
-  @Input({ required: true }) races: (CompetitorUpdate | null)[] = [];
+  @Input({ required: true }) label!: string;
+  @Input({ required: true }) races!: (CompetitorUpdate | null)[];
   @Input() maxLanes = 0;
   @Input() laneColors: (string | null)[] = [];
   @Input() lapSchedule: number[] = [];
@@ -30,6 +30,7 @@ export class TimedHeatCardComponent {
   isRecentUpdate = isRecentUpdate;
   splitFormattedTime = splitFormattedTime;
   truncateLapTime = truncateLapTime;
+  isTimedFinished = isTimedFinished;
 
   private readonly REMARK_KEY_MAP: Record<string, TranslationKey> = {
     PR:  'remarkNewPb',
@@ -41,11 +42,6 @@ export class TimedHeatCardComponent {
     TR:  'remarkNewTrackRecord',
     TRC: 'remarkTrackRecordCourse',
   };
-
-  /** True when the competitor has completed all laps for the timed distance. */
-  isTimedFinished(race: CompetitorUpdate, distanceMeters: number): boolean {
-    return isTimedFinishedUtil(race, distanceMeters);
-  }
 
   /**
    * Returns the lapTime string for the nth lap (0-based) of a timed competitor,
