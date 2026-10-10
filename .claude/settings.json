@@ -10,10 +10,24 @@
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)"
+    ],
+    "deny": [
+      "Read(/tunnel/**)",
+      "Edit(/tunnel/**)",
+      "Bash(*tunnel/*)",
+      "Read(/container-data/**)",
+      "Edit(/container-data/**)",
+      "Bash(*container-data/*)",
+      "Read(/mockserver/data/**)",
+      "Edit(/mockserver/data/**)",
+      "Bash(*mockserver/data/*)",
+      "Read(**/.env*)",
+      "Edit(**/.env*)",
+      "Bash(*.env*)"
     ]
   },
   "cleanupPeriodDays": 30,
-  "includeCoAuthoredBy": true,
+  "includeCoAuthoredBy": false,
   "respectGitignore": true,
   "showTurnDuration": true,
   "statusLine": {
