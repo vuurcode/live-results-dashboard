@@ -249,20 +249,22 @@ func (s *server) handleReset(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"reset": true, "matches": ids})
 }
 
-// eventName reads the event name from a match's first sample, falling back to its id.
+// eventName reads the event name from a match's samples (the first ones may be error
+// responses without a name), falling back to its id.
 func (s *server) eventName(id string) string {
-	files, err := s.sampleFiles(id)
-	if err != nil || len(files) == 0 {
-		return id
+	files, _ := s.sampleFiles(id)
+	for i, f := range files {
+		if i == 10 {
+			break
+		}
+		var head struct {
+			Name string `json:"name"`
+		}
+		if b := readSample(f); b != nil && json.Unmarshal(b, &head) == nil && head.Name != "" {
+			return head.Name
+		}
 	}
-	b := readSample(files[0])
-	var head struct {
-		Name string `json:"name"`
-	}
-	if b == nil || json.Unmarshal(b, &head) != nil || head.Name == "" {
-		return id
-	}
-	return head.Name
+	return id
 }
 
 func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
