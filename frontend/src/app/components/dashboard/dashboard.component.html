@@ -1,6 +1,6 @@
 <div class="d-flex flex-column min-vh-100">
   <!-- ===== TOP BAR ===== -->
-  <header class="topbar text-white px-4 py-2 d-flex align-items-center gap-3">
+  <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
     @if (eventName$ | async; as name) {
       <h1 class="fw-bold fs-5 m-0 topbar-title">{{ name }}</h1>
     } @else {
@@ -15,14 +15,14 @@
         [class.pulse-badge]="status.status === 'Connecting...'"
       >{{ status.status }}</c-badge>
     }
-    <div class="ms-auto d-flex align-items-center gap-2">
+    <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
       <!-- Display settings (collapsible) -->
-      <div class="topbar-settings-group d-flex align-items-center">
+      <div class="topbar-settings-group d-flex flex-wrap align-items-center">
         <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="displaySettingsOpen = !displaySettingsOpen">
           {{ 'displaySettings' | translate }} <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
-          <div class="d-flex align-items-center gap-2 ms-1">
+          <div class="topbar-settings-body d-flex flex-wrap align-items-center gap-2 ms-1">
             <div class="topbar-section-sep"></div>
             <div class="setting-group ms-1">
               <label class="small text-white-50 text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
@@ -43,12 +43,12 @@
       </div>
       <!-- Mass Start settings (collapsible) -->
       @if (hasMassStart$ | async) {
-        <div class="topbar-settings-group d-flex align-items-center">
+        <div class="topbar-settings-group d-flex flex-wrap align-items-center">
           <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="massStartSettingsOpen = !massStartSettingsOpen">
             {{ 'massStartSettings' | translate }} <span class="topbar-group-arrow" [class.open]="massStartSettingsOpen">▾</span>
           </button>
           @if (massStartSettingsOpen) {
-            <div class="d-flex align-items-center gap-2 ms-1">
+            <div class="topbar-settings-body d-flex flex-wrap align-items-center gap-2 ms-1">
               <div class="topbar-section-sep"></div>
               <div class="setting-group ms-1">
                 <label class="small text-white-50 text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>

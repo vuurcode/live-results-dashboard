@@ -36,10 +36,19 @@
   min-height: 3rem;
 }
 .topbar-title {
+  flex: 1 1 8rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+@media (max-width: 767.98px) {
+  // Settings drop to their own full-width row and wrap instead of widening the page.
+  .topbar-settings { flex: 1 1 100%; margin-left: 0 !important; }
+  .topbar-settings-group { max-width: 100%; }
+  .topbar-section-sep { display: none; }
+  .topbar-group-btn { min-height: 2rem; }
+  .threshold-checkbox { width: 1.5rem; height: 1.5rem; }
 }
 // Section label before the settings group
 .topbar-section-label {
