@@ -31,7 +31,7 @@
           [class.lap-badge-prev]="i === count - 2"
           [class.lap-badge-old]="i < count - 2"
           [attr.data-lap]="last ? race.laps_count : null">
-          {{ splitLapTime(lt)[0] }}<sup class="lap-time-decimal">{{ (splitLapTime(lt)[1] || '').replace('.', '') }}</sup>
+          {{ splitLapTime(lt)[0] }}<small class="lap-time-decimal">{{ (splitLapTime(lt)[1] || '').replace('.', '') }}</small>
         </span>
       }
       <!-- Pulsing placeholders for pending laps -->

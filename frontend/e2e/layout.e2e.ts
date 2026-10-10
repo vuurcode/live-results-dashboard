@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { MOCK_URL } from './env';
 
 test.describe('large screens', () => {
   for (const [width, font] of [
@@ -51,5 +52,31 @@ test.describe('pinned titles', () => {
     expect(headerTop).toBeGreaterThanOrEqual(barBottom - 1);
     expect(headerBottom).toBeLessThan(260);
     await expect(header).toBeInViewport();
+  });
+
+  test('the pinned distance title shrinks while it is stuck', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 260 });
+    await page.goto('/?competitionId=e2e-timed');
+    const button = page.locator('.accordion-header .accordion-button').first();
+    await expect(page.locator('.timed-heat-row').first()).toBeAttached();
+    const before = (await button.boundingBox())!.height;
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect.poll(async () => (await button.boundingBox())!.height).toBeLessThan(before * 0.8);
+  });
+
+  test('the groups overview of a mass start stays pinned below the title', async ({ page, request }) => {
+    // start the replay over so the groups exist and the page is tall enough to scroll
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
+    await page.waitForTimeout(800);
+    await page.setViewportSize({ width: 1280, height: 330 });
+    await page.goto('/?competitionId=e2e-mass');
+    const strip = page.locator('.groups-strip').first();
+    await expect(strip).toBeVisible({ timeout: 15_000 });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(300);
+    const box = (await strip.boundingBox())!;
+    const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom);
+    expect(box.y).toBeGreaterThanOrEqual(barBottom - 1);
+    expect(box.y).toBeLessThan(150);
   });
 });

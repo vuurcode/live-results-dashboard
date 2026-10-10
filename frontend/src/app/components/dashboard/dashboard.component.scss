@@ -12,6 +12,26 @@
   position: sticky;
   top: var(--topbar-h, 3rem);
   z-index: 10;
+  container-type: scroll-state; // lets the title shrink once it is pinned (browsers without it keep the full size)
+}
+@container scroll-state(stuck: top) {
+  :host ::ng-deep .accordion-button {
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.8rem;
+    min-height: 0;
+    small { display: none; }
+    .badge { font-size: 0.6rem; }
+  }
+}
+// The groups overview of a mass start stays visible under the pinned title; tall overviews scroll inside.
+:host ::ng-deep .groups-strip {
+  position: sticky;
+  top: calc(var(--topbar-h, 3rem) + 1.65rem);
+  z-index: 9;
+  max-height: 35vh;
+  overflow: auto;
+  background: #fff;
 }
 
 // Override CoreUI's overflow:hidden on accordion-item host so body scales to fit content
@@ -404,15 +424,10 @@
     opacity: 0.35;
   }
 
-  /* Decimal as superscript-like text (smaller) */
+  /* Decimal as smaller subtext on the baseline, like the decimals of the timed splits */
   .lap-time-decimal {
-    display: inline-block;
-    font-size: 0.5em; /* smaller superscript */
-    vertical-align: super;
-    line-height: 1;
+    font-size: 0.72em;
     margin-left: 0.04ch;
-    opacity: 0.95;
-    transform: translateY(-0.04em);
   }
 }
 
