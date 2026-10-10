@@ -1,9 +1,17 @@
-FROM python:3.14-slim
+# Standard library only: nothing to download or verify beyond the pinned base image.
+FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
 
+WORKDIR /src
+ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
+
+COPY go.mod ./
+COPY main.go ./
+RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
+
+FROM scratch
 WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# src is volume-mounted at runtime — only reload on .py changes, not __files
-CMD ["uvicorn", "simulator:app", "--host", "0.0.0.0", "--port", "8080", "--reload", "--reload-dir", "/app", "--reload-include", "*.py"]
+COPY --from=build /mockserver /mockserver
+# Mount the sample matches (one directory per match) at /app/data
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/mockserver"]

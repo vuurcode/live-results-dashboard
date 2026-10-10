@@ -9,7 +9,10 @@ Each component:
 - [x] No HTTPS between containers
 
 ## Mockserver
-- [x] Python 3.14 + FastAPI; mirror src into container; ruff formatting
-- [x] Read `DATA_SAMPLE_DIRECTORY` env var (e.g. `data/2026-03-01/`); replay all `.json` files from that directory in ascending filename order, serving each as the `/api/data` response
-- [x] Read `DATA_SAMPLE_INTERVAL` env var (e.g. `5`) as the delay in seconds between samples; default `5`
-- [x] Stop advancing after the last sample (hold last state); `POST /api/reset` restarts replay from the first file
+- [x] Go (standard library only); mirror src into container; `gofmt`
+- [x] `DATA_SAMPLE_DIRECTORY` (default `data`) is a base directory with one subdirectory per match; the subdirectory name is the match id (`competitionId`)
+- [x] `GET /api/data?competitionId=<id>` serves that match's current sample; the **first** request for a match starts its replay (its first sample is served immediately); matches replay independently
+- [x] Replay serves the match's `.json` files in ascending filename order, `DATA_SAMPLE_INTERVAL` seconds apart (default `5`); unparseable samples are skipped; the last sample is held at the end
+- [x] `competitionId` is required and restricted to `[A-Za-z0-9_-]{1,64}`; invalid → 400, unknown match or no valid samples → 404
+- [x] `GET /api/matches` lists the available match ids (also the health check)
+- [x] `POST /api/reset[?competitionId=<id>]` restarts one started match, or all started matches
