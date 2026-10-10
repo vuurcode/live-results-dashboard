@@ -72,17 +72,19 @@ follows the selected UI language (EN/NL), and `title` updated with the event nam
 scrolling of the page. Lap-time strips scroll inside their own container — that is fine, but the
 container must be keyboard reachable.
 
-## Known baseline (axe scan of the e2e fixtures, last verified when this skill was written)
+## Known baseline
 
-- `aria-allowed-attr` (critical): the CoreUI accordion item (`#accordion-item-0`) carries an
-  unsupported ARIA attribute — check how `c-accordion-item` is configured before patching around it.
-- `color-contrast` (serious): `.bg-success` badges (white on #1b9e3e = 3.49:1), `.glowing-badge`
-  (white on #e55353 = 3.68:1), `.text-muted` on the dark `#2c3e50` accordion header (4.09:1), plus
-  the small grey split-time badges. Fix by darkening the badge backgrounds / lightening muted text.
-- `page-has-heading-one` (moderate): no `<h1>`.
+The e2e fixtures and the captured real matches scan clean (zero axe violations) and `e2e/accessibility.e2e.ts`
+keeps it that way. Things that were fixed and are easy to reintroduce:
 
-Re-run the scan and update this list when you fix or discover things — a stale baseline is worse
-than none.
+- Badge colours: success `#177d3c`, danger `#c93434`, muted text `#565e64` (on the dark header `#b4bcc4`),
+  small grey text `#454c52`, dark text on orange/yellow badges. Do not stack `opacity` on cards: it lowers contrast.
+- CoreUI's accordion item sets an invalid `aria-expanded` on the collapse element; `dashboard.component.ts`
+  strips it after each render.
+- The event name is the single `<h1>`.
+
+Not covered by axe (still open): reduced-motion handling, a throttled live region for finishes, and the
+manual checks in `references/checklist.md`.
 
 ## Writing accessible changes — habits that avoid rework
 
