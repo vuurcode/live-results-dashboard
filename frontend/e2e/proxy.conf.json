@@ -1,0 +1,7 @@
+{
+  "/ws": {
+    "target": "ws://localhost:15000",
+    "ws": true,
+    "changeOrigin": true
+  }
+}

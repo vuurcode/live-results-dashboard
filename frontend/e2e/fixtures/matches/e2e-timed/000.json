@@ -1,0 +1,103 @@
+{
+ "id": "e2e-timed-event",
+ "name": "E2E Timed Event",
+ "isInternational": false,
+ "distances": [
+  {
+   "id": "dist-1000",
+   "name": "1000 meter",
+   "eventNumber": 1.0,
+   "isLive": true,
+   "races": [
+    {
+     "id": "r1",
+     "competitor": {
+      "id": "c1",
+      "name": "Competitor A",
+      "startNumber": "1",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": null,
+     "laps": []
+    },
+    {
+     "id": "r2",
+     "competitor": {
+      "id": "c2",
+      "name": "Competitor B",
+      "startNumber": "2",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": null,
+     "laps": []
+    },
+    {
+     "id": "r3",
+     "competitor": {
+      "id": "c3",
+      "name": "Competitor C",
+      "startNumber": "3",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 2,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": null,
+     "laps": []
+    },
+    {
+     "id": "r4",
+     "competitor": {
+      "id": "c4",
+      "name": "Competitor D",
+      "startNumber": "4",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 2,
+     "lane": "red",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": null,
+     "personalRecord": null,
+     "laps": []
+    }
+   ]
+  }
+ ],
+ "success": true,
+ "errorMessage": null,
+ "errorMode": 0,
+ "resultUrl": null
+}

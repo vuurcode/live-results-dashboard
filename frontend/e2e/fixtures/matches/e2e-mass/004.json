@@ -1,0 +1,171 @@
+{
+ "id": "e2e-mass-event",
+ "name": "E2E Mass Start Event",
+ "isInternational": false,
+ "distances": [
+  {
+   "id": "dist-mass",
+   "name": "Mass start 3 laps",
+   "eventNumber": 1.0,
+   "isLive": true,
+   "races": [
+    {
+     "id": "m1",
+     "competitor": {
+      "id": "c11",
+      "name": "Competitor E",
+      "startNumber": "11",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:02:10.0000000",
+     "personalRecord": null,
+     "laps": [
+      {
+       "time": "00:00:40.0000000",
+       "lapTime": "00:00:40.0000000"
+      },
+      {
+       "time": "00:01:10.0000000",
+       "lapTime": "00:00:30.0000000"
+      },
+      {
+       "time": "00:01:40.0000000",
+       "lapTime": "00:00:30.0000000"
+      },
+      {
+       "time": "00:02:10.0000000",
+       "lapTime": "00:00:30.0000000"
+      }
+     ]
+    },
+    {
+     "id": "m2",
+     "competitor": {
+      "id": "c12",
+      "name": "Competitor F",
+      "startNumber": "12",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:02:11.5000000",
+     "personalRecord": null,
+     "laps": [
+      {
+       "time": "00:00:40.0000000",
+       "lapTime": "00:00:40.0000000"
+      },
+      {
+       "time": "00:01:10.5000000",
+       "lapTime": "00:00:30.5000000"
+      },
+      {
+       "time": "00:01:41.0000000",
+       "lapTime": "00:00:30.5000000"
+      },
+      {
+       "time": "00:02:11.5000000",
+       "lapTime": "00:00:30.5000000"
+      }
+     ]
+    },
+    {
+     "id": "m3",
+     "competitor": {
+      "id": "c13",
+      "name": "Competitor G",
+      "startNumber": "13",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:02:13.0000000",
+     "personalRecord": null,
+     "laps": [
+      {
+       "time": "00:00:40.0000000",
+       "lapTime": "00:00:40.0000000"
+      },
+      {
+       "time": "00:01:11.0000000",
+       "lapTime": "00:00:31.0000000"
+      },
+      {
+       "time": "00:01:42.0000000",
+       "lapTime": "00:00:31.0000000"
+      },
+      {
+       "time": "00:02:13.0000000",
+       "lapTime": "00:00:31.0000000"
+      }
+     ]
+    },
+    {
+     "id": "m4",
+     "competitor": {
+      "id": "c14",
+      "name": "Competitor H",
+      "startNumber": "14",
+      "category": "DA1",
+      "nationality": "NED",
+      "clubCode": "CLUB 1"
+     },
+     "heat": 1,
+     "lane": "white",
+     "points": null,
+     "rank": null,
+     "remark": "",
+     "invalidReason": "",
+     "status": 1,
+     "time": "00:02:14.5000000",
+     "personalRecord": null,
+     "laps": [
+      {
+       "time": "00:00:40.0000000",
+       "lapTime": "00:00:40.0000000"
+      },
+      {
+       "time": "00:01:11.5000000",
+       "lapTime": "00:00:31.5000000"
+      },
+      {
+       "time": "00:01:43.0000000",
+       "lapTime": "00:00:31.5000000"
+      },
+      {
+       "time": "00:02:14.5000000",
+       "lapTime": "00:00:31.5000000"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "success": true,
+ "errorMessage": null,
+ "errorMode": 0,
+ "resultUrl": null
+}
