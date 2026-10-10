@@ -9,6 +9,7 @@ import {
   StandingsGroup,
 } from '../models/data.models';
 import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
+import { competitionIdFromSearch, withCompetitionId } from '../logic/competition.util';
 
 export interface BackendStatus {
   status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error';
@@ -31,7 +32,9 @@ const STORAGE_KEY_FOLLOW = 'follow';
 @Injectable({ providedIn: 'root' })
 export class DataService {
   private socket$: WebSocketSubject<any> | null = null;
-  private readonly BACKEND_URL = (() => {
+  /** Competition to follow, from the page URL (`?competitionId=...`); the backend falls back to its default. */
+  public readonly competitionId = competitionIdFromSearch(window.location.search);
+  private readonly BACKEND_URL = withCompetitionId((() => {
     const raw = (window as any).BACKEND_URL;
     // Ignore unsubstituted template placeholder (env-inject.js not processed by envsubst)
     const base = raw && !raw.startsWith('${') ? raw : null;
@@ -46,7 +49,7 @@ export class DataService {
     // Fall back to /ws on the current host — works with nginx proxy (prod) and ng proxy (dev)
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return `${proto}://${window.location.host}/ws`;
-  })();
+  })(), this.competitionId);
   private readonly BACKEND_HTTP_URL: string = (() => {
     const raw = (window as any).BACKEND_URL;
     return raw && !raw.startsWith('${') ? raw : `${window.location.protocol}//${window.location.host}`;

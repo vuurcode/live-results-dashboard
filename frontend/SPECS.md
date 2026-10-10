@@ -11,7 +11,7 @@ Each component:
 ## Frontend
 - [x] Node 24 LTS + Angular + CoreUI
 - [x] Dev server on port `4200`; prod server on port `8888` (maps to `80` in container)
-- [x] WebSocket to backend port `5000`
+- [x] WebSocket to backend port `5000`; the competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it the backend's default competition is used
 - [x] nginx config in separate folder
 - [x] Reconnect every 5s on lost connection, show error
 - [x] Frontend must not hardcode backend URL. Pass backend URL as environment variable into the frontend container, similar to backend. Frontend reads this value at runtime and uses it for API/WebSocket connections. Container, compose, and code updated accordingly.
