@@ -16,6 +16,7 @@ ENV PATH="/usr/local/go/bin:/root/.local/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1 \
     CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 
+# hadolint ignore=DL3008 # dev-only image: follow Debian's current package versions
 RUN apt-get update && apt-get install -y --no-install-recommends bash curl jq git libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 

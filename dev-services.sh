@@ -9,7 +9,7 @@ trap 'kill $(jobs -p) 2>/dev/null' EXIT TERM INT
 # run_go <dir> <binary>: build and run a Go service, rebuilding and restarting it
 # whenever a source file in <dir> changes.
 run_go() {
-  local dir=$1 bin=/tmp/$2 pid= last= cur
+  local dir=$1 bin=/tmp/$2 pid='' last='' cur
   trap '[ -n "$pid" ] && kill $pid 2>/dev/null' EXIT TERM INT
   cd "$dir" || return
   while true; do
@@ -36,7 +36,7 @@ run_go() {
 ) &
 
 (
-  cd /app/frontend
+  cd /app/frontend || exit 1
   [ -x node_modules/.bin/ng ] || npm ci
   exec npm start -- --host 0.0.0.0 --poll 2000
 ) &
