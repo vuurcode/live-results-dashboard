@@ -28,6 +28,7 @@ import {
   heatGroupLaneColors as heatGroupLaneColorsUtil,
   type MergedHeatGroup,
 } from '../../logic/heats.util';
+import { followScrollTop } from '../../logic/scroll.util';
 import { raceListAnimation, raceListKey } from './dashboard.animations';
 
 @Component({
@@ -161,9 +162,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
         requestAnimationFrame(() => {
           const el = document.querySelector(`[data-distance-header="${live.id}"]`) as HTMLElement | null;
-          if (!el) return;
-          const top = el.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({ top, behavior: 'smooth' });
+          this._scrollTo(el, this.HEADER_ANCHOR);
         });
         return;
       }
@@ -311,6 +310,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private _scrollToFollow(distance: ProcessedDistance): void {
     let key: string;
     let selector: string;
+    let anchor: number;
 
     if (!distance.isMassStart) {
       const heatGroups = this.mergedHeatGroups(distance);
@@ -318,23 +318,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
         g.races.some(r => r != null && isRecentUpdate(r.lastUpdated))
       );
       if (currentIdx === -1) return;
-      const targetHeat = heatGroups[Math.max(0, currentIdx - 2)];
-      key = `${distance.id}:${heatGroups[currentIdx].label}`;
-      selector = `[data-distance-id="${distance.id}"][data-heat-label="${targetHeat.label}"]`;
+      const current = heatGroups[currentIdx];
+      key = `${distance.id}:${current.label}`;
+      selector = `[data-distance-id="${distance.id}"][data-heat-label="${current.label}"]`;
+      anchor = this.HEAT_ANCHOR;
     } else {
       key = `mass:${distance.id}`;
       selector = `[data-distance-body="${distance.id}"]`;
+      anchor = this.HEADER_ANCHOR;
     }
 
     if (key === this.currentFollowKey) return;
     this.currentFollowKey = key;
 
-    requestAnimationFrame(() => {
-      const el = document.querySelector(selector) as HTMLElement | null;
-      if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top, behavior: 'smooth' });
-    });
+    requestAnimationFrame(() => this._scrollTo(document.querySelector(selector) as HTMLElement | null, anchor));
+  }
+
+  /** Where the followed element lands, as a fraction of the viewport height from the top. */
+  private readonly HEAT_ANCHOR = 0.3; // active heat a third of the way down, previous heats still partly visible
+  private readonly HEADER_ANCHOR = 0.03; // a small breathing margin above a distance
+
+  private _scrollTo(el: HTMLElement | null, anchorRatio: number): void {
+    if (!el) return;
+    const top = followScrollTop(
+      el.getBoundingClientRect().top,
+      window.scrollY,
+      window.innerHeight,
+      document.documentElement.scrollHeight,
+      anchorRatio,
+    );
+    window.scrollTo({ top, behavior: 'smooth' });
   }
 
 }
