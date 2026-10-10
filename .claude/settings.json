@@ -18,9 +18,6 @@
       "Read(/container-data/**)",
       "Edit(/container-data/**)",
       "Bash(*container-data/*)",
-      "Read(/mockserver/data/**)",
-      "Edit(/mockserver/data/**)",
-      "Bash(*mockserver/data/*)",
       "Read(**/.env*)",
       "Edit(**/.env*)",
       "Bash(*.env*)"
