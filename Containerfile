@@ -1,17 +1,20 @@
 ARG PYTHON_VERSION="3.14"
 ARG NODE_VERSION="24"
+ARG GO_VERSION="1.27.2"
 
 FROM node:${NODE_VERSION}-slim AS node
+FROM golang:${GO_VERSION} AS go
 
-# Single dev container: Claude Code + mockserver + backend + Angular dev server.
+# Single dev container: Claude Code + Go mockserver + Go backend + Angular dev server.
 # Production images are built from backend/Containerfile and frontend/Containerfile
 # and contain none of this.
 FROM python:${PYTHON_VERSION}-slim-trixie AS dev
 
 WORKDIR /app
 
-ENV PATH="/root/.local/bin:${PATH}" \
-    PYTHONDONTWRITEBYTECODE=1
+ENV PATH="/usr/local/go/bin:/root/.local/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 
 RUN apt-get update && apt-get install -y --no-install-recommends bash curl jq git libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
@@ -22,11 +25,8 @@ COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
-# Python deps for backend and mockserver (shared pins, installed together)
-COPY backend/src/requirements.txt /tmp/backend-requirements.txt
-COPY mockserver/requirements.txt /tmp/mockserver-requirements.txt
-RUN pip install --no-cache-dir -r /tmp/backend-requirements.txt -r /tmp/mockserver-requirements.txt \
-    && rm /tmp/*-requirements.txt
+# Go toolchain from the official image (backend and mockserver are Go; modules are verified against go.sum)
+COPY --from=go /usr/local/go /usr/local/go
 
 RUN curl -fsSL https://claude.ai/install.sh -o /tmp/install.sh \
     && bash /tmp/install.sh \
