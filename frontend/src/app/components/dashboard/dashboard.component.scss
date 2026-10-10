@@ -5,6 +5,15 @@
   overflow: hidden;
 }
 
+// Pin each distance's title below the top bar while its (long) list scrolls, e.g. a live 10000 m.
+// Bootstrap's overflow:hidden on the item would make it the scroll container and disable sticky.
+:host ::ng-deep .accordion-item { overflow: visible; }
+:host ::ng-deep .accordion-header {
+  position: sticky;
+  top: var(--topbar-h, 3rem);
+  z-index: 10;
+}
+
 // Override CoreUI's overflow:hidden on accordion-item host so body scales to fit content
 :host ::ng-deep c-accordion-item {
   overflow: visible !important;
@@ -32,6 +41,9 @@
 }
 // ===== TOP BAR =====
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1020;
   background-color: #000;
   min-height: 3rem;
 }

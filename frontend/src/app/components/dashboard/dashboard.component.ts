@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, afterEveryRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
@@ -71,6 +71,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private followScrollSub: Subscription | null = null;
   private activeHeatSub: Subscription | null = null;
   private resetSub: Subscription | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   // Hide mass start settings if no mass start present
   hasMassStart$: Observable<boolean>;
@@ -126,6 +127,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.host.nativeElement
         .querySelectorAll('.accordion-collapse[aria-expanded]')
         .forEach(el => el.removeAttribute('aria-expanded'));
+    });
+    // The top bar and the open distance's title stay pinned while scrolling. The title sticks right
+    // below the top bar, whose height changes when it wraps, so publish it as a CSS variable.
+    afterNextRender(() => {
+      const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
+      if (!bar || typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(() => {
+        this.host.nativeElement.style.setProperty('--topbar-h', `${bar.offsetHeight}px`);
+      });
+      observer.observe(bar);
+      this.resizeObserver = observer;
     });
     this.status$ = this.dataService.status$;
     this.eventName$ = this.dataService.eventName$;
@@ -213,6 +225,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.followScrollSub?.unsubscribe();
     this.activeHeatSub?.unsubscribe();
     this.resetSub?.unsubscribe();
+    this.resizeObserver?.disconnect();
   }
 
 
