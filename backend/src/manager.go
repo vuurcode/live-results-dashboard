@@ -137,7 +137,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 		slog.Warn("WebSocket accept failed", "err", err)
 		return
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	// The frontend never sends; CloseRead handles control frames and cancels ctx on close.
 	ctx := conn.CloseRead(req.Context())
@@ -147,7 +147,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 			return
 		case msg, ok := <-c.send:
 			if !ok {
-				conn.Close(websocket.StatusPolicyViolation, "client too slow")
+				_ = conn.Close(websocket.StatusPolicyViolation, "client too slow")
 				return
 			}
 			wctx, cancel := context.WithTimeout(ctx, writeTimeout)

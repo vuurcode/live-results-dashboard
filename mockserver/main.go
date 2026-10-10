@@ -94,7 +94,7 @@ func (s *server) sampleFiles(id string) ([]string, error) {
 		return nil, errUnknownMatch
 	}
 	dir := filepath.Join(s.cfg.baseDir, id)
-	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() { //nolint:gosec // id is validated against matchIDRe above
 		return nil, errUnknownMatch
 	}
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
@@ -107,7 +107,7 @@ func (s *server) sampleFiles(id string) ([]string, error) {
 
 // readSample returns a file's bytes, or nil if it is unreadable or not valid JSON.
 func readSample(path string) []byte {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // path comes from a glob under the validated match directory
 	if err != nil || !json.Valid(b) {
 		slog.Error("Replay: skipping unparseable sample", "file", filepath.Base(path), "err", err)
 		return nil
@@ -222,7 +222,7 @@ func (s *server) handleData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(r.get())
+	_, _ = w.Write(r.get()) //nolint:gosec // served as application/json, bytes are validated JSON sample files
 }
 
 func (s *server) handleReset(w http.ResponseWriter, req *http.Request) {

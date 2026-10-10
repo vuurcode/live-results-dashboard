@@ -40,7 +40,7 @@ func newTestServer(t *testing.T, interval time.Duration) (*httptest.Server, stri
 
 func do(t *testing.T, method, url string) (int, string) {
 	t.Helper()
-	req, _ := http.NewRequest(method, url, nil)
+	req, _ := http.NewRequestWithContext(t.Context(), method, url, nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)

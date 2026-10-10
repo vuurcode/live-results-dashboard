@@ -107,7 +107,7 @@ func TestStartNumberAcceptsNumbers(t *testing.T) {
 func snapshot(laps int, withTime bool) *processedData {
 	r := race("1", 1)
 	if withTime {
-		for i := 0; i < laps; i++ {
+		for range laps {
 			r.Laps = append(r.Laps, lap("00:00:10.000", "00:00:10.000"))
 		}
 	}
@@ -225,9 +225,15 @@ func (tb *testBackend) hitCount(id string) int {
 	return tb.hits[id]
 }
 
-func (tb *testBackend) dial(t *testing.T, ctx context.Context, query string, header http.Header) (*websocket.Conn, *http.Response, error) {
+// dial opens a WebSocket; on a failed handshake it also returns the HTTP status.
+func (tb *testBackend) dial(t *testing.T, ctx context.Context, query string, header http.Header) (*websocket.Conn, int, error) {
 	t.Helper()
-	return websocket.Dial(ctx, "ws"+strings.TrimPrefix(tb.srv.URL, "http")+"/ws"+query, &websocket.DialOptions{HTTPHeader: header})
+	conn, resp, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(tb.srv.URL, "http")+"/ws"+query, &websocket.DialOptions{HTTPHeader: header}) //nolint:bodyclose // websocket.Dial already closes the handshake response body
+	status := 0
+	if resp != nil {
+		status = resp.StatusCode
+	}
+	return conn, status, err
 }
 
 // readTypes reads messages until the competitor_update (the last message of a replay or live batch).
@@ -369,11 +375,11 @@ func TestRejectedCompetitionIDs(t *testing.T) {
 	defer cancel()
 
 	status := func(query string) int {
-		_, resp, err := tb.dial(t, ctx, query, nil)
+		_, code, err := tb.dial(t, ctx, query, nil)
 		if err == nil {
 			t.Fatalf("%q: expected the handshake to fail", query)
 		}
-		return resp.StatusCode
+		return code
 	}
 	for _, q := range []string{"", "?competitionId=", "?competitionId=a/b", "?competitionId=a%0d%0ab", "?competitionId=" + strings.Repeat("x", 65), "?competitionId=a.b"} {
 		if got := status(q); got != http.StatusBadRequest {
