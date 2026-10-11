@@ -212,7 +212,7 @@ func (f *fetcher) fetchOnce(ctx context.Context) error {
 
 	var raw rawData
 	if err := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(&raw); err != nil {
-		return fmt.Errorf("decode: %w", err)
+		return fmt.Errorf("decode (content type %q): %w", resp.Header.Get("Content-Type"), err)
 	}
 	f.room.apply(process(&raw))
 	if raw.Success != nil && !*raw.Success {
