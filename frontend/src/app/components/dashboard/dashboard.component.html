@@ -34,8 +34,8 @@
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
       <!-- Display settings (collapsible) -->
       <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettingsGroup('display')" [attr.aria-expanded]="displaySettingsOpen">
-          {{ 'displaySettings' | translate }} <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
+        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettingsGroup('display')" [attr.aria-expanded]="displaySettingsOpen" [attr.aria-label]="'displaySettings' | translate" [attr.title]="'displaySettings' | translate">
+          <span class="topbar-group-text">{{ 'displaySettings' | translate }}</span><span class="topbar-group-cog" aria-hidden="true">⚙</span> <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
           <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'displaySettings' | translate">

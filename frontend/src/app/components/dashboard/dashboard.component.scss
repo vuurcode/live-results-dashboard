@@ -92,8 +92,11 @@
 }
 @media (max-width: 767.98px) {
   // Settings drop to their own full-width row and wrap instead of widening the page.
-  .topbar-settings { flex: 1 1 100%; margin-left: 0 !important; }
+  // The match picker and the settings share one row; the display settings shrink to a cogwheel.
+  .topbar-settings { flex: 0 0 auto; }
   .topbar-settings-group { max-width: 100%; }
+  .topbar-group-text { display: none; }
+  .topbar-group-cog { display: inline; font-size: 1.25rem; line-height: 1; }
   .topbar-group-btn { min-height: 2rem; }
   .setting-group .form-switch .form-check-input { height: 1.5rem; width: 2.75rem; }
 }
@@ -132,18 +135,22 @@
   }
 }
 .match-hint-alone::before { display: none; }
+.topbar-matches {
+  // wide screens: the picker takes the room the title and settings leave, up to a readable width
+  flex: 1 1 36rem;
+  max-width: 80rem;
+  min-width: 0;
+}
 .topbar-match-select {
   min-height: 2.5rem;
-  width: 36rem;
-  max-width: 100%;
+  width: 100%;
   background-color: rgba(255,255,255,0.1);
   border-color: rgba(255,255,255,0.25);
   color: #fff;
   option { color: #212529; }
 }
 @media (max-width: 767.98px) {
-  .topbar-matches { flex: 1 1 100%; }
-  .topbar-matches { min-width: 0; }
+  .topbar-matches { flex: 1 1 0; min-width: 0; }
   .topbar-match-select {
     width: 100%; max-width: 100%; min-height: 2rem;
     // long names shrink towards a readable minimum instead of being cut off early
