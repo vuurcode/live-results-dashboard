@@ -5,7 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
 import { FeedStatus, TodayMatch, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
-import { Observable, combineLatest, concat, defer, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
+import { Observable, combineLatest, concat, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
@@ -87,7 +87,8 @@ export class DashboardComponent implements OnInit {
   hasMassStart$: Observable<boolean>;
 
   /** Matches happening today, for the match picker in the top bar. */
-  readonly todayMatches$: Observable<TodayMatch[]> = defer(() => from(this.dataService.todayMatches()));
+  /** The matches of today, asked again every few minutes so new matches show up and finished ones drop off while the page stays open. */
+  readonly todayMatches$: Observable<TodayMatch[]> = timer(0, 5 * 60_000).pipe(switchMap(() => from(this.dataService.todayMatches())));
 
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
   selectedLabelLength(matches: TodayMatch[]): number {
