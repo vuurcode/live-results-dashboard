@@ -6,7 +6,7 @@
   0%   { background-color: #fff3cd; }
   100% { background-color: transparent; }
 }
-@keyframes trcRainbowText {
+@keyframes recordRainbowText {
   0%   { color: rgba(224, 64, 251, 0.50); }
   17%  { color: rgba(63, 81, 181, 0.50); }
   33%  { color: rgba(0, 188, 212, 0.50); }
@@ -15,7 +15,7 @@
   83%  { color: rgba(255, 87, 34, 0.50); }
   100% { color: rgba(224, 64, 251, 0.50); }
 }
-@keyframes trcRainbow {
+@keyframes recordRainbow {
   0%   { border-color: #e040fb; }
   17%  { border-color: #3f51b5; }
   33%  { border-color: #00bcd4; }
@@ -24,7 +24,7 @@
   83%  { border-color: #ff5722; }
   100% { border-color: #e040fb; }
 }
-@keyframes trcRainbowOutline {
+@keyframes recordRainbowOutline {
   0%   { outline-color: #e040fb; }
   17%  { outline-color: #3f51b5; }
   33%  { outline-color: #00bcd4; }
@@ -228,10 +228,10 @@
     border: 2px solid #6f42c1;
     .timed-comp-title::before { color: rgba(111, 66, 193, 0.85); }
   }
-  &.timed-card-trc {
+  &.timed-card-record {
     border: 4px solid #6f42c1;
-    animation: trcRainbow 2s linear infinite;
-    .timed-comp-title::before { animation: trcRainbowText 2s linear infinite; }
+    animation: recordRainbow 2s linear infinite;
+    .timed-comp-title::before { animation: recordRainbowText 2s linear infinite; }
   }
   // DQ / DNF / Fall etc. are marked by the border, watermark and badge, not by fading the card:
   // the old card-wide opacity 0.7 made every badge and grey label on these cards fail contrast.

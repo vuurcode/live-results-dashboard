@@ -17,15 +17,15 @@
       <div
           class="timed-competitor-card"
           [class.race-finished]="distanceMeters != null && isTimedFinished(race, distanceMeters)"
-          [class.timed-card-pr]="timedCardColor(race) === 'pr'"
-          [class.timed-card-trc]="timedCardColor(race) === 'trc'"
-          [class.timed-card-red]="timedCardColor(race) === 'red'"
-          [class.timed-card-orange]="timedCardColor(race) === 'orange'"
+          [class.timed-card-pr]="timedCardVariant(race) === 'pr'"
+          [class.timed-card-record]="timedCardVariant(race) === 'record'"
+          [class.timed-card-red]="timedCardVariant(race) === 'red'"
+          [class.timed-card-orange]="timedCardVariant(race) === 'orange'"
           [class.timed-card-no-time]="watermarkCentered(race)"
         >
         <!-- Card title: the full name, with the status and PB badges on a line below; the watermark sits at its bottom -->
         <div class="timed-comp-title" [attr.data-watermark]="timedWatermarkText(race)">
-          @if (timedCardColor(race) === 'pr') {
+          @if (timedCardVariant(race) === 'pr') {
             @let prCmp = distanceMeters ? timedPrComparison(race, distanceMeters) : null;
             <div class="timed-watermark timed-watermark-pr" aria-hidden="true">
               <div class="timed-watermark-text">{{ ts.t('remarkNewPb') }}</div>
@@ -34,7 +34,7 @@
               }
             </div>
           }
-          <div class="timed-comp-header">
+          <div class="timed-comp-header" [class.timed-comp-header-merged]="!titleExpanded(race)">
             <span class="timed-comp-name">{{ race.name }}@if (active) { <c-badge color="danger" class="glowing-badge timed-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
             <!-- category / club code, small below the name; the line keeps its height when there is none -->
             <span class="timed-comp-meta">{{ metaLine(race) }}</span>

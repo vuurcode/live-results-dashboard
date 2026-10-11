@@ -163,13 +163,13 @@ export class TimedHeatCardComponent {
   }
 
   /** Color variant for a timed card based on invalid_reason/remark values. */
-  timedCardColor(race: CompetitorUpdate): 'pr' | 'trc' | 'red' | 'orange' | null {
+  timedCardVariant(race: CompetitorUpdate): 'pr' | 'record' | 'red' | 'orange' | null {
     if (race.invalid_reason) {
       return race.invalid_reason.toUpperCase() === RaceCode.Disqualified ? 'red' : 'orange';
     }
     if (race.remark) {
       const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
-      if (parts.some(v => RECORD_CODES.has(v))) return 'trc';
+      if (parts.some(v => RECORD_CODES.has(v))) return 'record';
       if (parts.some(v => v === RaceCode.PersonalRecord)) return 'pr';
       return 'orange';
     }
@@ -194,10 +194,10 @@ export class TimedHeatCardComponent {
     // PR watermark is rendered as a DOM overlay to support smaller decimal formatting
     if (parts.every(v => v === RaceCode.PersonalRecord)) return null;
     // records come first, the most significant one wins
-    const trcCode = RECORD_PRIORITY.find(v => parts.includes(v));
-    if (trcCode) {
-      const label = this.timedLabelTitle(trcCode) ?? trcCode;
-      if (trcCode === RaceCode.TrackRecordCourse && race.category) {
+    const recordCode = RECORD_PRIORITY.find(v => parts.includes(v));
+    if (recordCode) {
+      const label = this.timedLabelTitle(recordCode) ?? recordCode;
+      if (recordCode === RaceCode.TrackRecordCourse && race.category) {
         return `${label}\n${this.categoryLabel(race.category)}`;
       }
       return label;
@@ -236,6 +236,11 @@ export class TimedHeatCardComponent {
   /** Category and club code for under the name: "DA1 / IFX", or whichever of the two there is. */
   metaLine(race: CompetitorUpdate): string {
     return [this.categoryLabel(race.category), race.club_code].filter(Boolean).join(' / ');
+  }
+
+  /** Name and meta share one line while the race runs; a finished race or a final code gets the room of two lines. */
+  titleExpanded(race: CompetitorUpdate): boolean {
+    return this.compactDone(race) || !!race.invalid_reason || race.finished_rank != null;
   }
 
   /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no racer in this heat. */

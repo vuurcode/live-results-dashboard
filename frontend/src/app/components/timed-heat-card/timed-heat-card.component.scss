@@ -108,6 +108,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+// A racing card shows the name and the category / club on one line, so several cards fit in a single-lane view.
+.timed-comp-header-merged {
+  .timed-comp-name { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .timed-comp-meta { flex: 1 1 0; min-width: 0; min-height: 0; margin-top: 0; }
+}
 .timed-comp-badges {
   // The second line of the title, aligned left.
   display: flex;
@@ -202,12 +207,12 @@
   background-color: #6f42c1;
   color: #fff; // 6.5:1
 }
-.timed-card-trc .timed-compact-final .timed-lap-time {
+.timed-card-record .timed-compact-final .timed-lap-time {
   // a record: the total is purple too, with the rainbow border of the card around it
   background-color: #6f42c1;
   color: #fff;
   outline: 3px solid #e040fb;
-  animation: trcRainbowOutline 2s linear infinite;
+  animation: recordRainbowOutline 2s linear infinite;
 }
 .compact-reached {
   align-self: center;
