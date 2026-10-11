@@ -66,10 +66,6 @@ describe('truncateLapTime', () => {
     expect(truncateLapTime('23.499', 1)).toBe('23.4');
   });
 
-  it('returns the input unchanged when there is no decimal point', () => {
-    expect(truncateLapTime('23', 1)).toBe('23');
-  });
-
   it('returns falsy input unchanged', () => {
     expect(truncateLapTime('', 1)).toBe('');
   });
@@ -80,18 +76,11 @@ describe('splitLapTime', () => {
     expect(splitLapTime('1:23.456')).toEqual(['1:23', '.4']);
   });
 
-  it('returns an empty decimal part when there is no dot', () => {
-    expect(splitLapTime('23')).toEqual(['23', '']);
-  });
 });
 
 describe('splitFormattedTime', () => {
   it('splits without truncating', () => {
     expect(splitFormattedTime('1:23.456')).toEqual(['1:23', '.456']);
-  });
-
-  it('returns an empty decimal part when there is no dot', () => {
-    expect(splitFormattedTime('23')).toEqual(['23', '']);
   });
 
   it('returns two empty strings for falsy input', () => {
@@ -122,4 +111,14 @@ describe('sameHundredths', () => {
   it('is true when only the thousandths differ', () => expect(sameHundredths('1:23.456', '1:23.459')).toBe(true));
   it('is false when the hundredths differ', () => expect(sameHundredths('43.009', '43.010')).toBe(false));
   it('truncates instead of rounding', () => expect(sameHundredths('43.999', '43.990')).toBe(true));
+});
+
+describe('whole seconds', () => {
+  it('always get a decimal', () => {
+    expect(truncateLapTime('23', 1)).toBe('23.0');
+    expect(truncateLapTime('1:23', 2)).toBe('1:23.00');
+    expect(truncateLapTime('23.4', 3)).toBe('23.400');
+    expect(splitFormattedTime('23')).toEqual(['23', '.0']);
+    expect(splitLapTime('1:23')).toEqual(['1:23', '.0']);
+  });
 });

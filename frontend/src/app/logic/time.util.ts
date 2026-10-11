@@ -32,14 +32,15 @@ export function formatDurationSeconds(totalSeconds: number): string {
 }
 
 /**
- * Truncates (not rounds) a formatted lap/total time string to `decimals` decimal places.
- * e.g. truncateLapTime("23.456", 1) -> "23.4"
+ * Truncates (not rounds) a formatted lap/total time string to `decimals` decimal places; a time always has them,
+ * so a whole number of seconds is padded with zeros.
+ * e.g. truncateLapTime("23.456", 1) -> "23.4", truncateLapTime("23", 1) -> "23.0"
  */
 export function truncateLapTime(t: string, decimals = 1): string {
   if (!t) return t;
   const dot = t.lastIndexOf('.');
-  if (dot === -1) return t;
-  return t.substring(0, dot + 1 + decimals);
+  if (dot === -1) return decimals > 0 ? `${t}.${'0'.repeat(decimals)}` : t;
+  return t.substring(0, dot + 1 + decimals).padEnd(dot + 1 + decimals, '0');
 }
 
 /**
@@ -52,12 +53,12 @@ export function splitLapTime(t: string): [string, string] {
 
 /**
  * Splits an already-formatted time string into [integerPart, decimalPart]
- * without truncating, e.g. "1:23.456" -> ["1:23", ".456"].
+ * without truncating, e.g. "1:23.456" -> ["1:23", ".456"]; a whole number of seconds gets ".0".
  */
 export function splitFormattedTime(t: string): [string, string] {
   if (!t) return ['', ''];
   const dot = t.indexOf('.');
-  if (dot === -1) return [t, ''];
+  if (dot === -1) return [t, '.0'];
   return [t.substring(0, dot), '.' + t.substring(dot + 1)];
 }
 
