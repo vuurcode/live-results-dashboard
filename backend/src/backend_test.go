@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -608,5 +609,49 @@ func TestLiveResultsBaseURL(t *testing.T) {
 		if got := loadConfig().dataSourceURL; got != tc.want {
 			t.Errorf("base=%q: got %q, want %q", tc.base, got, tc.want)
 		}
+	}
+}
+
+func TestClosesRoomsOfEndedMatches(t *testing.T) {
+	tb := newTestBackend(t, nil)
+	var ended atomic.Bool
+	tb.m.ended = func(string) bool { return ended.Load() }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.CloseNow()
+	readUntilCompetitor(t, ctx, conn)
+	tb.m.closeEnded()
+	if tb.m.roomCount() != 1 {
+		t.Fatal("a match that is not over keeps its room")
+	}
+
+	ended.Store(true)
+	tb.m.closeEnded()
+	if tb.m.roomCount() != 0 {
+		t.Fatalf("rooms = %d, want the room closed", tb.m.roomCount())
+	}
+	for { // the client is told, with the code the page reads as "no match to follow"
+		if _, _, err := conn.Read(ctx); err != nil {
+			if websocket.CloseStatus(err) != websocket.StatusPolicyViolation {
+				t.Fatalf("closed with %v, want a policy violation", err)
+			}
+			break
+		}
+	}
+
+	conn2, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err == nil {
+		defer conn2.CloseNow()
+		if _, _, err = conn2.Read(ctx); websocket.CloseStatus(err) != websocket.StatusPolicyViolation {
+			t.Fatalf("rejoin after the end: %v, want a policy violation", err)
+		}
+	}
+	if tb.m.roomCount() != 0 {
+		t.Fatal("an ended match must not get a new room")
 	}
 }

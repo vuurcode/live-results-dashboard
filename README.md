@@ -17,7 +17,7 @@ Developed with assistance from [Claude Code](https://claude.com/claude-code).
 | `LIVE_RESULTS_INTERVAL` | `1` | Seconds between live results requests per match |
 | `VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
-| `CATALOG_TTL_SECONDS` | `86400` | Cache time of the competitions list (venues are cached for the life of the process) |
+| `CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (venues are cached for the life of the process). Rooms of matches that ended more than a day ago are closed within a minute |
 | `USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
 | `DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
 

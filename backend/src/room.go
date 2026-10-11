@@ -30,6 +30,7 @@ type room struct {
 	feed    *feedStatus // what the data source says about the match; nil until the first answer
 	st      *store
 	clients map[*client]struct{}
+	ended   bool // closed because the match is over
 }
 
 func newRoom(id, url string, cfg config, cancel func()) *room {
@@ -133,4 +134,20 @@ func (r *room) clientCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return len(r.clients)
+}
+
+// end disconnects every client because the match is over.
+func (r *room) end() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ended = true
+	for c := range r.clients {
+		r.dropLocked(c)
+	}
+}
+
+func (r *room) isEnded() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.ended
 }

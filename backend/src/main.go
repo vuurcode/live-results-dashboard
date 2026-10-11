@@ -81,7 +81,7 @@ func loadConfig() config {
 		pingInterval:         defaultPingInterval,
 
 		catalogURL:      os.Getenv("MATCH_INFO_BASE_URL"),
-		catalogTTL:      24 * time.Hour,
+		catalogTTL:      15 * time.Minute,
 		venueCountry:    getenv("VENUE_COUNTRY_CODE", "NED"),
 		venueDiscipline: getenv("VENUE_DISCIPLINE", "SpeedSkating.LongTrack"),
 	}
@@ -263,6 +263,8 @@ func main() {
 		slog.Error("Match list disabled", "err", err)
 	} else {
 		mux.HandleFunc("GET /api/matches/today", cat.serveToday)
+		m.ended = cat.ended
+		go m.watchEnded(ctx, time.Minute)
 	}
 	srv := &http.Server{
 		Addr:              cfg.listenAddr,

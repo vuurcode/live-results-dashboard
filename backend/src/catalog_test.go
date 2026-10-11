@@ -226,3 +226,22 @@ func TestTodayWithoutMatchesIsAnEmptyList(t *testing.T) {
 		t.Fatalf("status %d body %q, want 200 and []", rec.Code, rec.Body.String())
 	}
 }
+
+func TestEndedMatchesAreKnownAfterTheyLeaveTheList(t *testing.T) {
+	e := newCatalogEnv(t,
+		comp("today", "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-24T19:00:00Z"),
+		comp("old", "DEV", "SpeedSkating.LongTrack", "2026-10-20T10:00:00Z", "2026-10-20T12:00:00Z"),
+	)
+	if _, err := e.cat.today(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]bool{"today": false, "old": true, "never-listed": false} {
+		if got := e.cat.ended(id); got != want {
+			t.Errorf("ended(%s) = %v, want %v", id, got, want)
+		}
+	}
+	e.now = time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC) // two days later
+	if !e.cat.ended("today") {
+		t.Error("a match two days after its end is over, without refetching")
+	}
+}

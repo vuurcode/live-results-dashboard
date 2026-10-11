@@ -151,6 +151,7 @@ type catalog struct {
 	mu         sync.Mutex
 	venues     map[string]venue
 	matches    []*match
+	known      map[string]*match // every match of the venues, also those no longer listed
 	fetchedAt  time.Time
 	lastFailed time.Time
 }
@@ -217,6 +218,7 @@ func (c *catalog) loadMatches(ctx context.Context) error {
 	}
 	now := c.now()
 	var matches []*match
+	known := map[string]*match{}
 	for i := range raw {
 		r := &raw[i]
 		v, ok := c.venues[r.Venue.Code]
@@ -235,12 +237,14 @@ func (c *catalog) loadMatches(ctx context.Context) error {
 		} else {
 			m.to = r.Starts
 		}
+		known[m.ID] = m
 		if m.active(now) {
 			matches = append(matches, m)
 		}
 	}
 	sort.Slice(matches, func(i, j int) bool { return matches[i].from.Before(matches[j].from) })
 	c.matches = matches
+	c.known = known
 	c.fetchedAt = now
 	slog.Info("Competitions loaded", "listed", len(matches), "of", len(raw))
 	return nil
@@ -281,6 +285,15 @@ func (c *catalog) reload(ctx context.Context) error {
 		}
 	}
 	return c.loadMatches(ctx)
+}
+
+// ended reports whether id is a match that is over for good (more than a day after it ended). An id the catalog has
+// never seen is not ended: it may be a competition the list does not carry.
+func (c *catalog) ended(id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m, ok := c.known[id]
+	return ok && m.window(c.now()) == windowPast
 }
 
 // today lists the matches whose local days include today, including those that have not started yet.
