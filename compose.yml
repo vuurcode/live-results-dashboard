@@ -50,7 +50,9 @@ services:
       context: ./backend
       dockerfile: Containerfile
     environment:
-      DATA_SOURCE_URL: ${DATA_SOURCE_URL:?set DATA_SOURCE_URL for prod}
+      # no ':?' check here: compose interpolates every service, also for profiles that are not started.
+      # The backend itself refuses to start when this is empty.
+      DATA_SOURCE_URL: ${DATA_SOURCE_URL:-}
       DATA_SOURCE_INTERVAL: ${DATA_SOURCE_INTERVAL:-1}
     restart: unless-stopped
     networks:

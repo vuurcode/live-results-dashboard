@@ -59,6 +59,10 @@ func (c config) interval() time.Duration {
 }
 
 func loadConfig() config {
+	if v, ok := os.LookupEnv("DATA_SOURCE_URL"); ok && v == "" {
+		slog.Error("DATA_SOURCE_URL is set but empty; set it to the live data source URL")
+		os.Exit(1)
+	}
 	cfg := config{
 		dataSourceURL:      getenv("DATA_SOURCE_URL", "http://localhost:8080/api/data"),
 		dataSourceInterval: 1,
