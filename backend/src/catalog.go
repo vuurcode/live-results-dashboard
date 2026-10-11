@@ -88,6 +88,10 @@ var windowsZones = map[string]string{
 func loadZone(name string) *time.Location {
 	if iana, ok := windowsZones[name]; ok {
 		name = iana
+	} else if name == "undefined" || strings.HasPrefix(name, "W. Europe") {
+		// the upstream sends the text "undefined" for some competitions and may name the Dutch zone with another suffix;
+		// the dashboard only lists Dutch venues
+		name = "Europe/Amsterdam"
 	}
 	if loc, err := time.LoadLocation(name); err == nil && name != "" {
 		return loc

@@ -161,6 +161,11 @@ func TestOriginOfAndZones(t *testing.T) {
 	if got := loadZone("W. Europe Standard Time").String(); got != "Europe/Amsterdam" {
 		t.Errorf("zone = %q", got)
 	}
+	for _, name := range []string{"undefined", "W. Europe Daylight Time"} {
+		if got := loadZone(name).String(); got != "Europe/Amsterdam" {
+			t.Errorf("%q -> %q, want Europe/Amsterdam", name, got)
+		}
+	}
 	if got := loadZone("Europe/Berlin").String(); got != "Europe/Berlin" {
 		t.Errorf("iana zone = %q", got)
 	}
