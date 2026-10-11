@@ -69,12 +69,12 @@ func TestReplayStartsOnFirstRequestAndAdvances(t *testing.T) {
 	ts, base := newTestServer(t, 30*time.Millisecond)
 	writeSamples(t, base, "m1", `{"s":1}`, `{"s":2}`, `{"s":3}`)
 
-	if code, body := do(t, "GET", ts.URL+"/api/data?competitionId=m1"); code != 200 || body != `{"s":1}` {
+	if code, body := do(t, "GET", ts.URL+"/Competition?competitionId=m1"); code != 200 || body != `{"s":1}` {
 		t.Fatalf("first request: %d %q, want the first sample", code, body)
 	}
-	waitForBody(t, ts.URL+"/api/data?competitionId=m1", `{"s":3}`)
+	waitForBody(t, ts.URL+"/Competition?competitionId=m1", `{"s":3}`)
 	time.Sleep(100 * time.Millisecond)
-	if _, body := do(t, "GET", ts.URL+"/api/data?competitionId=m1"); body != `{"s":3}` {
+	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=m1"); body != `{"s":3}` {
 		t.Errorf("last sample not held: %q", body)
 	}
 }
@@ -85,10 +85,10 @@ func TestMatchesReplayIndependently(t *testing.T) {
 	writeSamples(t, base, "b", `{"m":"b1"}`)
 
 	// Nothing is replayed until a match is requested; others stay idle.
-	if _, body := do(t, "GET", ts.URL+"/api/data?competitionId=a"); body != `{"m":"a1"}` {
+	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=a"); body != `{"m":"a1"}` {
 		t.Errorf("a: %q", body)
 	}
-	if _, body := do(t, "GET", ts.URL+"/api/data?competitionId=b"); body != `{"m":"b1"}` {
+	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=b"); body != `{"m":"b1"}` {
 		t.Errorf("b: %q", body)
 	}
 	if _, body := do(t, "GET", ts.URL+"/api/matches"); body != `["a","b"]` {
@@ -113,7 +113,7 @@ func TestRejectsBadAndUnknownMatches(t *testing.T) {
 		"?competitionId=ok":        200,
 	}
 	for q, want := range cases {
-		if code, _ := do(t, "GET", ts.URL+"/api/data"+q); code != want {
+		if code, _ := do(t, "GET", ts.URL+"/Competition"+q); code != want {
 			t.Errorf("%q: %d, want %d", q, code, want)
 		}
 	}
@@ -125,22 +125,22 @@ func TestRejectsBadAndUnknownMatches(t *testing.T) {
 func TestSkipsUnparseableSamples(t *testing.T) {
 	ts, base := newTestServer(t, 20*time.Millisecond)
 	writeSamples(t, base, "m", `not json`, `{"ok":1}`, `{broken`, `{"ok":2}`)
-	if _, body := do(t, "GET", ts.URL+"/api/data?competitionId=m"); body != `{"ok":1}` {
+	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=m"); body != `{"ok":1}` {
 		t.Errorf("first valid sample = %q", body)
 	}
-	waitForBody(t, ts.URL+"/api/data?competitionId=m", `{"ok":2}`)
+	waitForBody(t, ts.URL+"/Competition?competitionId=m", `{"ok":2}`)
 }
 
 func TestReset(t *testing.T) {
 	ts, base := newTestServer(t, 20*time.Millisecond)
 	writeSamples(t, base, "m", `{"s":1}`, `{"s":2}`)
-	do(t, "GET", ts.URL+"/api/data?competitionId=m")
-	waitForBody(t, ts.URL+"/api/data?competitionId=m", `{"s":2}`)
+	do(t, "GET", ts.URL+"/Competition?competitionId=m")
+	waitForBody(t, ts.URL+"/Competition?competitionId=m", `{"s":2}`)
 
 	if code, body := do(t, "POST", ts.URL+"/api/reset?competitionId=m"); code != 200 || !strings.Contains(body, `"reset":true`) {
 		t.Fatalf("reset: %d %q", code, body)
 	}
-	if _, body := do(t, "GET", ts.URL+"/api/data?competitionId=m"); body != `{"s":1}` {
+	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=m"); body != `{"s":1}` {
 		t.Errorf("after reset: %q, want the first sample", body)
 	}
 	if code, _ := do(t, "POST", ts.URL+"/api/reset"); code != 200 {

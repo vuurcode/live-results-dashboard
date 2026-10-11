@@ -1,7 +1,7 @@
 // Mock server for live-results-dashboard.
 //
 // DATA_SAMPLE_DIRECTORY is a base directory with one subdirectory per match. A
-// match's id is its subdirectory name. The first GET /api/data?competitionId=<id>
+// match's id is its subdirectory name. The first GET /Competition?competitionId=<id>
 // starts that match's replay: its JSON samples are served in ascending filename
 // order, DATA_SAMPLE_INTERVAL seconds apart, holding the last sample at the end.
 // Matches replay independently of each other.
@@ -10,7 +10,7 @@
 //	GET  /api/venues                     synthetic venues (DEV: a Dutch long-track venue that hosts every sample match, plus distractors)
 //	GET  /api/competitions               one competition per match, running today, plus synthetic ones
 //	                                     (tomorrow, last week, other venue) to exercise filtering
-//	GET  /api/data?competitionId=<id>    current sample of a match; starts its replay on first use
+//	GET  /Competition?competitionId=<id> current sample of a match; starts its replay on first use
 //	POST /api/reset[?competitionId=<id>] restart one started match, or all of them
 package main
 
@@ -325,7 +325,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("GET /api/venues", s.handleVenues)
 	mux.HandleFunc("GET /api/competitions", s.handleCompetitions)
 	mux.HandleFunc("GET /api/matches", s.handleMatches)
-	mux.HandleFunc("GET /api/data", s.handleData)
+	mux.HandleFunc("GET /Competition", s.handleData)
 	mux.HandleFunc("POST /api/reset", s.handleReset)
 	return mux
 }
