@@ -28,6 +28,7 @@ import {
   heatGroupLaneColors as heatGroupLaneColorsUtil,
   type MergedHeatGroup,
 } from '../../logic/heats.util';
+import { RaceCode } from '../../logic/race-codes';
 import { followScrollTop } from '../../logic/scroll.util';
 import { raceListAnimation, raceListKey } from './dashboard.animations';
 
@@ -71,6 +72,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private currentFollowKey: string | null = null;
   /** Index of the heat being followed in the live distance; auto-follow only moves forward from it. */
   private followHeatIndex = -1;
+  /** The live distance the page follows; auto-follow never goes back to an earlier distance. */
+  private followedDistanceId: string | null = null;
+  private followedEventNumber = -1;
   private followScrollSub: Subscription | null = null;
   private scrolledToLiveOnLoad = false;
   private activeHeatSub: Subscription | null = null;
@@ -251,6 +255,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    // the browser would restore the previous scroll position on reload, after the page has landed on the live distance
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     this.titleSub = this.dataService.eventName$.subscribe(name => {
       const pageTitle = this.ts.t('pageTitle');
       this.titleService.setTitle(name ? `${name} | ${pageTitle}` : pageTitle);
@@ -260,6 +266,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.liveEventNumber = null;
       this.currentFollowKey = null;
       this.followHeatIndex = -1;
+      this.followedDistanceId = null;
+      this.followedEventNumber = -1;
+      this.scrolledToLiveOnLoad = false;
       this.cdr.markForCheck();
     });
     this.followScrollSub = this.sortedDistances$.subscribe(distances => {
@@ -269,21 +278,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // without auto-follow the page still lands on the live distance once, when it first shows up
         if (!this.scrolledToLiveOnLoad) {
           this.scrolledToLiveOnLoad = true;
-          requestAnimationFrame(() => this._scrollTo(document.querySelector(`[data-distance-header="${live.id}"]`) as HTMLElement | null, this.HEADER_ANCHOR));
+          this._scrollTo(`[data-distance-header="${live.id}"]`, this.HEADER_ANCHOR);
         }
         return;
       }
-      // When the live distance changes, expand its accordion and scroll to it
-      if (live.id !== this.initialLiveId) {
+      // When the live distance moves on, expand its accordion and scroll to it; a flip back to an earlier distance is ignored
+      if (live.id !== this.followedDistanceId) {
+        if (live.eventNumber < this.followedEventNumber) return;
+        this.followedDistanceId = live.id;
+        this.followedEventNumber = live.eventNumber;
         this.initialLiveId = live.id;
         this.liveEventNumber = live.eventNumber;
         this.currentFollowKey = null;
         this.followHeatIndex = -1;
         this.cdr.markForCheck();
-        requestAnimationFrame(() => {
-          const el = document.querySelector(`[data-distance-header="${live.id}"]`) as HTMLElement | null;
-          this._scrollTo(el, this.HEADER_ANCHOR);
-        });
+        this._scrollTo(`[data-distance-header="${live.id}"]`, this.HEADER_ANCHOR);
         return;
       }
       this._scrollToFollow(live);
@@ -437,7 +446,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!distance.isMassStart) {
       const heatGroups = this.mergedHeatGroups(distance);
       const currentIdx = heatGroups.reduce(
-        (last, g, i) => (g.races.some(r => r != null && isRecentUpdate(r.lastUpdated)) ? i : last), -1);
+        (last, g, i) => (g.races.some(r => r != null && !isWithdrawn(r) && isRecentUpdate(r.lastUpdated)) ? i : last), -1);
       // an update in an earlier heat (e.g. a manual time correction) must not pull the page back
       if (currentIdx === -1 || currentIdx < this.followHeatIndex) return;
       this.followHeatIndex = currentIdx;
@@ -454,28 +463,65 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (key === this.currentFollowKey) return;
     this.currentFollowKey = key;
 
-    requestAnimationFrame(() => this._scrollTo(document.querySelector(selector) as HTMLElement | null, anchor));
+    this._scrollTo(selector, anchor);
   }
 
   /** Where the followed element lands, as a fraction of the viewport height from the top. */
   private readonly HEAT_ANCHOR = 0.3; // active heat a third of the way down, previous heats still partly visible
   private readonly HEADER_ANCHOR = 0.03; // a small breathing margin above a distance
 
-  private _scrollTo(el: HTMLElement | null, anchorRatio: number): void {
-    if (!el) return;
-    const top = followScrollTop(
-      el.getBoundingClientRect().top,
-      window.scrollY,
-      window.innerHeight,
-      document.documentElement.scrollHeight,
-      anchorRatio,
-    );
-    window.scrollTo({ top, behavior: 'smooth' });
+  /** Longest wait for the page to stop changing height before scrolling anyway. */
+  private readonly SETTLE_MAX_MS = 1000;
+  /** How long the page height has to stay the same to count as settled. */
+  private readonly SETTLE_STABLE_MS = 150;
+  /** A scroll shorter than this fraction of the viewport height is not worth making. */
+  private readonly SCROLL_DEAD_ZONE = 0.1;
+  private scrollRun = 0;
+
+  /**
+   * Scrolls the element matching `selector` into place. A distance that is opening, or cards that are just arriving, make
+   * the page grow for a moment; scrolling before that is over aims at a page that is still too short, so this waits until
+   * the page height has been steady for a short while.
+   */
+  private _scrollTo(selector: string, anchorRatio: number): void {
+    const run = ++this.scrollRun; // a newer scroll replaces one that is still waiting
+    const started = performance.now();
+    let height = -1;
+    let steadySince = started;
+    const step = (now: number) => {
+      if (run !== this.scrollRun) return;
+      const current = document.documentElement.scrollHeight;
+      if (current !== height) {
+        height = current;
+        steadySince = now;
+      }
+      if (now - steadySince < this.SETTLE_STABLE_MS && now - started < this.SETTLE_MAX_MS) {
+        requestAnimationFrame(step);
+        return;
+      }
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (!el) return;
+      const top = followScrollTop(
+        el.getBoundingClientRect().top,
+        window.scrollY,
+        window.innerHeight,
+        document.documentElement.scrollHeight,
+        anchorRatio,
+      );
+      if (Math.abs(top - window.scrollY) < window.innerHeight * this.SCROLL_DEAD_ZONE) return; // already in place: no nudging back and forth
+      window.scrollTo({ top, behavior: 'smooth' });
+    };
+    requestAnimationFrame(step);
   }
 
 }
 
 const DISCONNECT_GRACE_MS = 3000;
+
+/** A withdrawn race is loaded up front and says nothing about the timing that is going on. */
+function isWithdrawn(race: CompetitorUpdate): boolean {
+  return [race.invalid_reason, ...(race.remark ?? '').split(/\s+/)].some(c => c?.toUpperCase() === RaceCode.Withdrawn);
+}
 
 interface EmptyNotice {
   titleKey: TranslationKey;
