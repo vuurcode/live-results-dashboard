@@ -1,6 +1,5 @@
 import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
-import { RaceCode } from '../../logic/race-codes';
-import { isRecentUpdate } from '../../logic/time.util';
+import { RaceCode, isNeverLive } from '../../logic/race-codes';
 
 /** Where the followed element lands, as a fraction of the viewport height from the top. */
 export const HEAT_ANCHOR = 0.3; // active heat a third of the way down, previous heats still partly visible
@@ -11,7 +10,7 @@ export interface AutoFollowHost {
   /** Whether the viewer wants the page to follow the live heat. */
   follow(): boolean;
   heatGroups(distance: ProcessedDistance): { label: string; races: (CompetitorUpdate | null)[] }[];
-  scrollTo(selector: string, anchorRatio: number): void;
+  scrollTo(selector: string, anchorRatio: number): void | Promise<void>;
   /** The followed live distance changed (and the page should open it). */
   liveDistanceChanged(distance: ProcessedDistance): void;
 }
@@ -82,8 +81,12 @@ export class AutoFollow {
       anchor = HEADER_ANCHOR;
     } else {
       const groups = this.host.heatGroups(distance);
-      const current = groups.reduce(
-        (last, g, i) => (g.races.some(r => r != null && !isWithdrawn(r) && isRecentUpdate(r.lastUpdated)) ? i : last), -1);
+      // the heat marked live on the page: the one whose lap times changed last (the later heat when they changed together)
+      let latest = 0;
+      let current = -1;
+      groups.forEach((g, i) => g.races.forEach(r => {
+        if (r?.lapsUpdatedAt && !isNeverLive(r) && r.lapsUpdatedAt >= latest) { latest = r.lapsUpdatedAt; current = i; }
+      }));
       if (current === -1 || current < this.heatIndex) return;
       this.heatIndex = current;
       key = `${distance.id}:${groups[current].label}`;

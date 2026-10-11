@@ -4,7 +4,7 @@ import { AutoFollow, HEADER_ANCHOR, HEAT_ANCHOR } from './auto-follow';
 
 interface Heat { label: string; races: (CompetitorUpdate | null)[] }
 
-const race = (lastUpdated: number, extra: Partial<CompetitorUpdate> = {}) => ({ lastUpdated, ...extra }) as CompetitorUpdate;
+const race = (lapsUpdatedAt: number, extra: Partial<CompetitorUpdate> = {}) => ({ lapsUpdatedAt, ...extra }) as CompetitorUpdate;
 const distance = (id: string, eventNumber: number, isLive: boolean, isMassStart = false) =>
   ({ id, eventNumber, isLive, isMassStart }) as ProcessedDistance;
 
@@ -13,7 +13,7 @@ function setup(follow = true) {
   const autoFollow = new AutoFollow({
     follow: () => state.follow,
     heatGroups: () => state.heats,
-    scrollTo: (selector, anchor) => state.scrolls.push([selector, anchor]),
+    scrollTo: (selector, anchor) => { state.scrolls.push([selector, anchor]); },
     liveDistanceChanged: (d) => state.opened.push(d.id),
   });
   return { state, autoFollow };
@@ -41,7 +41,7 @@ describe('AutoFollow', () => {
     expect(state.opened).toEqual([]);
   });
 
-  it('follows the heat with a recent update and only moves forward', () => {
+  it('follows the heat whose laps changed last and only moves forward', () => {
     const { state, autoFollow } = setup();
     const live = distance('d1', 1, true);
     autoFollow.update([live]);
@@ -50,10 +50,10 @@ describe('AutoFollow', () => {
     state.heats = [{ label: 'Heat 1', races: [race(now)] }, { label: 'Heat 2', races: [race(0)] }];
     autoFollow.update([live]);
     expect(state.scrolls).toEqual([['[data-distance-id="d1"][data-heat-label="Heat 1"]', HEAT_ANCHOR]]);
-    state.heats = [{ label: 'Heat 1', races: [race(now)] }, { label: 'Heat 2', races: [race(now)] }];
+    state.heats = [{ label: 'Heat 1', races: [race(now)] }, { label: 'Heat 2', races: [race(now + 1)] }];
     autoFollow.update([live]);
     expect(state.scrolls).toHaveLength(2);
-    state.heats = [{ label: 'Heat 1', races: [race(now)] }, { label: 'Heat 2', races: [race(0)] }]; // a correction in an earlier heat
+    state.heats = [{ label: 'Heat 1', races: [race(now + 2)] }, { label: 'Heat 2', races: [race(now + 1)] }]; // a correction in an earlier heat
     autoFollow.update([live]);
     expect(state.scrolls).toHaveLength(2);
   });
