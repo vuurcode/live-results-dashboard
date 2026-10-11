@@ -30,8 +30,14 @@ test.describe('two-lane match', () => {
     const cardA = page.locator('.timed-competitor-card', { hasText: 'Competitor A' });
     const cardB = page.locator('.timed-competitor-card', { hasText: 'Competitor B' });
     await expect(cardB.getByText('DNF', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
-    await expect(cardA.locator('.timed-lap-row.timed-lap-done')).toHaveCount(2);
+    await expect(cardA.locator('.timed-compact-badge')).toHaveCount(2);
     await expect(cardA.getByText('PB', { exact: true })).toBeVisible();
+    // times are in hundredths by default (PB 43.0 and 41.0 differ in the hundredths), thousandths on request
+    await expect(cardA.locator('.timed-compact-final .race-time')).toHaveText(/^\d+:?\d*\.\d{2}$/);
+    await page.getByRole('button', { name: /^Display/ }).click();
+    await page.locator('#thousandthsInput').check();
+    await expect(cardA.locator('.timed-compact-final .race-time')).toHaveText(/\.\d{3}$/);
+    await page.locator('#thousandthsInput').uncheck();
     // the old personal best on the card title is struck through once it has been beaten
     await expect(cardA.locator('.timed-pb-beaten')).toHaveCSS('text-decoration-line', 'line-through');
     // ... and stays plain for a skater who did not improve it (Competitor C finished slower than 43.0)
@@ -53,7 +59,7 @@ test.describe('personal best wording follows the browser language', () => {
         const cardA = page.locator('.timed-competitor-card', { hasText: 'Competitor A' });
         await expect(cardA.getByText(term, { exact: true }).first()).toBeVisible({ timeout: 15_000 });
         await expect(page.locator('.timed-competitor-card').getByText(other, { exact: true })).toHaveCount(0);
-        await expect(cardA.getByText(`${term}:`)).toBeVisible();
+        await expect(cardA.getByText(term === 'PB' ? 'Previous PB' : 'Vorig PR')).toBeVisible();
       });
     });
   }
@@ -67,7 +73,7 @@ test.describe('long names', () => {
       await page.goto(`/?competitionId=${MATCH}`);
       await expect(page.locator('.timed-competitor-card', { hasText: 'Magnificent Maximiliaan' })).toBeVisible({ timeout: 15_000 });
       await expect(page.locator('.timed-competitor-card', { hasText: 'Supercalifragilistic' })).toBeVisible();
-      await expect(page.locator('.timed-lap-row.timed-lap-done').first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('.timed-compact-badge').first()).toBeVisible({ timeout: 15_000 });
 
       const problems = await page.evaluate(() => {
         const out: string[] = [];

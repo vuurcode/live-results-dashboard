@@ -13,14 +13,15 @@ async function restartReplay(request: import('@playwright/test').APIRequestConte
 
 test.describe('accessibility', () => {
   for (const [match, ready] of [
-    ['e2e-timed', '.timed-lap-row.timed-lap-done'],
+    ['e2e-timed', '.timed-compact-done'], // finished cards show the total time badge
     ['e2e-mass', '.race-item-laps.race-finished'],
   ] as const) {
     test(`${match}: no axe violations once the replay has finished`, async ({ page, request }) => {
+      await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // colours on: their contrast is checked too
       await restartReplay(request, match);
       await page.goto(`/?competitionId=${match}`);
       // finished rows are the last state of the replay, with every badge and row on screen
-      await expect(page.locator(ready)).toHaveCount(match === 'e2e-timed' ? 12 : 4);
+      await expect(page.locator(ready)).toHaveCount(4);
 
       const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
       expect(
@@ -49,4 +50,21 @@ test.describe('accessibility', () => {
     await page.keyboard.press('Space');
     await expect(row).toHaveAttribute('aria-pressed', 'false');
   });
+});
+
+test('compact lap badge colours (green, orange, purple, and the latest one) have enough contrast', async ({ page, request }) => {
+  await restartReplay(request, 'e2e-timed');
+  await page.addInitScript(() => localStorage.setItem('compactColors', 'true'));
+  await page.goto('/?competitionId=e2e-timed');
+  await expect(page.locator('.timed-compact-badge').nth(3)).toBeVisible({ timeout: 30_000 });
+  // force every colour onto real badges, whatever the fixture's lap times happen to be
+  await page.evaluate(() => {
+    const classes = ['lap-badge-normal', 'lap-badge-slow', 'lap-badge-fast'];
+    document.querySelectorAll('.timed-compact-badge').forEach((b, i) => {
+      b.classList.remove(...classes, 'timed-flash-update');
+      b.classList.add(classes[i % 3]);
+    });
+  });
+  const { violations } = await new AxeBuilder({ page }).include('.timed-compact-badge').withTags(TAGS).analyze();
+  expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.html.slice(0, 80)} ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
 });

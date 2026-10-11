@@ -103,11 +103,19 @@ export interface BackendWindow extends Window {
   BACKEND_URL?: string;
 }
 
+/** What the data source says about the match: it answers, is not live (yet) or cannot be reached. */
+export interface FeedStatus {
+  state: 'ok' | 'not_live' | 'unavailable';
+  /** The data source's own text for `not_live` (not localised). */
+  message?: string;
+}
+
 /** Messages the backend sends over the WebSocket. */
 export type BackendMessage =
   | { type: 'status'; data: { competition_id?: string; data_source_url: string; data_source_interval: number } }
   | { type: 'event_name'; data: { name: string } }
   | { type: 'error'; data: string }
+  | { type: 'feed_status'; data: FeedStatus }
   | { type: 'reset' }
   | { type: 'distance_meta'; data: DistanceMeta }
   | { type: 'competitor_update'; data: CompetitorUpdate };

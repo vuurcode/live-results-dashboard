@@ -7,9 +7,30 @@ export interface Translations {
   massStartSettings: string;
   // Follow setting
   todayMatchesLabel: string;
-  compactLabel: string;
-  compactPopoverTitle: string;
-  compactPopoverBody: string;
+  thousandthsLabel: string;
+  hundredthsLabel: string;
+  thousandthsPopoverTitle: string;
+  thousandthsPopoverBody: string;
+  compactColorsLabel: string;
+  compactColorsPopoverTitle: string;
+  compactColorsPopoverBody: string;
+  feedNotLiveTitle: string;
+  feedNotLiveBody: string;
+  feedSourceMessage: string;
+  disclaimer: string;
+  disclaimerLabel: string;
+  disclaimerOwnership: string;
+  feedUnavailableTitle: string;
+  feedUnavailableBody: string;
+  feedEmptyTitle: string;
+  feedEmptyBody: string;
+  feedDisconnectedTitle: string;
+  feedDisconnectedBody: string;
+  feedSlowTitle: string;
+  feedSlowBody: string;
+  tooltipDistance: string;
+  tooltipLapTime: string;
+  tooltipTotalTime: string;
   followLabel: string;
   followPopoverTitle: string;
   followPopoverBody: string;
@@ -47,8 +68,11 @@ export interface Translations {
   // Race events
   lapCompleted: string;
   finished: string;
+  finishLabel: string;
   // Timed personal best label and remarks
   pbLabel: string;
+  pbCurrentLabel: string;
+  pbPreviousLabel: string;
   remarkNewPb: string;
   remarkShortPb: string;
   pbImprovedTitle: string;
@@ -66,14 +90,35 @@ export interface Translations {
 
 export const en: Translations = {
   pageTitle: 'Live Results Dashboard',
-  displaySettings: 'Display',
+  displaySettings: 'Display/visualization settings',
   massStartSettings: 'Mass Start',
   todayMatchesLabel: 'Matches today',
-  compactLabel: 'Compact',
-  compactPopoverTitle: 'Compact',
-  compactPopoverBody: 'Long track: show only the lap times on a single row (wrapping when there are many) until the final time is known.',
-  followLabel: 'Auto-follow updates',
-  followPopoverTitle: 'Auto-follow updates',
+  thousandthsLabel: 'Thousandths precision',
+  hundredthsLabel: 'Hundredths precision',
+  thousandthsPopoverTitle: 'Hundreds or thousandths precision',
+  thousandthsPopoverBody: 'Long track: show times in hundredths, as is usual in skating. Thousandths appear automatically when they are needed to settle a personal best, i.e. when the new time and the previous best have the same hundredths. Switch on to always show thousandths.',
+  compactColorsLabel: 'Lap time diff colours',
+  compactColorsPopoverTitle: 'Lap time diff colours',
+  compactColorsPopoverBody: 'Colour the compact lap badges by how each lap compares to the previous one, like mass start, using the <i>Lap time diff threshold</i>. <br><br><span class="popover-badge popover-badge-green">green</span> \u2192 Within threshold <br><span class="popover-badge popover-badge-orange">orange</span> \u2192 Slower <br><span class="popover-badge popover-badge-purple">purple</span> \u2192 Faster',
+  feedNotLiveTitle: 'This match is not live yet',
+  feedNotLiveBody: 'Results show up here as soon as the timing starts. This page updates by itself.',
+  feedSourceMessage: 'Message from the results source:',
+  disclaimerLabel: 'Notice',
+  disclaimer: 'Unofficial results: these times are not final and may change or be corrected.',
+  disclaimerOwnership: 'All data shown belongs to the respective ice rink or competition organiser, which owns the timing data measured.',
+  feedUnavailableTitle: 'The results source cannot be reached',
+  feedUnavailableBody: 'We keep trying. This page updates by itself when it is back.',
+  feedEmptyTitle: 'No results yet',
+  feedEmptyBody: 'The match is live, but no results have been published yet.',
+  feedDisconnectedTitle: 'Connection lost',
+  feedDisconnectedBody: 'Reconnecting to the server. This page updates by itself.',
+  feedSlowTitle: 'Still waiting for data\u2026',
+  feedSlowBody: 'This takes longer than usual. This page updates by itself when data arrives.',
+  tooltipDistance: 'Distance',
+  tooltipLapTime: 'Lap time',
+  tooltipTotalTime: 'Total time',
+  followLabel: 'Auto-follow on updates',
+  followPopoverTitle: 'Auto-follow on updates',
   followPopoverBody: 'Automatically scroll to keep the live distance in view as results come in.',
   maxGapLabel: 'Max seconds gap between groups',
   maxGapPopoverTitle: 'Max seconds gap between groups',
@@ -83,12 +128,12 @@ export const en: Translations = {
   maxGroupsPopoverTitle: 'Max groups',
   maxGroupsPopoverBody:
     'Maximum number of standings groups to display in the group strip. Groups are based on the <i>Max seconds gap between groups</i> set to the left. <br><br>Competitors beyond the last group are collected into a \u201cTail of the race\u201d group. <br><br>Set to 0 to disable grouping entirely.',
-  lapDeltaLabel: 'Lap \u0394',
+  lapDeltaLabel: 'Lap time diff threshold',
   lapVariancePopoverTitle: 'Lap variance threshold',
   lapVariancePopoverBody:
-    'Percentage difference between <strong>consecutive lap times</strong> used to colour lap badges. <br><br><span class="popover-badge popover-badge-green">green</span> \u2192 Within threshold <br><span class="popover-badge popover-badge-orange">orange</span> \u2192 Slower than threshold <br><span class="popover-badge popover-badge-purple">purple</span> \u2192 Faster than threshold',
+    'Percentage difference between <strong>consecutive lap times</strong> used to colour lap badges. <br><br><span class="popover-badge popover-badge-green">Within threshold</span> <span class="popover-badge popover-badge-orange">Slower than threshold</span> <span class="popover-badge popover-badge-purple">Faster than threshold</span>',
   lapVariancePopoverExample:
-    'E.g. at 5%: a previous lap of 30.0\u202fs means slower\u202f>\u202f31.5\u202fs turns orange, faster\u202f<\u202f28.5\u202fs turns purple.',
+    'E.g. at <span class="popover-badge popover-badge-grey">{pct}%</span>, after a lap of <span class="popover-badge popover-badge-green">40.0\u202fs</span>: slower than <span class="popover-badge popover-badge-orange">{slow}\u202fs</span> turns orange, faster than <span class="popover-badge popover-badge-purple">{fast}\u202fs</span> turns purple.',
   lapTimesLabel: 'Lap times',
   showLapTimesPopoverTitle: 'Show lap times',
   showLapTimesPopoverBody:
@@ -106,8 +151,11 @@ export const en: Translations = {
   heatMergedLabel: 'Heat {a} & {b}',
   lapCompleted: 'Lap completed',
   finished: 'Finished',
+  finishLabel: 'Finish',
   pbLabel: 'PB:',
-  remarkNewPb: 'New PB',
+  pbCurrentLabel: 'Current PB',
+  pbPreviousLabel: 'Previous PB',
+  remarkNewPb: 'New personal best',
   remarkShortPb: 'PB',
   pbImprovedTitle: 'Previous personal best, improved',
   remarkFall: 'Fall',
@@ -123,14 +171,35 @@ export const en: Translations = {
 
 export const nl: Translations = {
   pageTitle: 'Live Resultaten Dashboard',
-  displaySettings: 'Weergave',
+  displaySettings: 'Weergave-/visualisatie-instellingen',
   massStartSettings: 'Massastart',
   todayMatchesLabel: 'Wedstrijden vandaag',
-  compactLabel: 'Compact',
-  compactPopoverTitle: 'Compact',
-  compactPopoverBody: 'Langebaan: toon alleen de rondetijden op één regel (met omslag bij veel rondes) tot de eindtijd bekend is.',
-  followLabel: 'Volg updates automatisch',
-  followPopoverTitle: 'Volg updates automatisch',
+  thousandthsLabel: 'Precisie duizendsten',
+  hundredthsLabel: 'Precisie honderdsten',
+  thousandthsPopoverTitle: 'Precisie honderdsten of duizendsten',
+  thousandthsPopoverBody: 'Langebaan: toon tijden in honderdsten, zoals gebruikelijk bij schaatsen. Duizendsten verschijnen vanzelf als ze nodig zijn om een persoonlijk record te beslissen, dus als de nieuwe tijd en het vorige record dezelfde honderdsten hebben. Zet aan om altijd duizendsten te tonen.',
+  compactColorsLabel: 'Kleur rondetijdverschil',
+  compactColorsPopoverTitle: 'Kleur rondetijdverschil',
+  compactColorsPopoverBody: 'Kleur de compacte rondebadges naar het verschil met de vorige ronde, zoals bij massastart, met de drempel <i>rondetijdverschil</i>. <br><br><span class="popover-badge popover-badge-green">groen</span> \u2192 Binnen drempel <br><span class="popover-badge popover-badge-orange">oranje</span> \u2192 Langzamer <br><span class="popover-badge popover-badge-purple">paars</span> \u2192 Sneller',
+  feedNotLiveTitle: 'Deze wedstrijd is nog niet live',
+  feedNotLiveBody: 'Resultaten verschijnen hier zodra de tijdwaarneming start. Deze pagina ververst vanzelf.',
+  feedSourceMessage: 'Bericht van de resultatenbron:',
+  disclaimerLabel: 'Mededeling',
+  disclaimer: 'Onofficiële uitslagen: deze tijden zijn niet definitief en kunnen nog wijzigen of gecorrigeerd worden.',
+  disclaimerOwnership: 'Alle getoonde gegevens zijn eigendom van de betreffende ijsbaan of wedstrijdorganisator, die eigenaar is van de gemeten tijdsdata.',
+  feedUnavailableTitle: 'De resultatenbron is niet bereikbaar',
+  feedUnavailableBody: 'We blijven het proberen. Deze pagina ververst vanzelf zodra de bron terug is.',
+  feedEmptyTitle: 'Nog geen resultaten',
+  feedEmptyBody: 'De wedstrijd is live, maar er zijn nog geen resultaten gepubliceerd.',
+  feedDisconnectedTitle: 'Verbinding verbroken',
+  feedDisconnectedBody: 'Opnieuw verbinden met de server. Deze pagina ververst vanzelf.',
+  feedSlowTitle: 'Nog even wachten op gegevens\u2026',
+  feedSlowBody: 'Dit duurt langer dan normaal. Deze pagina ververst vanzelf zodra er gegevens zijn.',
+  tooltipDistance: 'Afstand',
+  tooltipLapTime: 'Rondetijd',
+  tooltipTotalTime: 'Totaaltijd',
+  followLabel: 'Volg automatisch bij updates',
+  followPopoverTitle: 'Volg automatisch bij updates',
   followPopoverBody: 'Scroll automatisch mee om de live afstand in beeld te houden terwijl resultaten binnenkomen.',
   maxGapLabel: 'Max. seconden verschil tussen groepen',
   maxGapPopoverTitle: 'Max. seconden verschil tussen groepen',
@@ -140,12 +209,12 @@ export const nl: Translations = {
   maxGroupsPopoverTitle: 'Max. groepen',
   maxGroupsPopoverBody:
     'Maximaal aantal rangschikkingsgroepen in de groepsstrip. Groepen zijn gebaseerd op het <i>Max. seconden verschil tussen groepen</i>. <br><br>Deelnemers buiten de laatste groep worden samengebracht in een \u201cStaart van de race\u201d-groep. <br><br>Stel in op 0 om groepering volledig uit te schakelen.',
-  lapDeltaLabel: 'Ronde \u0394',
+  lapDeltaLabel: 'Drempel rondetijdverschil',
   lapVariancePopoverTitle: 'Rondetijd variatie drempel',
   lapVariancePopoverBody:
-    'Procentueel verschil tussen <strong>opeenvolgende rondetijden</strong> voor de kleur van rondetijd-badges. <br><br><span class="popover-badge popover-badge-green">groen</span> \u2192 Binnen drempel <br><span class="popover-badge popover-badge-orange">oranje</span> \u2192 Trager dan drempel <br><span class="popover-badge popover-badge-purple">paars</span> \u2192 Sneller dan drempel',
+    'Procentueel verschil tussen <strong>opeenvolgende rondetijden</strong> voor de kleur van rondetijd-badges. <br><br><span class="popover-badge popover-badge-green">Binnen drempel</span> <span class="popover-badge popover-badge-orange">Trager dan drempel</span> <span class="popover-badge popover-badge-purple">Sneller dan drempel</span>',
   lapVariancePopoverExample:
-    'Bijv. bij 5%: een vorige ronde van 30,0\u202fs betekent trager\u202f>\u202f31,5\u202fs wordt oranje, sneller\u202f<\u202f28,5\u202fs wordt paars.',
+    'Bijv. bij <span class="popover-badge popover-badge-grey">{pct}%</span>, na een ronde van <span class="popover-badge popover-badge-green">40,0\u202fs</span>: trager dan <span class="popover-badge popover-badge-orange">{slow}\u202fs</span> wordt oranje, sneller dan <span class="popover-badge popover-badge-purple">{fast}\u202fs</span> wordt paars.',
   lapTimesLabel: 'Rondetijden',
   showLapTimesPopoverTitle: 'Rondetijden tonen',
   showLapTimesPopoverBody:
@@ -163,8 +232,11 @@ export const nl: Translations = {
   heatMergedLabel: 'Serie {a} & {b}',
   lapCompleted: 'Ronde voltooid',
   finished: 'Gefinisht',
+  finishLabel: 'Finish',
   pbLabel: 'PR:',
-  remarkNewPb: 'Nieuw PR',
+  pbCurrentLabel: 'Huidig PR',
+  pbPreviousLabel: 'Vorig PR',
+  remarkNewPb: 'Nieuw persoonlijk record',
   remarkShortPb: 'PR',
   pbImprovedTitle: 'Vorig persoonlijk record, verbeterd',
   remarkFall: 'Val',

@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input, afterEveryRender, inject } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../models/data.models';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
-import { parseSeconds, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
+import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
+import { lapBadgeColor } from '../../logic/lap-color.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
 @Component({
@@ -23,10 +24,34 @@ export class TimedHeatCardComponent {
   @Input() distanceMeters: number | null = null;
   @Input() distanceId = '';
   @Input() active = false;
-  /** Compact mode: lap times as badges on one wrapping row until the final time is known. */
-  @Input() compact = false;
+  /** Colour the compact badges by variance against the previous lap (mass start style). */
+  @Input() colorLaps = false;
+  /** Always show thousandths; otherwise hundredths, with thousandths only where a PB needs them. */
+  @Input() showThousandths = false;
+  @Input() lapVarianceThreshold = 0;
 
   public ts = inject(TranslateService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private cdr = inject(ChangeDetectorRef);
+
+  /** Number of badge columns the compact body currently has (it follows the card width). */
+  private columns = 0;
+
+  constructor() {
+    afterEveryRender(() => {
+      const body = this.host.nativeElement.querySelector('.timed-compact-body');
+      const tracks = body ? getComputedStyle(body).gridTemplateColumns.split(' ').length : 0;
+      if (tracks !== this.columns) {
+        this.columns = tracks;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** True when the lap badges fill at least a whole row: the total time then gets a line of its own. */
+  totalOnOwnLine(race: CompetitorUpdate): boolean {
+    return this.columns > 0 && (race.lap_times?.length ?? 0) >= this.columns;
+  }
 
   isRecentUpdate = isRecentUpdate;
 
@@ -125,9 +150,59 @@ export class TimedHeatCardComponent {
     return null;
   }
 
-  /** The compact layout applies until the final time is known (all laps done, or the run was invalidated). */
-  isCompact(race: CompetitorUpdate): boolean {
-    return this.compact && !race.invalid_reason && !(this.distanceMeters != null && isTimedFinished(race, this.distanceMeters));
+  /** The total time so far (the final time once finished), shown after the lap badges in compact mode. */
+  compactTotalTime(race: CompetitorUpdate): string | null {
+    if (race.invalid_reason || !race.lap_times?.length) return null;
+    return this.timedCumulativeTime(race, race.lap_times.length - 1);
+  }
+
+  /**
+   * Decimals of the totals, PB and PB difference on a card: hundredths unless thousandths are switched on, or
+   * the finished time and the personal best have the same hundredths (the thousandths settle it).
+   */
+  decimals(race: CompetitorUpdate): 2 | 3 {
+    if (this.showThousandths) return 3;
+    if (this.distanceMeters == null || !race.personal_record || !race.lap_times?.length || !isTimedFinished(race, this.distanceMeters)) return 2;
+    const total = this.timedCumulativeTime(race, race.lap_times.length - 1);
+    if (!total) return 2;
+    return sameHundredths(total, race.personal_record) ? 3 : 2;
+  }
+
+  /** Lane colour of a slot: the racer's own, else the colour other heats show for it, else the standard order. */
+  laneColor(race: CompetitorUpdate | null, slot: number): string | null {
+    return race?.lane ?? this.laneColors[slot] ?? ['white', 'red', 'yellow', 'blue'][slot] ?? null;
+  }
+
+  /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no racer in this heat. */
+  laneSetEmpty(slot: number): boolean {
+    const first = slot - (slot % 2);
+    return !this.races[first] && !this.races[first + 1];
+  }
+
+  /** Tooltip of a compact lap badge: three rows - distance, lap time, total time. */
+  compactBadgeTitle(race: CompetitorUpdate, i: number): string {
+    const total = this.timedCumulativeTime(race, i);
+    return [
+      `${this.ts.t('tooltipDistance')}: ${this.lapSchedule[i]}m`,
+      `${this.ts.t('tooltipLapTime')}: ${truncateLapTime(race.lap_times[i], 2)}`,
+      `${this.ts.t('tooltipTotalTime')}: ${total ? truncateLapTime(total, this.decimals(race)) : ''}`,
+    ].join('\n');
+  }
+
+  /** Variance colour class of a compact lap badge, or none when the colours are off. */
+  compactLapColor(race: CompetitorUpdate, i: number): string {
+    if (this.colorLaps && i === 1 && this.firstLapPartial()) return 'lap-badge-normal'; // nothing to compare with
+    return this.colorLaps ? lapBadgeColor(race.lap_times, i, this.lapVarianceThreshold) : '';
+  }
+
+  /** True when the first lap is shorter than a full 400m lap (a start from the middle of the track): lap 2 has no fair comparison. */
+  firstLapPartial(): boolean {
+    return this.lapSchedule.length > 0 && this.lapSchedule[0] < 400;
+  }
+
+  /** True once the final lap is done. */
+  compactDone(race: CompetitorUpdate): boolean {
+    return this.distanceMeters != null && isTimedFinished(race, this.distanceMeters);
   }
 
   /** True once the skater has finished faster than the personal best shown on the card. */

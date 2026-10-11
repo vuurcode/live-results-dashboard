@@ -11,7 +11,7 @@ import {
   StandingsGroup,
 } from '../models/data.models';
 import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
-import { TodayMatch } from '../models/data.models';
+import { FeedStatus, TodayMatch } from '../models/data.models';
 import { competitionIdFromSearch, withCompetitionId } from '../logic/competition.util';
 
 export interface BackendStatus {
@@ -26,12 +26,15 @@ const DEFAULT_GROUP_THRESHOLD = 2.0;
 const MAX_GROUP_THRESHOLD = 10.0;
 const DEFAULT_MAX_GROUPS = 4;
 const DEFAULT_LAP_VARIANCE = 5;
+const DEFAULT_LAP_VARIANCE_TIMED = 1;
+const STORAGE_KEY_LAP_VARIANCE_TIMED = 'lapVariancePctTimed';
 const STORAGE_KEY_THRESHOLD = 'groupThresholdSec';
 const STORAGE_KEY_MAX_GROUPS = 'maxGroups';
 const STORAGE_KEY_LAP_VARIANCE = 'lapVariancePct';
 const STORAGE_KEY_SHOW_LAP_TIMES = 'showMassStartLapTimes';
 const STORAGE_KEY_FOLLOW = 'follow';
-const STORAGE_KEY_COMPACT = 'compactTimed';
+const STORAGE_KEY_THOUSANDTHS = 'thousandths';
+const STORAGE_KEY_COMPACT_COLORS = 'compactColors';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -79,6 +82,10 @@ export class DataService {
   public processedData$ = this._processedData.asObservable();
   private _eventName = new BehaviorSubject<string>('');
   public eventName$ = this._eventName.asObservable();
+  private _feed = new BehaviorSubject<FeedStatus | null>(null);
+  /** The data source's state as reported by the backend; null until it has answered. */
+  public feed$ = this._feed.asObservable();
+
   private _errors = new BehaviorSubject<string[]>([]);
   public errors$ = this._errors.asObservable();
   private _groupThreshold = new BehaviorSubject<number>(this._loadThreshold());
@@ -111,6 +118,24 @@ export class DataService {
     return DEFAULT_LAP_VARIANCE;
   }
 
+  // long track has its own threshold: its laps are far more even than mass start laps
+  private _lapVarianceTimed = new BehaviorSubject<number>(this._loadLapVarianceTimed());
+  get lapVarianceThresholdTimed(): number { return this._lapVarianceTimed.value; }
+
+  setLapVarianceThresholdTimed(value: number) {
+    const clamped = Math.max(0, Math.round(value * 10) / 10); // one decimal: long track laps are even
+    this._lapVarianceTimed.next(clamped);
+    try { localStorage.setItem(STORAGE_KEY_LAP_VARIANCE_TIMED, String(clamped)); } catch { /* noop */ }
+  }
+
+  private _loadLapVarianceTimed(): number {
+    try {
+      const v = localStorage.getItem(STORAGE_KEY_LAP_VARIANCE_TIMED);
+      if (v !== null && !isNaN(parseFloat(v))) return Math.max(0, Math.round(parseFloat(v) * 10) / 10);
+    } catch { /* noop */ }
+    return DEFAULT_LAP_VARIANCE_TIMED;
+  }
+
   private _showMassLapTimes = new BehaviorSubject<boolean>(this._loadShowLapTimes());
   get showMassStartLapTimes(): boolean { return this._showMassLapTimes.value; }
 
@@ -128,20 +153,36 @@ export class DataService {
   }
 
   /** Compact display of long-track cards: lap time badges on one wrapping row until the final time is known. On by default. */
-  private _compactTimed = new BehaviorSubject<boolean>(this._loadCompactTimed());
-  get compactTimed(): boolean { return this._compactTimed.value; }
+  /** Compact long-track badges coloured by variance against the previous lap, like mass start. Off by default. */
+  private _compactColors = new BehaviorSubject<boolean>(this._loadCompactColors());
+  get compactColors(): boolean { return this._compactColors.value; }
 
-  setCompactTimed(value: boolean) {
-    this._compactTimed.next(value);
-    try { localStorage.setItem(STORAGE_KEY_COMPACT, String(value)); } catch { /* noop */ }
+  setCompactColors(value: boolean) {
+    this._compactColors.next(value);
+    try { localStorage.setItem(STORAGE_KEY_COMPACT_COLORS, String(value)); } catch { /* noop */ }
   }
 
-  private _loadCompactTimed(): boolean {
+  private _loadCompactColors(): boolean {
     try {
-      const v = localStorage.getItem(STORAGE_KEY_COMPACT);
-      if (v !== null) return v !== 'false';
+      return localStorage.getItem(STORAGE_KEY_COMPACT_COLORS) === 'true';
     } catch { /* noop */ }
-    return true;
+    return false;
+  }
+
+  /** Long-track times show hundredths by default; thousandths only when switched on (or needed to settle a PB). */
+  private _showThousandths = new BehaviorSubject<boolean>(this._loadShowThousandths());
+  get showThousandths(): boolean { return this._showThousandths.value; }
+
+  setShowThousandths(value: boolean) {
+    this._showThousandths.next(value);
+    try { localStorage.setItem(STORAGE_KEY_THOUSANDTHS, String(value)); } catch { /* noop */ }
+  }
+
+  private _loadShowThousandths(): boolean {
+    try {
+      return localStorage.getItem(STORAGE_KEY_THOUSANDTHS) === 'true';
+    } catch { /* noop */ }
+    return false;
   }
 
   private _follow = new BehaviorSubject<boolean>(this._loadFollow());
@@ -221,6 +262,7 @@ export class DataService {
   connect() {
     if (this.socket$ && !this.socket$.closed) return;
     this._errors.next([]);
+    this._feed.next(null);
     this._status.next({ status: 'Connecting...', url: '', interval: null });
     this.socket$ = webSocket<BackendMessage>({ url: this.BACKEND_URL });
     this.socket$.subscribe({
@@ -283,6 +325,9 @@ export class DataService {
           interval: msg.data.data_source_interval,
           errorMessage: null,
         }));
+        return false;
+      case 'feed_status':
+        this.ngZone.run(() => this._feed.next(msg.data));
         return false;
       case 'event_name':
         this.ngZone.run(() => this._eventName.next(msg.data.name));

@@ -1,4 +1,6 @@
 <div class="d-flex flex-column min-vh-100">
+  <!-- ===== DISCLAIMER ===== -->
+  <section class="disclaimer-bar" [attr.aria-label]="'disclaimerLabel' | translate"><p class="mb-0">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</p></section>
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
     @let matches = (todayMatches$ | async) ?? [];
@@ -12,7 +14,7 @@
     }
     @if (matches.length > 0) {
       <div class="topbar-matches d-flex align-items-center gap-2" [class.topbar-matches-title]="picked">
-        <label class="small text-white-50 text-nowrap mb-0 setting-label" [class.visually-hidden]="picked" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
+        <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
         <select id="matchSelect" class="form-select form-select-sm topbar-match-select" (change)="onMatchChange($event)">
           @if (!picked) {
             <option value="" selected disabled>–</option>
@@ -30,26 +32,63 @@
           {{ 'displaySettings' | translate }} <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
-          <div class="topbar-settings-body d-flex flex-wrap align-items-center gap-2 ms-1">
+          <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'displaySettings' | translate">
             <div class="topbar-section-sep"></div>
-            <div class="setting-group ms-1">
-              <label class="small text-white-50 text-nowrap mb-0 setting-label" for="compactInput">{{ 'compactLabel' | translate }}</label>
+            <div class="setting-group ms-2">
+              <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (dataService.showThousandths ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
               <div class="form-check form-switch">
                 <input
-                  id="compactInput"
+                  id="thousandthsInput"
                   type="checkbox"
                   class="form-check-input" role="switch"
-                  [checked]="dataService.compactTimed"
-                  (change)="onCompactChange($event)"
+                  [checked]="dataService.showThousandths"
+                  (change)="onThousandthsChange($event)"
                 />
               </div>
               <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'compactPopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('compactPopoverBody')"></div>
+                <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('thousandthsPopoverBody')"></div>
               </div>
             </div>
             <div class="setting-group ms-2">
-              <label class="small text-white-50 text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
+              <label class="small text-nowrap mb-0 setting-label" for="compactColorsInput">{{ 'compactColorsLabel' | translate }}</label>
+              <div class="form-check form-switch">
+                <input
+                  id="compactColorsInput"
+                  type="checkbox"
+                  class="form-check-input" role="switch"
+                  [checked]="dataService.compactColors"
+                  (change)="onCompactColorsChange($event)"
+                />
+              </div>
+              <div class="setting-popover">
+                <div class="setting-popover-title">{{ 'compactColorsPopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('compactColorsPopoverBody')"></div>
+              </div>
+            </div>
+            <div class="setting-collapse" [class.open]="dataService.compactColors" [attr.inert]="dataService.compactColors ? null : ''">
+              <div class="setting-collapse-inner">
+              <div class="setting-group ms-2">
+                <label class="small text-nowrap mb-0 setting-label" for="lapVarianceTimedInput">{{ 'lapDeltaLabel' | translate }}</label>
+                <input
+                  id="lapVarianceTimedInput"
+                  type="number"
+                  min="0" max="50" step="0.1"
+                  class="form-control form-control-sm threshold-input"
+                  [value]="dataService.lapVarianceThresholdTimed"
+                  (change)="onLapVarianceTimedChange($event)"
+                />
+                <span class="small text-white-50">%</span>
+                <div class="setting-popover">
+                  <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
+                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(dataService.lapVarianceThresholdTimed))"></div>
+                </div>
+              </div>
+              </div>
+            </div>
+            <div class="setting-group ms-2">
+              <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
               <div class="form-check form-switch"><input
                 id="followInput"
                 type="checkbox"
@@ -72,10 +111,10 @@
             {{ 'massStartSettings' | translate }} <span class="topbar-group-arrow" [class.open]="massStartSettingsOpen">▾</span>
           </button>
           @if (massStartSettingsOpen) {
-            <div class="topbar-settings-body d-flex flex-wrap align-items-center gap-2 ms-1">
+            <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'massStartSettings' | translate">
               <div class="topbar-section-sep"></div>
               <div class="setting-group ms-1">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
+                <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
                 <input
                   id="groupThresholdInput"
                   type="number"
@@ -91,7 +130,7 @@
                 </div>
               </div>
               <div class="setting-group ms-2">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
+                <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
                 <input
                   id="maxGroupsInput"
                   type="number"
@@ -106,7 +145,7 @@
                 </div>
               </div>
               <div class="setting-group ms-2">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
+                <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
                 <input
                   id="lapVarianceInput"
                   type="number"
@@ -119,11 +158,11 @@
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample')"></div>
+                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(dataService.lapVarianceThreshold))"></div>
                 </div>
               </div>
               <div class="setting-group ms-2">
-                <label class="small text-white-50 text-nowrap mb-0 setting-label" for="showLapTimesInput">{{ 'lapTimesLabel' | translate }}</label>
+                <label class="small text-nowrap mb-0 setting-label" for="showLapTimesInput">{{ 'lapTimesLabel' | translate }}</label>
                 <div class="form-check form-switch"><input
                   id="showLapTimesInput"
                   type="checkbox"
@@ -214,7 +253,9 @@
                         [distanceMeters]="distance.distanceMeters"
                         [distanceId]="distance.id"
                         [active]="isActiveHeatRow(distance.id, displayGroup.label)"
-                        [compact]="dataService.compactTimed"
+                        [colorLaps]="dataService.compactColors"
+                        [showThousandths]="dataService.showThousandths"
+                        [lapVarianceThreshold]="dataService.lapVarianceThresholdTimed"
                       />
                     }
                   </c-col>
@@ -265,7 +306,18 @@
         }
       </c-accordion>
     } @else {
-      <!-- Skeleton placeholder while connecting -->
+      @let notice = emptyNotice$ | async;
+      @if (notice) {
+        <!-- Nothing to show: say why instead of loading forever -->
+        <div class="empty-notice alert alert-info" role="status" [attr.data-kind]="notice.kind">
+          <h2 class="h6 mb-1">{{ notice.titleKey | translate }}</h2>
+          <p class="mb-0">{{ notice.bodyKey | translate }}</p>
+          @if (notice.message) {
+            <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ notice.message }}</q></p>
+          }
+        </div>
+      } @else {
+        <!-- Skeleton placeholder while connecting -->
       @for (i of [1,2,3]; track i) {
         <div class="skeleton-accordion mb-2 rounded">
           <div class="skeleton-accordion-header d-flex align-items-center gap-3 p-3 rounded">
@@ -273,6 +325,7 @@
             <div class="skeleton-block skeleton-badge"></div>
           </div>
         </div>
+      }
       }
     }
   </main>

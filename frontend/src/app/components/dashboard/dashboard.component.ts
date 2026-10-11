@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
-import { TodayMatch, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
-import { Observable, defer, from, map, Subscription } from 'rxjs';
-import { TranslateService } from '../../services/translate.service';
+import { FeedStatus, TodayMatch, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
+import { Observable, combineLatest, defer, from, map, startWith, Subscription, timer } from 'rxjs';
+import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
 import { TimedHeatCardComponent } from '../timed-heat-card/timed-heat-card.component';
@@ -57,12 +57,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   sortedDistances$: Observable<ProcessedDistance[]>;
   eventName$: Observable<string>;
   errors$: Observable<string[]>;
+  /** Why the page has no results to show (instead of the loading skeleton), or null while it is just connecting. */
+  emptyNotice$!: Observable<EmptyNotice | null>;
   displayedGroups$: Observable<Map<string, StandingsGroup[]>>;
 
   initialLiveId: string | null = null;
   liveEventNumber: number | null = null;
   selectedRaceId: string | null = null;
-  displaySettingsOpen = true;
+  displaySettingsOpen = false;
   massStartSettingsOpen = false;
   activeHeatKey: { distanceId: string; label: string } | null = null;
 
@@ -89,6 +91,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const open = group === 'display' ? !this.displaySettingsOpen : !this.massStartSettingsOpen;
     this.displaySettingsOpen = group === 'display' && open;
     this.massStartSettingsOpen = group === 'massStart' && open;
+  }
+
+  /** Escape folds the settings panel away. */
+  @HostListener('document:keydown.escape')
+  closeSettings(): void {
+    this.displaySettingsOpen = false;
+    this.massStartSettingsOpen = false;
   }
 
   /** The start time is only worth showing until the match has begun. */
@@ -119,8 +128,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!isNaN(val)) this.dataService.setLapVarianceThreshold(val);
   }
 
-  onCompactChange(event: Event): void {
-    this.dataService.setCompactTimed((event.target as HTMLInputElement).checked);
+  /** The values of the threshold example text, following the given setting (a lap of 40.0 s as the base). */
+  lapExample(pct: number): Record<string, string> {
+    const fmt = (n: number) => this.ts.num(n);
+    return { pct: fmt(pct), slow: fmt(40 * (1 + pct / 100)), fast: fmt(40 * (1 - pct / 100)) };
+  }
+
+  onLapVarianceTimedChange(event: Event): void {
+    const val = parseFloat((event.target as HTMLInputElement).value);
+    if (!isNaN(val)) this.dataService.setLapVarianceThresholdTimed(val);
+  }
+
+  onThousandthsChange(event: Event): void {
+    this.dataService.setShowThousandths((event.target as HTMLInputElement).checked);
+  }
+
+  onCompactColorsChange(event: Event): void {
+    this.dataService.setCompactColors((event.target as HTMLInputElement).checked);
   }
 
   onShowLapTimesChange(event: Event): void {
@@ -156,6 +180,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
     this.eventName$ = this.dataService.eventName$;
     this.errors$ = this.dataService.errors$;
+    this.emptyNotice$ = combineLatest([
+      this.dataService.feed$,
+      this.dataService.status$,
+      timer(10_000).pipe(map(() => true), startWith(false)), // a connection that stays silent is reported, not shown as loading forever
+    ]).pipe(
+      map(([feed, status, waitedLong]) => emptyNotice(feed, status.status, waitedLong)),
+    );
     this.displayedGroups$ = this.dataService.displayedGroups$;
     this.hasMassStart$ = this.dataService.processedData$.pipe(
       map(distances => !!distances?.some(d => d.isMassStart))
@@ -398,4 +429,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     window.scrollTo({ top, behavior: 'smooth' });
   }
 
+}
+
+interface EmptyNotice {
+  kind: 'not_live' | 'unavailable' | 'empty' | 'disconnected' | 'slow';
+  titleKey: TranslationKey;
+  bodyKey: TranslationKey;
+  /** The data source's own text, shown as a quote */
+  message?: string;
+}
+
+/** What to tell the viewer while there are no results to show. */
+function emptyNotice(feed: FeedStatus | null, connection: string, waitedLong: boolean): EmptyNotice | null {
+  if (connection === 'Error' || connection === 'Disconnected') return { kind: 'disconnected', titleKey: 'feedDisconnectedTitle', bodyKey: 'feedDisconnectedBody' };
+  if (feed?.state === 'not_live') return { kind: 'not_live', titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message };
+  if (feed?.state === 'unavailable') return { kind: 'unavailable', titleKey: 'feedUnavailableTitle', bodyKey: 'feedUnavailableBody' };
+  if (feed?.state === 'ok') return { kind: 'empty', titleKey: 'feedEmptyTitle', bodyKey: 'feedEmptyBody' };
+  return waitedLong ? { kind: 'slow', titleKey: 'feedSlowTitle', bodyKey: 'feedSlowBody' } : null;
 }

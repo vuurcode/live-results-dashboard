@@ -23,6 +23,12 @@ export class TranslateService {
     return str;
   }
 
+  /** A number with at most two decimals, in the decimal separator of the language. */
+  num(n: number): string {
+    const text = String(Math.round(n * 100) / 100);
+    return document.documentElement.lang === 'nl' ? text.replace('.', ',') : text;
+  }
+
   html(key: TranslationKey, params?: Record<string, string | number>): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(this.t(key, params));
   }

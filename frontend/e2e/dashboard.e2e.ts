@@ -48,48 +48,32 @@ test.describe('timed distance', () => {
       await expect(page.locator('.timed-competitor-card', { hasText: name })).toBeVisible();
     }
     // 4 competitors x 3 laps (200 / 600 / 1000 m) once the whole replay has played
-    await expect(page.locator('.timed-lap-row.timed-lap-done')).toHaveCount(12);
-    await expect(page.locator('.timed-lap-dist').filter({ hasText: '1000m' })).toHaveCount(4);
+    await expect(page.locator('.timed-compact-badge')).toHaveCount(12);
+    await expect(page.locator('.compact-dist').filter({ hasText: '1000m' })).toHaveCount(4);
   });
 
-  test('lap rows keep their height while times replace the placeholders', async ({ page, request }) => {
+  test('cards keep their height while lap times arrive', async ({ page, request }) => {
     await restartReplay(request, 'e2e-timed');
-    await page.addInitScript(() => localStorage.setItem('compactTimed', 'false')); // per-distance rows
     await page.goto('/?competitionId=e2e-timed');
-    await expect(page.locator('.timed-lap-row').first()).toBeVisible();
+    await expect(page.locator('.timed-compact-body').first()).toBeVisible();
 
-    const heights = new Map<string, Set<string>>();
-    let sawPending = false;
-    const sample = async (): Promise<number> => {
-      const rows = await page.evaluate(() =>
-        [...document.querySelectorAll('.timed-competitor-card')].flatMap((card, c) =>
-          [...card.querySelectorAll('.timed-lap-row')].map((row, r) => ({
-            key: `${c}:${r}`,
-            height: row.getBoundingClientRect().height,
-            done: row.classList.contains('timed-lap-done'),
-          })),
-        ),
-      );
-      for (const row of rows) {
-        const seen = heights.get(row.key) ?? new Set<string>();
-        seen.add(row.height.toFixed(1));
-        heights.set(row.key, seen);
-      }
-      sawPending ||= rows.some((r) => !r.done);
-      return rows.filter((r) => r.done).length;
-    };
-
-    // Sample throughout the replay: pending rows first, then every row done.
-    let done = 0;
-    for (let i = 0; i < 200 && done < 12; i++) {
-      done = await sample();
+    const heights = new Map<number, Set<string>>();
+    let badges = 0;
+    let sawEmpty = false;
+    for (let i = 0; i < 200 && badges < 12; i++) {
+      const sample = await page.evaluate(() => ({
+        badges: document.querySelectorAll('.timed-compact-badge').length,
+        heights: [...document.querySelectorAll('.timed-competitor-card')].map((c) => c.getBoundingClientRect().height.toFixed(1)),
+      }));
+      badges = sample.badges;
+      sawEmpty ||= sample.badges < 12;
+      sample.heights.forEach((h, c) => heights.set(c, (heights.get(c) ?? new Set<string>()).add(h)));
       await page.waitForTimeout(100);
     }
-    expect(done).toBe(12);
-    expect(sawPending, 'the test must observe rows before their times arrive').toBe(true);
-    expect(heights.size).toBe(12);
-    for (const [key, seen] of heights) {
-      expect(seen.size, `row ${key} changed height: ${[...seen].join(' -> ')}`).toBe(1);
+    expect(badges).toBe(12);
+    expect(sawEmpty, 'the test must observe cards before all their times arrive').toBe(true);
+    for (const [card, seen] of heights) {
+      expect(seen.size, `card ${card} changed height: ${[...seen].join(' -> ')}`).toBe(1);
     }
   });
 });
@@ -97,20 +81,45 @@ test.describe('timed distance', () => {
 test.describe('mass start', () => {
   const names = (page: Page) => page.locator('.race-item-laps .race-name-fixed');
 
-  test('compact mode shows only lap time badges until the final time is known, and can be switched off', async ({ page, request }) => {
+  test('cards show the lap times as badges with their distance above, and the total time so far', async ({ page, request }) => {
     await restartReplay(request, 'e2e-timed');
     await page.goto('/?competitionId=e2e-timed');
-    const toggle = page.getByRole('switch', { name: 'Compact' });
-    await expect(toggle).toBeChecked(); // on by default
     await expect(page.locator('.timed-compact-body').first()).toBeVisible();
     await expect(page.locator('.timed-compact-body .timed-compact-badge').first()).toBeVisible();
-    await expect(page.locator('.timed-compact-body').first()).not.toContainText(/\d\s?m\b/); // no distances
+    await expect(page.locator('.timed-compact-body').first()).toContainText(/\d+m/); // each badge has its distance above it
 
     await expect(page.locator('.timed-compact-latest').first()).toBeVisible();
+    // finished cards keep this layout too, and end with the total time so far
+    await expect(page.locator('.timed-compact-final').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('.timed-compact-lap .compact-dist').first()).toBeVisible();
+    // the distance reached so far sits above the total until the final lap is done
+    await expect(page.locator('.timed-compact-final .compact-reached').first()).toBeAttached();
+  });
 
+  test('lap colours (off by default) colour the compact badges by variance against the previous lap', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-timed');
+    await page.goto('/?competitionId=e2e-timed');
+    await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
+    const toggle = page.getByRole('switch', { name: 'Lap time diff colours' });
+    await expect(toggle).not.toBeChecked();
+    await expect(page.locator('.timed-compact-badge').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('.timed-compact-badge[class*="lap-badge-"]')).toHaveCount(0);
+    await toggle.check();
+    await expect(page.locator('.timed-compact-badge.lap-badge-normal').first()).toBeVisible();
+    // the Lap delta threshold is configurable here too, and only while the colours are on
+    const threshold = page.getByLabel('Lap time diff threshold');
+    await expect(threshold).toBeVisible();
+    // long track defaults to 1%, takes one decimal, and its example follows the setting
+    await expect(threshold).toHaveValue('1');
+    const example = page.locator('.settings-panel .setting-popover-example');
+    await expect(example.locator('.popover-badge-grey')).toHaveText('1%');
+    await threshold.fill('0.5');
+    await threshold.blur();
+    await expect(example.locator('.popover-badge-grey')).toHaveText('0.5%');
+    await expect(example.locator('.popover-badge-orange')).toHaveText('40.2\u202fs');
+    await expect(example.locator('.popover-badge-purple')).toHaveText('39.8\u202fs');
     await toggle.uncheck();
-    await expect(page.locator('.timed-compact-body')).toHaveCount(0);
-    await expect(page.locator('.timed-lap-row').first()).toBeVisible();
+    await expect(page.getByLabel('Lap time diff threshold')).toBeHidden(); // slid shut
   });
 
   test('ranks competitors and marks them finished', async ({ page, request }) => {
@@ -139,7 +148,7 @@ test.describe('mass start', () => {
 test('lists the matches of today and opens the chosen one', async ({ page }) => {
   await page.goto('/?competitionId=e2e-timed');
   const select = page.getByLabel('Matches today');
-  await expect(select.locator('option')).toHaveCount(3); // the three fixture matches; the mock's other-day and other-venue entries are filtered out
+  await expect(select.locator('option')).toHaveCount(5); // the five fixture matches; the mock's other-day and other-venue entries are filtered out
   await expect(select).toHaveValue('e2e-timed');
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);
@@ -163,13 +172,15 @@ test('only one settings group is open at a time, and the options are toggles', a
   await page.goto('/?competitionId=e2e-mass');
   const display = page.getByRole('button', { name: /^Display/ });
   const massStart = page.getByRole('button', { name: /^Mass Start/ });
+  await expect(display).toHaveAttribute('aria-expanded', 'false'); // closed on load
+  await display.click();
   await expect(display).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('switch', { name: 'Auto-follow updates' })).toBeVisible();
+  await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toBeVisible();
 
   await massStart.click();
   await expect(massStart).toHaveAttribute('aria-expanded', 'true');
   await expect(display).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.getByRole('switch', { name: 'Auto-follow updates' })).toHaveCount(0);
+  await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toHaveCount(0);
   await expect(page.getByRole('switch', { name: 'Lap times' })).toBeVisible();
 
   await display.click();
