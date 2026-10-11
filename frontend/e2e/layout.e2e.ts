@@ -60,12 +60,17 @@ test.describe('pinned titles', () => {
     await page.goto('/?competitionId=e2e-timed');
     const button = page.locator('.accordion-header .accordion-button').first();
     await expect(page.locator('.timed-heat-row').first()).toBeAttached();
-    const before = (await button.boundingBox())!.height;
-    // the one-off scroll to the live race may still be under way: keep scrolling down until the title is pinned
+    // The one-off scroll to the live race may still be under way, and the height of the title depends on where the page is:
+    // compare the title at the top of the page with the title at the bottom, both reached at once, until the page has settled.
     await expect.poll(async () => {
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      return (await button.boundingBox())!.height;
-    }).toBeLessThan(before * 0.8);
+      const at = async (top: number) => {
+        await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), top);
+        return (await button.boundingBox())!.height;
+      };
+      const unstuck = await at(0);
+      const stuck = await at(await page.evaluate(() => document.documentElement.scrollHeight));
+      return stuck / unstuck;
+    }).toBeLessThan(0.8);
   });
 
   test('the groups overview of a mass start stays pinned below the title', async ({ page, request }) => {
