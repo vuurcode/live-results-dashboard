@@ -12,7 +12,7 @@ import (
 // ── raw source data ───────────────────────────────────────────────────────────
 
 type rawData struct {
-	Success      *bool         `json:"success"` // false when the match is not live; absent in older payloads
+	Success      *bool         `json:"success"` // false when the competition is not live; absent in older payloads
 	ErrorMessage string        `json:"errorMessage"`
 	Name         string        `json:"name"`
 	Distances    []rawDistance `json:"distances"`

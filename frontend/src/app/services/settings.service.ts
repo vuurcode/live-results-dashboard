@@ -1,0 +1,66 @@
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
+
+/**
+ * One viewer setting: a value that survives page loads in localStorage (when that is available).
+ * `parse` turns the stored text into a value, or undefined when it is unusable; `normalize` clamps what is set.
+ */
+export class Setting<T> {
+  private readonly subject: BehaviorSubject<T>;
+  readonly changes$: Observable<T>;
+
+  constructor(
+    private readonly key: string,
+    private readonly fallback: T,
+    private readonly parse: (stored: string) => T | undefined,
+    private readonly normalize: (value: T) => T = (v) => v,
+  ) {
+    this.subject = new BehaviorSubject<T>(this.load());
+    this.changes$ = this.subject.asObservable();
+  }
+
+  get value(): T { return this.subject.value; }
+
+  set(value: T): void {
+    const next = this.normalize(value);
+    this.subject.next(next);
+    try { localStorage.setItem(this.key, String(next)); } catch { /* storage unavailable: the setting lasts for this page */ }
+  }
+
+  private load(): T {
+    try {
+      const stored = localStorage.getItem(this.key);
+      if (stored !== null) {
+        const parsed = this.parse(stored);
+        if (parsed !== undefined) return this.normalize(parsed);
+      }
+    } catch { /* storage unavailable: the default applies */ }
+    return this.fallback;
+  }
+}
+
+const parseInteger = (s: string) => { const n = parseInt(s, 10); return isNaN(n) ? undefined : n; };
+const parseNumber = (s: string) => { const n = parseFloat(s); return isNaN(n) ? undefined : n; };
+const parseFlag = (s: string) => s === 'true' ? true : s === 'false' ? false : undefined;
+
+export const MAX_GROUP_THRESHOLD = 10;
+
+/** The display settings of the viewer. Add a setting here as one `Setting` and bind it in the settings panel. */
+@Injectable({ providedIn: 'root' })
+export class SettingsService {
+  /** Seconds between two mass start laps for them to be in the same group. */
+  readonly groupThreshold = new Setting('groupThresholdSec', 2, parseNumber, (v) => Math.min(MAX_GROUP_THRESHOLD, Math.max(0, v)));
+  /** The most groups a mass start shows; later ones are merged into a tail group. 0 shows none. */
+  readonly maxGroups = new Setting('maxGroups', 4, parseInteger, (v) => Math.max(0, Math.round(v)));
+  /** Percentage a mass start lap may differ from the previous before its badge changes colour. */
+  readonly lapVariance = new Setting('lapVariancePct', 5, parseInteger, (v) => Math.max(0, Math.round(v)));
+  /** Long track has its own threshold: its laps are far more even, so it takes one decimal. */
+  readonly lapVarianceTimed = new Setting('lapVariancePctTimed', 0.5, parseNumber, (v) => Math.max(0, Math.round(v * 10) / 10));
+  readonly showMassStartLapTimes = new Setting('showMassStartLapTimes', false, parseFlag);
+  /** Compact long track badges coloured by variance against the previous lap, like mass start. */
+  readonly compactColors = new Setting('compactColors', true, parseFlag);
+  /** Times show thousandths; hundredths when off. */
+  readonly showThousandths = new Setting('thousandths', true, parseFlag);
+  /** Whether the page scrolls along with the live heat. */
+  readonly follow = new Setting('follow', true, parseFlag);
+}

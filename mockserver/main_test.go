@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-func writeSamples(t *testing.T, base, match string, samples ...string) {
+func writeSamples(t *testing.T, base, competition string, samples ...string) {
 	t.Helper()
-	dir := filepath.Join(base, match)
+	dir := filepath.Join(base, competition)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -83,12 +83,12 @@ func TestReplayStartsOnFirstRequestAndAdvances(t *testing.T) {
 	}
 }
 
-func TestMatchesReplayIndependently(t *testing.T) {
+func TestCompetitionsReplayIndependently(t *testing.T) {
 	ts, base := newTestServer(t, time.Hour)
 	writeSamples(t, base, "a", `{"m":"a1"}`, `{"m":"a2"}`)
 	writeSamples(t, base, "b", `{"m":"b1"}`)
 
-	// Nothing is replayed until a match is requested; others stay idle.
+	// Nothing is replayed until a competition is requested; others stay idle.
 	if _, body := do(t, "GET", ts.URL+"/Competition?competitionId=a"); body != `{"m":"a1"}` {
 		t.Errorf("a: %q", body)
 	}
@@ -96,11 +96,11 @@ func TestMatchesReplayIndependently(t *testing.T) {
 		t.Errorf("b: %q", body)
 	}
 	if _, body := do(t, "GET", ts.URL+"/api/matches"); body != `["a","b"]` {
-		t.Errorf("matches: %q", body)
+		t.Errorf("competitions: %q", body)
 	}
 }
 
-func TestRejectsBadAndUnknownMatches(t *testing.T) {
+func TestRejectsBadAndUnknownCompetitions(t *testing.T) {
 	ts, base := newTestServer(t, time.Hour)
 	writeSamples(t, base, "ok", `{}`)
 	if err := os.MkdirAll(filepath.Join(base, "empty"), 0o755); err != nil {
@@ -122,7 +122,7 @@ func TestRejectsBadAndUnknownMatches(t *testing.T) {
 		}
 	}
 	if _, body := do(t, "GET", ts.URL+"/api/matches"); body != `["ok"]` {
-		t.Errorf("matches should list only matches with samples: %q", body)
+		t.Errorf("competitions should list only competitions with samples: %q", body)
 	}
 }
 
@@ -178,7 +178,7 @@ func TestCatalogEndpoints(t *testing.T) {
 	}
 }
 
-func TestMatchExpiresAfterItsLastUpdate(t *testing.T) {
+func TestCompetitionExpiresAfterItsLastUpdate(t *testing.T) {
 	ts, base := newTestServer(t, 10*time.Millisecond)
 	writeSamples(t, base, "m", `{"s":1}`, `{"s":2}`)
 	url := ts.URL + "/Competition?competitionId=m"

@@ -226,7 +226,7 @@ type testBackend struct {
 	mu     sync.Mutex
 	hits   map[string]int
 	agents map[string]string
-	body   string // when set, the upstream answers with this instead of the sample match
+	body   string // when set, the upstream answers with this instead of the sample competition
 	status int    // when set, the upstream answers with this HTTP status
 }
 
@@ -551,7 +551,7 @@ func readFeedStatus(t *testing.T, ctx context.Context, conn *websocket.Conn) fee
 	}
 }
 
-func TestFeedStatusTellsClientsWhenTheMatchIsNotLive(t *testing.T) {
+func TestFeedStatusTellsClientsWhenTheCompetitionIsNotLive(t *testing.T) {
 	tb := newTestBackend(t, nil)
 	tb.body = `{"success":false,"errorMessage":"Not live right now","name":"Event X","errorMode":2}`
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -612,7 +612,7 @@ func TestLiveResultsBaseURL(t *testing.T) {
 	}
 }
 
-func TestClosesRoomsOfEndedMatches(t *testing.T) {
+func TestClosesRoomsOfEndedCompetitions(t *testing.T) {
 	tb := newTestBackend(t, nil)
 	var ended atomic.Bool
 	tb.m.ended = func(string) bool { return ended.Load() }
@@ -627,7 +627,7 @@ func TestClosesRoomsOfEndedMatches(t *testing.T) {
 	readUntilCompetitor(t, ctx, conn)
 	tb.m.closeEnded()
 	if tb.m.roomCount() != 1 {
-		t.Fatal("a match that is not over keeps its room")
+		t.Fatal("a competition that is not over keeps its room")
 	}
 
 	ended.Store(true)
@@ -635,7 +635,7 @@ func TestClosesRoomsOfEndedMatches(t *testing.T) {
 	if tb.m.roomCount() != 0 {
 		t.Fatalf("rooms = %d, want the room closed", tb.m.roomCount())
 	}
-	for { // the client is told, with the code the page reads as "no match to follow"
+	for { // the client is told, with the code the page reads as "no competition to follow"
 		if _, _, err := conn.Read(ctx); err != nil {
 			if websocket.CloseStatus(err) != websocket.StatusPolicyViolation {
 				t.Fatalf("closed with %v, want a policy violation", err)
@@ -652,6 +652,6 @@ func TestClosesRoomsOfEndedMatches(t *testing.T) {
 		}
 	}
 	if tb.m.roomCount() != 0 {
-		t.Fatal("an ended match must not get a new room")
+		t.Fatal("an ended competition must not get a new room")
 	}
 }

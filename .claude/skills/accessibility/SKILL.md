@@ -30,7 +30,7 @@ template and CSS changes, so prefer fixing at the source over adding workarounds
 cd frontend
 npm run lint                      # angular-eslint template accessibility rules
 npm run e2e                       # starts the stack on the e2e ports, runs the tests, stops it
-node ../.claude/skills/accessibility/scripts/axe-scan.mjs   # axe-core against the fixture matches
+node ../.claude/skills/accessibility/scripts/axe-scan.mjs   # axe-core against the fixture competitions
 ```
 
 `axe-scan.mjs` needs the e2e stack running (mockserver 18080, backend 15000, `ng serve` on
@@ -74,7 +74,7 @@ container must be keyboard reachable.
 
 ## Known baseline
 
-The e2e fixtures and the captured real matches scan clean (zero axe violations) and `e2e/accessibility.e2e.ts`
+The e2e fixtures and the captured real competitions scan clean (zero axe violations) and `e2e/accessibility.e2e.ts`
 keeps it that way. Things that were fixed and are easy to reintroduce:
 
 - Badge colours: success `#177d3c`, danger `#c93434`, muted text `#565e64` (on the dark header `#b4bcc4`),

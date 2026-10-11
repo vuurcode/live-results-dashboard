@@ -10,11 +10,11 @@ All components:
 
 ### Features
 - [x] Go with `github.com/coder/websocket`; versions pinned in `go.mod`, hashes in `go.sum`; prod image on `scratch` from a base pinned by digest, built with `go mod download && go mod verify` and `-mod=readonly`
-- [x] `/ws?competitionId=<id>` on port `5000`; ids match `[A-Za-z0-9_-]{1,64}`; an invalid or missing id (no default) is refused with a close frame the page reads as "no competition"
-- [x] One room per competition: the first client starts the one fetch loop, later clients share its cache and broadcasts; a room closes `IDLE_GRACE_SECONDS` (default 30) after its last client leaves, and when its match ended more than a day ago (checked every minute, with its clients told)
+- [x] `/ws?competitionId=<id>` on port `5000`; ids competition `[A-Za-z0-9_-]{1,64}`; an invalid or missing id (no default) is refused with a close frame the page reads as "no competition"
+- [x] One room per competition: the first client starts the one fetch loop, later clients share its cache and broadcasts; a room closes `IDLE_GRACE_SECONDS` (default 30) after its last client leaves, and when its competition ended more than a day ago (checked every minute, with its clients told)
 - [x] Upstream URL: `LIVE_RESULTS_BASE_URL` + `/Competition?competitionId=<id>`, polled every `LIVE_RESULTS_INTERVAL` seconds (default 1)
 - [x] `DEFAULT_COMPETITION_ID` for clients without an id; at most `MAX_COMPETITIONS` (default 25) rooms, further ones get 503
-- [x] `GET /api/matches/today`: the matches whose local days include today (also before they start), for the configured venue country and discipline, without secrets; empty list when none; cached `CATALOG_TTL_SECONDS` (default 900), stale data kept when a refresh fails; a match is kept the day after it ended and dropped after that, by the match's own time zone
+- [x] `GET /api/competitions/today`: the competitions whose local days include today (also before they start), for the configured venue country and discipline, without secrets; empty list when none; cached `CATALOG_TTL_SECONDS` (default 900), stale data kept when a refresh fails; a competition is kept the day after it ended and dropped after that, by the competition's own time zone
 - [x] The most recent inbound `User-Agent` is mirrored on outbound fetches (the default Go one before any client connected), unless `USER_AGENT` is set
 - [x] Feed status (`ok`, `not_live`, `unavailable`) with the data source's own message is sent to clients when it changes
 - [x] Logs data received, updates sent, and rooms opening and closing

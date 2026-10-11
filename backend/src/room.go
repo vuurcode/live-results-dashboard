@@ -27,10 +27,10 @@ type room struct {
 	idleTime *time.Timer
 
 	mu      sync.Mutex
-	feed    *feedStatus // what the data source says about the match; nil until the first answer
+	feed    *feedStatus // what the data source says about the competition; nil until the first answer
 	st      *store
 	clients map[*client]struct{}
-	ended   bool // closed because the match is over
+	ended   bool // closed because the competition is over
 }
 
 func newRoom(id, url string, cfg config, cancel func()) *room {
@@ -43,7 +43,7 @@ func newRoom(id, url string, cfg config, cancel func()) *room {
 	}
 }
 
-// feedStatus tells clients why there may be no data: the data source says the match is not live,
+// feedStatus tells clients why there may be no data: the data source says the competition is not live,
 // or cannot be reached. The message is the data source's own text (not localised).
 type feedStatus struct {
 	State   string `json:"state"` // "ok", "not_live" or "unavailable"
@@ -136,7 +136,7 @@ func (r *room) clientCount() int {
 	return len(r.clients)
 }
 
-// end disconnects every client because the match is over.
+// end disconnects every client because the competition is over.
 func (r *room) end() {
 	r.mu.Lock()
 	defer r.mu.Unlock()

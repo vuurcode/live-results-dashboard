@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('when there is nothing to show', () => {
-  test('a match that is not live says so, with the data source message, instead of loading forever', async ({ page }) => {
+  test('a competition that is not live says so, with the data source message, instead of loading forever', async ({ page }) => {
     await page.goto('/?competitionId=e2e-notlive');
     const notice = page.getByRole('status').filter({ hasText: 'not live yet' });
     await expect(notice).toBeVisible();
@@ -17,7 +17,7 @@ test.describe('when there is nothing to show', () => {
     await context.close();
   });
 
-  test('a match that stops being live is flagged above the results it already has', async ({ page }) => {
+  test('a competition that stops being live is flagged above the results it already has', async ({ page }) => {
     await page.routeWebSocket(/\/ws/, (ws) => {
       const server = ws.connectToServer();
       ws.onMessage((m) => server.send(m));
@@ -39,11 +39,11 @@ test.describe('when there is nothing to show', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Connection lost' })).toBeVisible();
   });
 
-  test('a refused connection asks for a match instead of reconnecting forever', async ({ page }) => {
+  test('a refused connection asks for a competition instead of reconnecting forever', async ({ page }) => {
     let attempts = 0;
     await page.routeWebSocket(/\/ws/, (ws) => { attempts++; void ws.close({ code: 1008, reason: 'invalid or missing competitionId' }); });
     await page.goto('/?competitionId=e2e-timed');
-    await expect(page.getByRole('status').filter({ hasText: 'Choose a match' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Choose a competition' })).toBeVisible();
     await page.waitForTimeout(6_000);
     expect(attempts).toBe(1);
   });

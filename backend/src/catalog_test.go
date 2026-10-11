@@ -18,7 +18,7 @@ const testVenues = `[
 ]`
 
 func comp(id, venue, discipline, starts, ends string) string {
-	return `{"id":"` + id + `","code":"C-` + id + `","name":"Match ` + id + `","venue":{"code":"` + venue + `"},
+	return `{"id":"` + id + `","code":"C-` + id + `","name":"Competition ` + id + `","venue":{"code":"` + venue + `"},
 	 "discipline":"` + discipline + `","timeZone":"W. Europe Standard Time","extra":"note","allowToSendLive":true,
 	 "starts":"` + starts + `","ends":"` + ends + `","settings":{"paymentProviderKey":"SECRET","contact":{"email":"a@b.c"}}}`
 }
@@ -53,7 +53,7 @@ func newCatalogEnv(t *testing.T, comps ...string) *catalogEnv {
 	return e
 }
 
-func ids(list []*match) []string {
+func ids(list []*competition) []string {
 	out := []string{}
 	for _, m := range list {
 		out = append(out, m.ID)
@@ -82,7 +82,7 @@ func TestCatalogFiltersAndToday(t *testing.T) {
 	}
 	// kept (not listed) until the day after: yesterday stays cached, old is dropped, tomorrow is cached
 	cached := map[string]bool{}
-	for _, m := range e.cat.matches {
+	for _, m := range e.cat.competitions {
 		cached[m.ID] = true
 	}
 	for id, want := range map[string]bool{"yesterday": true, "tomorrow": true, "old": false, "inline": false, "berlin": false} {
@@ -91,7 +91,7 @@ func TestCatalogFiltersAndToday(t *testing.T) {
 		}
 	}
 	if m := got[0]; m.Venue != (venue{Code: "DEV", Name: "Scheg", City: "Deventer"}) || m.Extra != "note" || !m.AllowToSendLive {
-		t.Errorf("unexpected match fields: %+v", m)
+		t.Errorf("unexpected competition fields: %+v", m)
 	}
 }
 
@@ -99,7 +99,7 @@ func TestCatalogBeforeStartListedAndNoSecrets(t *testing.T) {
 	e := newCatalogEnv(t, comp("later", "DEV", "SpeedSkating.LongTrack", "2026-10-24T20:00:00Z", "2026-10-24T21:00:00Z"))
 	e.now = time.Date(2026, 10, 24, 5, 0, 0, 0, time.UTC)
 	rec := httptest.NewRecorder()
-	e.cat.serveToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/matches/today", nil))
+	e.cat.serveToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/competitions/today", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
 	}
@@ -218,16 +218,16 @@ func TestTodayFollowsLocalMidnightWithoutRefetching(t *testing.T) {
 	}
 }
 
-func TestTodayWithoutMatchesIsAnEmptyList(t *testing.T) {
+func TestTodayWithoutCompetitionsIsAnEmptyList(t *testing.T) {
 	e := newCatalogEnv(t, comp("old", "DEV", "SpeedSkating.LongTrack", "2026-10-20T10:00:00Z", "2026-10-20T12:00:00Z"))
 	rec := httptest.NewRecorder()
-	e.cat.serveToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/matches/today", nil))
+	e.cat.serveToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/competitions/today", nil))
 	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
 		t.Fatalf("status %d body %q, want 200 and []", rec.Code, rec.Body.String())
 	}
 }
 
-func TestEndedMatchesAreKnownAfterTheyLeaveTheList(t *testing.T) {
+func TestEndedCompetitionsAreKnownAfterTheyLeaveTheList(t *testing.T) {
 	e := newCatalogEnv(t,
 		comp("today", "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-24T19:00:00Z"),
 		comp("old", "DEV", "SpeedSkating.LongTrack", "2026-10-20T10:00:00Z", "2026-10-20T12:00:00Z"),
@@ -242,6 +242,6 @@ func TestEndedMatchesAreKnownAfterTheyLeaveTheList(t *testing.T) {
 	}
 	e.now = time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC) // two days later
 	if !e.cat.ended("today") {
-		t.Error("a match two days after its end is over, without refetching")
+		t.Error("a competition two days after its end is over, without refetching")
 	}
 }

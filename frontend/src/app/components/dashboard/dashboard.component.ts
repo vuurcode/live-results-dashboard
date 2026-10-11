@@ -1,10 +1,11 @@
-import { isNeverLive } from '../../logic/race-codes';
+import { findLiveHeat } from '../../logic/live-heat';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
-import { FeedStatus, TodayMatch, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
+import { SettingsService } from '../../services/settings.service';
+import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
 import { Observable, combineLatest, concat, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
@@ -72,7 +73,7 @@ export class DashboardComponent implements OnInit {
 
   private readonly scroller = new SettledScroller();
   private readonly autoFollow = new AutoFollow({
-    follow: () => this.dataService.follow,
+    follow: () => this.settings.follow.value,
     heatGroups: (distance) => this.mergedHeatGroups(distance),
     scrollTo: (selector, anchor) => this.scroller.scrollTo(selector, anchor),
     liveDistanceChanged: (live) => {
@@ -86,18 +87,18 @@ export class DashboardComponent implements OnInit {
   // Hide mass start settings if no mass start present
   hasMassStart$: Observable<boolean>;
 
-  /** Matches happening today, for the match picker in the top bar. */
-  /** The matches of today, asked again every few minutes so new matches show up and finished ones drop off while the page stays open. */
-  readonly todayMatches$: Observable<TodayMatch[]> = timer(0, 5 * 60_000).pipe(switchMap(() => from(this.dataService.todayMatches())));
+  /** Competitions happening today, for the competition picker in the top bar. */
+  /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
+  readonly todayCompetitions$: Observable<TodayCompetition[]> = timer(0, 5 * 60_000).pipe(switchMap(() => from(this.dataService.todayCompetitions())));
 
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
-  selectedLabelLength(matches: TodayMatch[]): number {
-    const m = matches.find(x => x.id === this.dataService.competitionId);
+  selectedLabelLength(competitions: TodayCompetition[]): number {
+    const m = competitions.find(x => x.id === this.dataService.competitionId);
     return m ? `00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
   }
 
-  /** Open another match; the page reads its competitionId on load. */
-  onMatchChange(event: Event): void {
+  /** Open another competition; the page reads its competitionId on load. */
+  onCompetitionChange(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
   }
@@ -124,8 +125,8 @@ export class DashboardComponent implements OnInit {
     this.massStartSettingsOpen = false;
   }
 
-  isTodayMatch(matches: TodayMatch[], id: string): boolean {
-    return matches.some((m) => m.id === id);
+  isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {
+    return competitions.some((m) => m.id === id);
   }
 
   selectRace(id: string): void {
@@ -134,17 +135,17 @@ export class DashboardComponent implements OnInit {
 
   onThresholdChange(event: Event): void {
     const val = parseFloat((event.target as HTMLInputElement).value);
-    if (!isNaN(val)) this.dataService.setGroupThreshold(val);
+    if (!isNaN(val)) this.settings.groupThreshold.set(val);
   }
 
   onMaxGroupsChange(event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) this.dataService.setMaxGroups(val);
+    if (!isNaN(val)) this.settings.maxGroups.set(val);
   }
 
   onLapVarianceChange(event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) this.dataService.setLapVarianceThreshold(val);
+    if (!isNaN(val)) this.settings.lapVariance.set(val);
   }
 
   /** The values of the threshold example text, following the given setting (a lap of 40.0 s as the base). */
@@ -166,22 +167,23 @@ export class DashboardComponent implements OnInit {
 
   onLapVarianceTimedChange(event: Event): void {
     const val = parseFloat((event.target as HTMLInputElement).value);
-    if (!isNaN(val)) this.dataService.setLapVarianceThresholdTimed(val);
+    if (!isNaN(val)) this.settings.lapVarianceTimed.set(val);
   }
 
   onThousandthsChange(event: Event): void {
-    this.dataService.setShowThousandths((event.target as HTMLInputElement).checked);
+    this.settings.showThousandths.set((event.target as HTMLInputElement).checked);
   }
 
   onCompactColorsChange(event: Event): void {
-    this.dataService.setCompactColors((event.target as HTMLInputElement).checked);
+    this.settings.compactColors.set((event.target as HTMLInputElement).checked);
   }
 
   onShowLapTimesChange(event: Event): void {
-    this.dataService.setShowMassStartLapTimes((event.target as HTMLInputElement).checked);
+    this.settings.showMassStartLapTimes.set((event.target as HTMLInputElement).checked);
   }
 
   public dataService = inject(DataService);
+  public settings = inject(SettingsService);
   private titleService = inject(Title);
   public ts = inject(TranslateService);
   private cdr = inject(ChangeDetectorRef);
@@ -270,17 +272,15 @@ export class DashboardComponent implements OnInit {
 
   /** The heat whose lap times updated most recently (the later one when they changed together; the page follows by the same rule), ignoring mass starts; heats that were never timed here are never live. */
   private findActiveHeat(distances: ProcessedDistance[]): { distanceId: string; label: string } | null {
-    let maxTime = 0;
+    let latest = 0;
     let result: { distanceId: string; label: string } | null = null;
     for (const distance of distances) {
       if (distance.isMassStart) continue;
-      for (const group of this.mergedHeatGroups(distance)) {
-        for (const race of group.races) {
-          if (race?.lapsUpdatedAt && !isNeverLive(race) && race.lapsUpdatedAt >= maxTime) {
-            maxTime = race.lapsUpdatedAt;
-            result = { distanceId: distance.id, label: group.label };
-          }
-        }
+      const groups = this.mergedHeatGroups(distance);
+      const live = findLiveHeat(groups);
+      if (live && live.updatedAt >= latest) {
+        latest = live.updatedAt;
+        result = { distanceId: distance.id, label: groups[live.index].label };
       }
     }
     return result;
@@ -347,7 +347,7 @@ export class DashboardComponent implements OnInit {
 
   onFollowChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
-    this.dataService.setFollow(checked);
+    this.settings.follow.set(checked);
     this.autoFollow.restart();
   }
 
@@ -388,7 +388,7 @@ interface EmptyNotice {
 
 /** What to tell the viewer while there are no results to show. */
 function emptyNotice(feed: FeedStatus | null, connection: string, waitedLong: boolean): EmptyNotice | null {
-  if (connection === 'No match') return { titleKey: 'feedNoMatchTitle', bodyKey: 'feedNoMatchBody' };
+  if (connection === 'No competition') return { titleKey: 'feedNoCompetitionTitle', bodyKey: 'feedNoCompetitionBody' };
   if (connection === 'Error' || connection === 'Disconnected') return { titleKey: 'feedDisconnectedTitle', bodyKey: 'feedDisconnectedBody' };
   if (feed?.state === 'not_live') return { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message };
   if (feed?.state === 'unavailable') return { titleKey: 'feedUnavailableTitle', bodyKey: 'feedUnavailableBody' };

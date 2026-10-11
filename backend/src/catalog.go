@@ -24,9 +24,9 @@ type venue struct {
 	City string `json:"city"`
 }
 
-// match is one competition as shown to clients. Only these fields are decoded
+// competition is one competition as shown to clients. Only these fields are decoded
 // from the upstream, so nothing else (contacts, payment settings) is ever held.
-type match struct {
+type competition struct {
 	ID              string `json:"id"`
 	Code            string `json:"code"`
 	Name            string `json:"name"`
@@ -100,22 +100,22 @@ func loadZone(competition, name string) *time.Location {
 	return time.UTC
 }
 
-func (m *match) active(now time.Time) bool {
+func (m *competition) active(now time.Time) bool {
 	return m.window(now) != windowPast
 }
 
 type window int
 
 const (
-	windowPast   window = iota // more than a day after the match ended
-	windowAfter                // the day after the match ended (still kept)
-	windowToday                // a day of the match
-	windowFuture               // before the match
+	windowPast   window = iota // more than a day after the competition ended
+	windowAfter                // the day after the competition ended (still kept)
+	windowToday                // a day of the competition
+	windowFuture               // before the competition
 )
 
-// window places the match relative to now in the match's own time zone. A match
+// window places the competition relative to now in the competition's own time zone. A competition
 // is kept until the local day after it ends, then dropped.
-func (m *match) window(now time.Time) window {
+func (m *competition) window(now time.Time) window {
 	y, mo, d := now.In(m.zone).Date()
 	today := time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
 	first := localDay(m.from, m.zone)
@@ -148,12 +148,12 @@ type catalog struct {
 	client     *http.Client
 	now        func() time.Time
 
-	mu         sync.Mutex
-	venues     map[string]venue
-	matches    []*match
-	known      map[string]*match // every match of the venues, also those no longer listed
-	fetchedAt  time.Time
-	lastFailed time.Time
+	mu           sync.Mutex
+	venues       map[string]venue
+	competitions []*competition
+	known        map[string]*competition // every competition of the venues, also those no longer listed
+	fetchedAt    time.Time
+	lastFailed   time.Time
 }
 
 const retryAfterFailure = 30 * time.Second
@@ -211,21 +211,21 @@ func (c *catalog) loadVenues(ctx context.Context) error {
 	return nil
 }
 
-func (c *catalog) loadMatches(ctx context.Context) error {
+func (c *catalog) loadCompetitions(ctx context.Context) error {
 	var raw []rawCompetition
 	if err := c.getJSON(ctx, "/api/competitions", &raw); err != nil {
 		return err
 	}
 	now := c.now()
-	var matches []*match
-	known := map[string]*match{}
+	var competitions []*competition
+	known := map[string]*competition{}
 	for i := range raw {
 		r := &raw[i]
 		v, ok := c.venues[r.Venue.Code]
 		if !ok || r.Discipline != c.discipline || !competitionIDRe.MatchString(r.ID) {
 			continue
 		}
-		m := &match{
+		m := &competition{
 			ID: r.ID, Code: r.Code, Name: r.Name, AllowToSendLive: r.AllowToSendLive, Venue: v,
 			Start: r.Starts.UTC().Format(time.RFC3339), zone: loadZone(r.ID, r.TimeZone), from: r.Starts, to: r.Ends,
 		}
@@ -239,14 +239,14 @@ func (c *catalog) loadMatches(ctx context.Context) error {
 		}
 		known[m.ID] = m
 		if m.active(now) {
-			matches = append(matches, m)
+			competitions = append(competitions, m)
 		}
 	}
-	sort.Slice(matches, func(i, j int) bool { return matches[i].from.Before(matches[j].from) })
-	c.matches = matches
+	sort.Slice(competitions, func(i, j int) bool { return competitions[i].from.Before(competitions[j].from) })
+	c.competitions = competitions
 	c.known = known
 	c.fetchedAt = now
-	slog.Info("Competitions loaded", "listed", len(matches), "of", len(raw))
+	slog.Info("Competitions loaded", "listed", len(competitions), "of", len(raw))
 	return nil
 }
 
@@ -284,10 +284,10 @@ func (c *catalog) reload(ctx context.Context) error {
 			return err
 		}
 	}
-	return c.loadMatches(ctx)
+	return c.loadCompetitions(ctx)
 }
 
-// ended reports whether id is a match that is over for good (more than a day after it ended). An id the catalog has
+// ended reports whether id is a competition that is over for good (more than a day after it ended). An id the catalog has
 // never seen is not ended: it may be a competition the list does not carry.
 func (c *catalog) ended(id string) bool {
 	c.mu.Lock()
@@ -296,16 +296,16 @@ func (c *catalog) ended(id string) bool {
 	return ok && m.window(c.now()) == windowPast
 }
 
-// today lists the matches whose local days include today, including those that have not started yet.
-func (c *catalog) today(ctx context.Context) ([]*match, error) {
+// today lists the competitions whose local days include today, including those that have not started yet.
+func (c *catalog) today(ctx context.Context) ([]*competition, error) {
 	if err := c.refresh(ctx); err != nil {
 		return nil, err
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.now()
-	out := []*match{}
-	for _, m := range c.matches {
+	out := []*competition{}
+	for _, m := range c.competitions {
 		if m.window(now) == windowToday {
 			out = append(out, m)
 		}
@@ -316,7 +316,7 @@ func (c *catalog) today(ctx context.Context) ([]*match, error) {
 func (c *catalog) serveToday(w http.ResponseWriter, r *http.Request) {
 	list, err := c.today(r.Context())
 	if err != nil {
-		http.Error(w, "match list unavailable", http.StatusBadGateway)
+		http.Error(w, "competition list unavailable", http.StatusBadGateway)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

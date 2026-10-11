@@ -5,21 +5,21 @@ import { MOCK_URL } from './env';
 // Same rule set as .claude/skills/accessibility/scripts/axe-scan.mjs
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
-async function restartReplay(request: import('@playwright/test').APIRequestContext, match: string) {
-  const res = await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: match } });
+async function restartReplay(request: import('@playwright/test').APIRequestContext, competition: string) {
+  const res = await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: competition } });
   expect(res.ok()).toBeTruthy();
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
 
 test.describe('accessibility', () => {
-  for (const [match, ready] of [
+  for (const [competition, ready] of [
     ['e2e-timed', '.timed-compact-done'], // finished cards show the total time badge
     ['e2e-mass', '.race-item-laps.race-finished'],
   ] as const) {
-    test(`${match}: no axe violations once the replay has finished`, async ({ page, request }) => {
+    test(`${competition}: no axe violations once the replay has finished`, async ({ page, request }) => {
       await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // colours on: their contrast is checked too
-      await restartReplay(request, match);
-      await page.goto(`/?competitionId=${match}`);
+      await restartReplay(request, competition);
+      await page.goto(`/?competitionId=${competition}`);
       // finished rows are the last state of the replay, with every badge and row on screen
       await expect(page.locator(ready)).toHaveCount(4);
 

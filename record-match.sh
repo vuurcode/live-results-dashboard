@@ -1,5 +1,5 @@
 #!/bin/bash
-# Records a live match so it can be anonymized and replayed by the mockserver.
+# Records a live competition so it can be anonymized and replayed by the mockserver.
 #
 #   ./record-match.sh <LIVE_RESULTS_BASE_URL> <competitionId> [interval-seconds]
 #

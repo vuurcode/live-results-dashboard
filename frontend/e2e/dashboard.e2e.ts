@@ -2,12 +2,12 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { MOCK_URL } from './env';
 
 /**
- * Restart a match's replay from its first sample, so every test starts from the same state.
+ * Restart a competition's replay from its first sample, so every test starts from the same state.
  * The backend polls every 0.5s and clears a competition's state when laps go backwards,
  * so give it a moment to notice before a page connects.
  */
-async function restartReplay(request: APIRequestContext, match: string): Promise<void> {
-  const res = await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: match } });
+async function restartReplay(request: APIRequestContext, competition: string): Promise<void> {
+  const res = await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: competition } });
   expect(res.ok()).toBeTruthy();
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
@@ -20,23 +20,23 @@ test.describe('competition selection', () => {
     await expect(page).toHaveTitle('E2E Mass Start Event | Live Results Dashboard');
   });
 
-  test('follows no match when the URL names none, and offers the match list', async ({ page }) => {
+  test('follows no competition when the URL names none, and offers the competition list', async ({ page }) => {
     let sockets = 0;
     page.on('websocket', (ws) => { if (ws.url().includes('/ws')) sockets++; });
     await page.goto('/');
-    await expect(page.getByRole('status').filter({ hasText: 'Choose a match' })).toBeVisible();
-    await expect(page.locator('#matchSelect')).toBeVisible();
-    await expect(page.locator('#matchSelect option[disabled]')).toHaveText('No match selected');
-    await expect(page.locator('.match-hint')).toHaveText('Select a live match to watch it');
+    await expect(page.getByRole('status').filter({ hasText: 'Choose a competition' })).toBeVisible();
+    await expect(page.locator('#competitionSelect')).toBeVisible();
+    await expect(page.locator('#competitionSelect option[disabled]')).toHaveText('No competition selected');
+    await expect(page.locator('.competition-hint')).toHaveText('Select a live competition to watch it');
     await expect(page.locator('.skeleton-title')).toHaveCount(0);
     expect(sockets).toBe(0);
   });
 
-  test('says so when there are no matches to pick from', async ({ page }) => {
-    await page.route('**/api/matches/today', (route) => route.fulfill({ json: [] }));
+  test('says so when there are no competitions to pick from', async ({ page }) => {
+    await page.route('**/api/competitions/today', (route) => route.fulfill({ json: [] }));
     await page.goto('/');
-    await expect(page.locator('.match-hint')).toHaveText('There are no matches to watch right now');
-    await expect(page.locator('#matchSelect')).toHaveCount(0);
+    await expect(page.locator('.competition-hint')).toHaveText('There are no competitions to watch right now');
+    await expect(page.locator('#competitionSelect')).toHaveCount(0);
   });
 
   test('two viewers of one competition both get its data', async ({ browser, request }) => {
@@ -171,19 +171,19 @@ test.describe('mass start', () => {
   });
 });
 
-test('lists the matches of today and opens the chosen one', async ({ page }) => {
+test('lists the competitions of today and opens the chosen one', async ({ page }) => {
   await page.goto('/?competitionId=e2e-timed');
-  const select = page.getByLabel('Matches today');
-  await expect(select.locator('option')).toHaveCount(6); // the six fixture matches; the mock's other-day and other-venue entries are filtered out
+  const select = page.getByLabel('Competitions today');
+  await expect(select.locator('option')).toHaveCount(6); // the six fixture competitions; the mock's other-day and other-venue entries are filtered out
   await expect(select).toHaveValue('e2e-timed');
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);
-  await expect(page.getByLabel('Matches today')).toHaveValue('e2e-mass');
+  await expect(page.getByLabel('Competitions today')).toHaveValue('e2e-mass');
 });
 
-test('the match picker replaces the event name, venue first, start time only before the start', async ({ page }) => {
+test('the competition picker replaces the event name, venue first, start time only before the start', async ({ page }) => {
   await page.goto('/?competitionId=e2e-timed');
-  const select = page.getByLabel('Matches today');
+  const select = page.getByLabel('Competitions today');
   await expect(select).toBeVisible();
   // the event name is still the page heading, but visually hidden because the picker shows it
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Timed Event');

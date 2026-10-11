@@ -6,7 +6,7 @@ $tint-fast-bg: #e2d9f3; $tint-fast-fg: #3b2273;
 // The smallest viewport that shows four lanes in a row; narrower ones show two per row (one per row on the narrowest)
 $four-lanes-min: 1280px;
 
-// The note laid over the top of a racer card (a PB's diff, or a remark such as TRC); the font size differs per kind
+// The note laid over the top of a competitor card (a PB's diff, or a remark such as TRC); the font size differs per kind
 @mixin card-watermark($font-size) {
   position: absolute;
   top: 0.35rem; // in the top right corner of the card title (see .timed-comp-title)

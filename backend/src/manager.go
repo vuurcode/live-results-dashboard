@@ -21,7 +21,7 @@ const defaultPingInterval = 25 * time.Second
 var (
 	errBadCompetitionID = errors.New("invalid or missing competitionId")
 	errTooManyRooms     = errors.New("too many competitions are being followed")
-	errMatchEnded       = errors.New("the match is over")
+	errCompetitionEnded = errors.New("the competition is over")
 
 	// Ids end up in an outbound URL, so only a conservative charset is accepted.
 	competitionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -36,7 +36,7 @@ type manager struct {
 	client *http.Client
 	ctx    context.Context
 
-	// ended says whether a match is over for good; nil means no match ever is.
+	// ended says whether a competition is over for good; nil means no competition ever is.
 	ended func(id string) bool
 
 	mu    sync.Mutex
@@ -72,7 +72,7 @@ func (m *manager) join(id string) (*room, *client, error) {
 		return nil, nil, errBadCompetitionID
 	}
 	if m.ended != nil && m.ended(id) {
-		return nil, nil, errMatchEnded
+		return nil, nil, errCompetitionEnded
 	}
 
 	m.mu.Lock()
@@ -121,7 +121,7 @@ func (m *manager) leave(r *room, c *client) {
 	})
 }
 
-// closeEnded closes the rooms of matches that are over, together with their polling loops and clients.
+// closeEnded closes the rooms of competitions that are over, together with their polling loops and clients.
 func (m *manager) closeEnded() {
 	if m.ended == nil {
 		return
@@ -135,11 +135,11 @@ func (m *manager) closeEnded() {
 		delete(m.rooms, id)
 		r.cancel()
 		r.end()
-		slog.Info("Competition closed (match over)", "competition", id, "open", len(m.rooms))
+		slog.Info("Competition closed (competition over)", "competition", id, "open", len(m.rooms))
 	}
 }
 
-// watchEnded checks every `every` whether open rooms belong to matches that are over, until ctx ends.
+// watchEnded checks every `every` whether open rooms belong to competitions that are over, until ctx ends.
 func (m *manager) watchEnded(ctx context.Context, every time.Duration) {
 	t := time.NewTicker(every)
 	defer t.Stop()
@@ -161,7 +161,7 @@ func (m *manager) roomCount() int {
 
 func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	r, c, err := m.join(req.URL.Query().Get("competitionId"))
-	if errors.Is(err, errBadCompetitionID) || errors.Is(err, errMatchEnded) {
+	if errors.Is(err, errBadCompetitionID) || errors.Is(err, errCompetitionEnded) {
 		// A browser cannot read the status of a failed handshake and would retry forever, so the
 		// refusal is a close frame it can recognise.
 		if conn, acceptErr := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}}); acceptErr == nil {
@@ -211,7 +211,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 			if !ok {
 				reason := "client too slow"
 				if r.isEnded() {
-					reason = errMatchEnded.Error()
+					reason = errCompetitionEnded.Error()
 				}
 				_ = conn.Close(websocket.StatusPolicyViolation, reason)
 				return

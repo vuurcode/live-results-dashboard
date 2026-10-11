@@ -107,7 +107,7 @@ export interface BackendWindow extends Window {
   BACKEND_URL?: string;
 }
 
-/** What the data source says about the match: it answers, is not live (yet) or cannot be reached. */
+/** What the data source says about the competition: it answers, is not live (yet) or cannot be reached. */
 export interface FeedStatus {
   state: 'ok' | 'not_live' | 'unavailable';
   /** The data source's own text for `not_live` (not localised). */
@@ -124,8 +124,8 @@ export type BackendMessage =
   | { type: 'distance_meta'; data: DistanceMeta }
   | { type: 'competitor_update'; data: CompetitorUpdate };
 
-/** One entry of the backend's `/api/matches/today` list; `id` is the competitionId to follow. */
-export interface TodayMatch {
+/** One entry of the backend's `/api/competitions/today` list; `id` is the competitionId to follow. */
+export interface TodayCompetition {
   id: string;
   code: string;
   name: string;

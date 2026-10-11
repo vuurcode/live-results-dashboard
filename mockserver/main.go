@@ -1,19 +1,19 @@
 // Mock server for live-results-dashboard.
 //
-// DATA_SAMPLE_DIRECTORY is a base directory with one subdirectory per match. A
-// match's id is its subdirectory name. The first GET /Competition?competitionId=<id>
-// starts that match's replay: its JSON samples are served in ascending filename
+// DATA_SAMPLE_DIRECTORY is a base directory with one subdirectory per competition. A
+// competition's id is its subdirectory name. The first GET /Competition?competitionId=<id>
+// starts that competition's replay: its JSON samples are served in ascending filename
 // order, DATA_SAMPLE_INTERVAL seconds apart, holding the last sample at the end.
-// A match whose last sample has been held for DATA_EXPIRE_AFTER seconds (default 300) is dropped,
+// A competition whose last sample has been held for DATA_EXPIRE_AFTER seconds (default 300) is dropped,
 // so the next request replays it from the start.
-// Matches replay independently of each other.
+// Competitions replay independently of each other.
 //
-//	GET  /api/matches                    ids of the available matches (also a health check)
-//	GET  /api/venues                     synthetic venues (DEV: a Dutch long-track venue that hosts every sample match, plus distractors)
-//	GET  /api/competitions               one competition per match, running today, plus synthetic ones
+//	GET  /api/matches                    ids of the available competitions (also a health check)
+//	GET  /api/venues                     synthetic venues (DEV: a Dutch long-track venue that hosts every sample competition, plus distractors)
+//	GET  /api/competitions               one competition per competition, running today, plus synthetic ones
 //	                                     (tomorrow, last week, other venue) to exercise filtering
-//	GET  /Competition?competitionId=<id> current sample of a match; starts its replay on first use
-//	POST /api/reset[?competitionId=<id>] restart one started match, or all of them
+//	GET  /Competition?competitionId=<id> current sample of a competition; starts its replay on first use
+//	POST /api/reset[?competitionId=<id>] restart one started competition, or all of them
 package main
 
 import (
@@ -33,12 +33,12 @@ import (
 	"time"
 )
 
-var matchIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+var competitionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type config struct {
 	baseDir     string
 	interval    time.Duration
-	expireAfter time.Duration // how long the last sample is held before the match is dropped; 0 never
+	expireAfter time.Duration // how long the last sample is held before the competition is dropped; 0 never
 	listenAddr  string
 }
 
@@ -67,7 +67,7 @@ func loadConfig() config {
 	return cfg
 }
 
-// replay serves one match: the current sample, advanced by a background goroutine.
+// replay serves one competition: the current sample, advanced by a background goroutine.
 type replay struct {
 	id     string
 	cancel context.CancelFunc
@@ -97,18 +97,18 @@ type server struct {
 }
 
 var (
-	errUnknownMatch = errors.New("unknown match")
-	errNoSamples    = errors.New("match has no valid samples")
+	errUnknownCompetition = errors.New("unknown competition")
+	errNoSamples          = errors.New("competition has no valid samples")
 )
 
-// sampleFiles lists a match's JSON samples in ascending filename order.
+// sampleFiles lists a competition's JSON samples in ascending filename order.
 func (s *server) sampleFiles(id string) ([]string, error) {
-	if !matchIDRe.MatchString(id) {
-		return nil, errUnknownMatch
+	if !competitionIDRe.MatchString(id) {
+		return nil, errUnknownCompetition
 	}
 	dir := filepath.Join(s.cfg.baseDir, id)
-	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() { //nolint:gosec // id is validated against matchIDRe above
-		return nil, errUnknownMatch
+	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() { //nolint:gosec // id is validated against competitionIDRe above
+		return nil, errUnknownCompetition
 	}
 	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
 	if err != nil {
@@ -120,7 +120,7 @@ func (s *server) sampleFiles(id string) ([]string, error) {
 
 // readSample returns a file's bytes, or nil if it is unreadable or not valid JSON.
 func readSample(path string) []byte {
-	b, err := os.ReadFile(path) //nolint:gosec // path comes from a glob under the validated match directory
+	b, err := os.ReadFile(path) //nolint:gosec // path comes from a glob under the validated competition directory
 	if err != nil || !json.Valid(b) {
 		slog.Error("Replay: skipping unparseable sample", "file", filepath.Base(path), "err", err)
 		return nil
@@ -128,7 +128,7 @@ func readSample(path string) []byte {
 	return b
 }
 
-// start (re)starts a match's replay. The first valid sample is loaded before
+// start (re)starts a competition's replay. The first valid sample is loaded before
 // returning, so the caller can serve it immediately.
 func (s *server) start(id string) (*replay, error) {
 	files, err := s.sampleFiles(id)
@@ -149,8 +149,8 @@ func (s *server) start(id string) (*replay, error) {
 
 	ctx, cancel := context.WithCancel(s.ctx)
 	r := &replay{id: id, cancel: cancel, current: firstData}
-	slog.Info("Replay started", "match", id, "files", len(files), "interval", s.cfg.interval)
-	slog.Info("Replay: loaded", "match", id, "file", filepath.Base(files[first]), "n", first+1, "of", len(files))
+	slog.Info("Replay started", "competition", id, "files", len(files), "interval", s.cfg.interval)
+	slog.Info("Replay: loaded", "competition", id, "file", filepath.Base(files[first]), "n", first+1, "of", len(files))
 
 	go func() {
 		for i := first + 1; i < len(files); i++ {
@@ -161,10 +161,10 @@ func (s *server) start(id string) (*replay, error) {
 			}
 			if data := readSample(files[i]); data != nil {
 				r.set(data)
-				slog.Info("Replay: loaded", "match", id, "file", filepath.Base(files[i]), "n", i+1, "of", len(files))
+				slog.Info("Replay: loaded", "competition", id, "file", filepath.Base(files[i]), "n", i+1, "of", len(files))
 			}
 		}
-		slog.Info("Replay complete, holding last sample", "match", id)
+		slog.Info("Replay complete, holding last sample", "competition", id)
 		if s.cfg.expireAfter <= 0 {
 			return
 		}
@@ -177,7 +177,7 @@ func (s *server) start(id string) (*replay, error) {
 	return r, nil
 }
 
-// replayFor returns the match's running replay, starting it on first use.
+// replayFor returns the competition's running replay, starting it on first use.
 func (s *server) replayFor(id string) (*replay, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -193,7 +193,7 @@ func (s *server) replayFor(id string) (*replay, error) {
 }
 
 // expire drops a replay that has not changed for a while, unless it was replaced in the meantime;
-// the next request for the match starts it over.
+// the next request for the competition starts it over.
 func (s *server) expire(id string, r *replay) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -202,7 +202,7 @@ func (s *server) expire(id string, r *replay) {
 	}
 	r.cancel()
 	delete(s.replays, id)
-	slog.Info("Replay expired", "match", id, "after", s.cfg.expireAfter)
+	slog.Info("Replay expired", "competition", id, "after", s.cfg.expireAfter)
 }
 
 func (s *server) reset(id string) error {
@@ -217,14 +217,14 @@ func (s *server) reset(id string) error {
 		return err
 	}
 	s.replays[id] = r
-	slog.Info("Replay reset", "match", id)
+	slog.Info("Replay reset", "competition", id)
 	return nil
 }
 
 func fail(w http.ResponseWriter, err error) {
 	code := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, errUnknownMatch), errors.Is(err, errNoSamples):
+	case errors.Is(err, errUnknownCompetition), errors.Is(err, errNoSamples):
 		code = http.StatusNotFound
 	}
 	http.Error(w, err.Error(), code)
@@ -234,7 +234,7 @@ func (s *server) handleMatches(w http.ResponseWriter, _ *http.Request) {
 	entries, _ := os.ReadDir(s.cfg.baseDir)
 	ids := []string{}
 	for _, e := range entries {
-		if e.IsDir() && matchIDRe.MatchString(e.Name()) {
+		if e.IsDir() && competitionIDRe.MatchString(e.Name()) {
 			if files, _ := s.sampleFiles(e.Name()); len(files) > 0 {
 				ids = append(ids, e.Name())
 			}
@@ -246,7 +246,7 @@ func (s *server) handleMatches(w http.ResponseWriter, _ *http.Request) {
 
 func (s *server) handleData(w http.ResponseWriter, req *http.Request) {
 	id := req.URL.Query().Get("competitionId")
-	if !matchIDRe.MatchString(id) {
+	if !competitionIDRe.MatchString(id) {
 		http.Error(w, "competitionId is required", http.StatusBadRequest)
 		return
 	}
@@ -280,7 +280,7 @@ func (s *server) handleReset(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"reset": true, "matches": ids})
 }
 
-// eventName reads the event name from a match's samples (the first ones may be error
+// eventName reads the event name from a competition's samples (the first ones may be error
 // responses without a name), falling back to its id.
 func (s *server) eventName(id string) string {
 	files, _ := s.sampleFiles(id)
@@ -315,7 +315,7 @@ func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-// handleCompetitions lists every available match as running today, plus a few
+// handleCompetitions lists every available competition as running today, plus a few
 // synthetic ones that the backend's filters must drop or keep out of "today".
 func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
 	entries, _ := os.ReadDir(s.cfg.baseDir)
@@ -335,7 +335,7 @@ func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
 	}
 	list := []any{}
 	for _, e := range entries {
-		if e.IsDir() && matchIDRe.MatchString(e.Name()) {
+		if e.IsDir() && competitionIDRe.MatchString(e.Name()) {
 			if files, _ := s.sampleFiles(e.Name()); len(files) > 0 {
 				list = append(list, comp(e.Name(), s.eventName(e.Name()), "DEV", now.Add(-time.Hour), now.Add(3*time.Hour)))
 			}
@@ -343,9 +343,9 @@ func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
 	}
 	day := 24 * time.Hour
 	list = append(list,
-		comp("mock-tomorrow", "Mock match tomorrow", "DEV", now.Add(day), now.Add(day+3*time.Hour)),
-		comp("mock-last-week", "Mock match last week", "DEV", now.Add(-7*day), now.Add(-7*day+3*time.Hour)),
-		comp("mock-other-venue", "Mock match elsewhere", "OTH", now.Add(-time.Hour), now.Add(3*time.Hour)),
+		comp("mock-tomorrow", "Mock competition tomorrow", "DEV", now.Add(day), now.Add(day+3*time.Hour)),
+		comp("mock-last-week", "Mock competition last week", "DEV", now.Add(-7*day), now.Add(-7*day+3*time.Hour)),
+		comp("mock-other-venue", "Mock competition elsewhere", "OTH", now.Add(-time.Hour), now.Add(3*time.Hour)),
 	)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(list)

@@ -9,7 +9,7 @@ import { categoryName } from '../../logic/category.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
-/** The usual lane colours by slot, for lanes no racer has shown a colour for yet. */
+/** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
 const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
 
 @Component({
@@ -103,7 +103,7 @@ export class TimedHeatCardComponent {
 
   isRecentUpdate = isRecentUpdate;
 
-  /** How long a new split keeps its green flash; must match the `flashGreen` duration in dashboard.component.scss. */
+  /** How long a new split keeps its green flash; must competition the `flashGreen` duration in dashboard.component.scss. */
   private readonly SPLIT_FLASH_MS = 2000;
   isSplitFlashing = (lastUpdated: number | undefined): boolean => isRecentUpdate(lastUpdated, Date.now(), this.SPLIT_FLASH_MS);
   splitFormattedTime = splitFormattedTime;
@@ -182,7 +182,7 @@ export class TimedHeatCardComponent {
     return codes.some(c => !!c && NO_TIME_CODES.has(c.toUpperCase()));
   }
 
-  /** The live tag goes on the cards of the live heat, except for racers who did not start or withdrew. */
+  /** The live tag goes on the cards of the live heat, except for competitors who did not start or withdrew. */
   showLive(race: CompetitorUpdate): boolean {
     return this.active && !isNeverLive(race);
   }
@@ -239,7 +239,7 @@ export class TimedHeatCardComponent {
     return sameHundredths(total, race.personal_record) ? 3 : 2;
   }
 
-  /** Lane colour of a slot: the racer's own, else the colour other heats show for it, else the standard order. */
+  /** Lane colour of a slot: the competitor's own, else the colour other heats show for it, else the standard order. */
   laneColor(race: CompetitorUpdate | null, slot: number): string | null {
     return race?.lane ?? this.laneColors[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
   }
@@ -254,7 +254,7 @@ export class TimedHeatCardComponent {
     return !!race.invalid_reason || this.splitRemarks(race.remark).length > 0;
   }
 
-  /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no racer in this heat. */
+  /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no competitor in this heat. */
   laneSetEmpty(slot: number): boolean {
     const first = slot - (slot % 2);
     return !this.races[first] && !this.races[first + 1];

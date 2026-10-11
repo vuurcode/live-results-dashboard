@@ -3,33 +3,33 @@
   <section class="disclaimer-bar" [attr.aria-label]="'disclaimerLabel' | translate"><p class="mb-0">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</p></section>
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
-    @let matches = (todayMatches$ | async) ?? [];
-    @let picked = !!dataService.competitionId && isTodayMatch(matches, dataService.competitionId);
-    @let noMatch = (dataService.status$ | async)?.status === 'No match';
-    <!-- When the followed match is in today's list, the picker takes the place of the event name
+    @let competitions = (todayCompetitions$ | async) ?? [];
+    @let picked = !!dataService.competitionId && isTodayCompetition(competitions, dataService.competitionId);
+    @let noCompetition = (dataService.status$ | async)?.status === 'No competition';
+    <!-- When the followed competition is in today's list, the picker takes the place of the event name
          (it shows the same name); the name stays in the page as a visually hidden heading. -->
     @if (eventName$ | async; as name) {
       <h1 class="fw-bold fs-5 m-0 topbar-title" [class.visually-hidden]="picked">{{ name }}</h1>
-    } @else if (!picked && !noMatch) {
+    } @else if (!picked && !noCompetition) {
       <span class="skeleton-text skeleton-title topbar-title">&nbsp;</span>
     }
-    @if (matches.length > 0) {
-      <div class="topbar-matches d-flex align-items-center gap-2" [class.topbar-matches-title]="picked || noMatch">
-        <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked || noMatch" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
-        <select id="matchSelect" class="form-select form-select-sm topbar-match-select" [style.--match-label-length]="selectedLabelLength(matches)" [attr.aria-describedby]="noMatch ? 'matchHint' : null" (change)="onMatchChange($event)">
+    @if (competitions.length > 0) {
+      <div class="topbar-competitions d-flex align-items-center gap-2" [class.topbar-competitions-title]="picked || noCompetition">
+        <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked || noCompetition" for="competitionSelect">{{ 'todayCompetitionsLabel' | translate }}</label>
+        <select id="competitionSelect" class="form-select form-select-sm topbar-competition-select" [style.--competition-label-length]="selectedLabelLength(competitions)" [attr.aria-describedby]="noCompetition ? 'competitionHint' : null" (change)="onCompetitionChange($event)">
           @if (!picked) {
-            <option value="" selected disabled>{{ 'noMatchOption' | translate }}</option>
+            <option value="" selected disabled>{{ 'noCompetitionOption' | translate }}</option>
           }
-          @for (m of matches; track m.id) {
+          @for (m of competitions; track m.id) {
             <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.name }} ({{ m.venue.name }})</option>
           }
         </select>
-        @if (noMatch) {
-          <span id="matchHint" class="match-hint">{{ 'selectMatchHint' | translate }}</span>
+        @if (noCompetition) {
+          <span id="competitionHint" class="competition-hint">{{ 'selectCompetitionHint' | translate }}</span>
         }
       </div>
-    } @else if (noMatch) {
-      <span class="match-hint match-hint-alone">{{ 'noLiveMatchesHint' | translate }}</span>
+    } @else if (noCompetition) {
+      <span class="competition-hint competition-hint-alone">{{ 'noLiveCompetitionsHint' | translate }}</span>
     }
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
       <!-- Display settings (collapsible) -->
@@ -45,7 +45,7 @@
                 id="followInput"
                 type="checkbox"
                 class="form-check-input" role="switch"
-                [checked]="dataService.follow"
+                [checked]="settings.follow.value"
                 (change)="onFollowChange($event)"
               /></div>
               <div class="setting-popover">
@@ -54,13 +54,13 @@
               </div>
             </div>
             <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (dataService.showThousandths ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
+              <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
               <div class="form-check form-switch">
                 <input
                   id="thousandthsInput"
                   type="checkbox"
                   class="form-check-input" role="switch"
-                  [checked]="dataService.showThousandths"
+                  [checked]="settings.showThousandths.value"
                   (change)="onThousandthsChange($event)"
                 />
               </div>
@@ -76,7 +76,7 @@
                   id="compactColorsInput"
                   type="checkbox"
                   class="form-check-input" role="switch"
-                  [checked]="dataService.compactColors"
+                  [checked]="settings.compactColors.value"
                   (change)="onCompactColorsChange($event)"
                 />
               </div>
@@ -85,7 +85,7 @@
                 <div class="setting-popover-body" [innerHTML]="ts.html('compactColorsPopoverBody')"></div>
               </div>
             </div>
-            <div class="setting-collapse" [class.open]="dataService.compactColors" [attr.inert]="dataService.compactColors ? null : ''">
+            <div class="setting-collapse" [class.open]="settings.compactColors.value" [attr.inert]="settings.compactColors.value ? null : ''">
               <div class="setting-collapse-inner">
               <div class="setting-group ms-2">
                 <label class="small text-nowrap mb-0 setting-label" for="lapVarianceTimedInput">{{ 'lapDeltaLabel' | translate }}</label>
@@ -94,7 +94,7 @@
                   type="number"
                   min="0" max="50" step="0.1"
                   class="form-control form-control-sm threshold-input"
-                  [value]="dataService.lapVarianceThresholdTimed"
+                  [value]="settings.lapVarianceTimed.value"
                   (change)="onLapVarianceTimedChange($event)"
                   (input)="onLapVarianceStep($event, true)"
                 />
@@ -102,7 +102,7 @@
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(dataService.lapVarianceThresholdTimed))"></div>
+                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVarianceTimed.value))"></div>
                 </div>
               </div>
               </div>
@@ -125,7 +125,7 @@
                   type="number"
                   min="0" max="10" step="0.5"
                   class="form-control form-control-sm threshold-input"
-                  [value]="dataService.groupThreshold"
+                  [value]="settings.groupThreshold.value"
                   (change)="onThresholdChange($event)"
                 />
                 <span class="small text-white-50">s</span>
@@ -141,7 +141,7 @@
                   type="number"
                   min="0" step="1"
                   class="form-control form-control-sm threshold-input"
-                  [value]="dataService.maxGroups"
+                  [value]="settings.maxGroups.value"
                   (change)="onMaxGroupsChange($event)"
                 />
                 <div class="setting-popover">
@@ -156,7 +156,7 @@
                   type="number"
                   min="0" max="50" step="1"
                   class="form-control form-control-sm threshold-input"
-                  [value]="dataService.lapVarianceThreshold"
+                  [value]="settings.lapVariance.value"
                   (change)="onLapVarianceChange($event)"
                   (input)="onLapVarianceStep($event, false)"
                 />
@@ -164,7 +164,7 @@
                 <div class="setting-popover">
                   <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
                   <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(dataService.lapVarianceThreshold))"></div>
+                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
                 </div>
               </div>
               <div class="setting-group ms-2">
@@ -173,7 +173,7 @@
                   id="showLapTimesInput"
                   type="checkbox"
                   class="form-check-input" role="switch"
-                  [checked]="dataService.showMassStartLapTimes"
+                  [checked]="settings.showMassStartLapTimes.value"
                   (change)="onShowLapTimesChange($event)"
                 /></div>
                 <div class="setting-popover">
@@ -269,9 +269,9 @@
                         [distanceMeters]="distance.distanceMeters"
                         [distanceId]="distance.id"
                         [active]="isActiveHeatRow(distance.id, displayGroup.label)"
-                        [colorLaps]="dataService.compactColors"
-                        [showThousandths]="dataService.showThousandths"
-                        [lapVarianceThreshold]="dataService.lapVarianceThresholdTimed"
+                        [colorLaps]="settings.compactColors.value"
+                        [showThousandths]="settings.showThousandths.value"
+                        [lapVarianceThreshold]="settings.lapVarianceTimed.value"
                       />
                     }
                   </c-col>
@@ -300,8 +300,8 @@
                           [distance]="distance"
                           [raceIdx]="raceIdx"
                           [selectedRaceId]="selectedRaceId"
-                          [showLapTimes]="dataService.showMassStartLapTimes"
-                          [lapVarianceThreshold]="dataService.lapVarianceThreshold"
+                          [showLapTimes]="settings.showMassStartLapTimes.value"
+                          [lapVarianceThreshold]="settings.lapVariance.value"
                           (raceSelect)="selectRace($event)"
                         />
                         <!-- Inline finishing line: rendered below the last lap-completed competitor -->

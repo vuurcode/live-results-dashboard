@@ -4,9 +4,9 @@ for (const width of [320, 390]) {
   test.describe(`mobile ${width}px`, () => {
     test.use({ viewport: { width, height: 740 }, hasTouch: true });
 
-    for (const match of ['e2e-timed', 'e2e-mass']) {
-      test(`${match}: no horizontal page scroll, settings open`, async ({ page }) => {
-        await page.goto(`/?competitionId=${match}`);
+    for (const competition of ['e2e-timed', 'e2e-mass']) {
+      test(`${competition}: no horizontal page scroll, settings open`, async ({ page }) => {
+        await page.goto(`/?competitionId=${competition}`);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
         const buttons = page.locator('button.topbar-group-btn');
         for (let i = 0; i < (await buttons.count()); i++) {

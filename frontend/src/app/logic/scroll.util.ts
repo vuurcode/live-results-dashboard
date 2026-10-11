@@ -37,7 +37,7 @@ export class SettledScroller {
 
   private run = 0;
 
-  /** Scrolls the element matching `selector` into place; a newer call replaces one that is still waiting. */
+  /** Scrolls the element competitioning `selector` into place; a newer call replaces one that is still waiting. */
   async scrollTo(selector: string, anchorRatio: number): Promise<void> {
     const run = ++this.run;
     for (let attempt = 0; attempt <= SettledScroller.MAX_CORRECTIONS; attempt++) {

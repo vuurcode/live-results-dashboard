@@ -17,8 +17,8 @@ services:
       - "backend:127.0.0.1"
       - "mockserver:127.0.0.1"
     environment:
-      # The mockserver serves every match under data/ (one folder per match, replay starts on
-      # first request). Which match the frontend shows: open http://localhost:4200/?competitionId=<folder>
+      # The mockserver serves every competition under data/ (one folder per competition, replay starts on
+      # first request). Which competition the frontend shows: open http://localhost:4200/?competitionId=<folder>
       # or set the default for pages without it: COMPETITION_ID=2026-03-01 docker compose --profile dev up -d
       DATA_SAMPLE_DIRECTORY: data
       DATA_SAMPLE_INTERVAL: ${DATA_SAMPLE_INTERVAL:-3}

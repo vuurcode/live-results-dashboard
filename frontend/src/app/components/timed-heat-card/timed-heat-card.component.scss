@@ -44,7 +44,7 @@
   position: relative;
   z-index: 1;
 }
-// The current heat is marked by a badge behind each racer's name
+// The current heat is marked by a badge behind each competitor's name
 .timed-comp-live { font-size: 0.6em; vertical-align: middle; margin-left: 0.4rem; }
 // up to 4 lane columns per row, then 2 per row on narrow viewports, then 1 column on very narrow ones
 // The lane columns and the cards in them share the rows of this grid (two rows per line: title and body), so the cards of a line
@@ -57,7 +57,7 @@
   @media (min-width: $four-lanes-min) { --card-lanes: 4; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .timed-lane-col, .timed-heat-lane-bg {
-  // On narrow screens a set of lanes with no racer in this heat (white/red or yellow/blue) takes no room and shows no colour.
+  // On narrow screens a set of lanes with no competitor in this heat (white/red or yellow/blue) takes no room and shows no colour.
   @media (max-width: $four-lanes-min - 1px) { &.lane-set-empty { display: none; } }
 }
 .timed-lane-col {

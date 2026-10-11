@@ -1,5 +1,6 @@
 import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
-import { RaceCode, isNeverLive } from '../../logic/race-codes';
+import { RaceCode } from '../../logic/race-codes';
+import { findLiveHeat } from '../../logic/live-heat';
 
 /** Where the followed element lands, as a fraction of the viewport height from the top. */
 export const HEAT_ANCHOR = 0.3; // active heat a third of the way down, previous heats still partly visible
@@ -21,7 +22,7 @@ export function isWithdrawn(race: CompetitorUpdate): boolean {
 }
 
 /**
- * Decides where the page scrolls while a match is live. It only ever moves forward: to a later live distance, and
+ * Decides where the page scrolls while a competition is live. It only ever moves forward: to a later live distance, and
  * within it to a later heat, so a correction in an earlier heat or a flip back to an earlier distance leaves the page alone.
  */
 export class AutoFollow {
@@ -81,12 +82,7 @@ export class AutoFollow {
       anchor = HEADER_ANCHOR;
     } else {
       const groups = this.host.heatGroups(distance);
-      // the heat marked live on the page: the one whose lap times changed last (the later heat when they changed together)
-      let latest = 0;
-      let current = -1;
-      groups.forEach((g, i) => g.races.forEach(r => {
-        if (r?.lapsUpdatedAt && !isNeverLive(r) && r.lapsUpdatedAt >= latest) { latest = r.lapsUpdatedAt; current = i; }
-      }));
+      const current = findLiveHeat(groups)?.index ?? -1;
       if (current === -1 || current < this.heatIndex) return;
       this.heatIndex = current;
       key = `${distance.id}:${groups[current].label}`;

@@ -6,7 +6,7 @@
       "type": "npm",
       "script": "start",
       "isBackground": true,
-      "problemMatcher": {
+      "problemCompetitioner": {
         "owner": "typescript",
         "pattern": "$tsc",
         "background": {
@@ -24,7 +24,7 @@
       "type": "npm",
       "script": "test",
       "isBackground": true,
-      "problemMatcher": {
+      "problemCompetitioner": {
         "owner": "typescript",
         "pattern": "$tsc",
         "background": {

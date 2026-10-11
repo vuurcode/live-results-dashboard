@@ -260,9 +260,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", m.serveWS)
 	if cat, err := newCatalog(cfg, ua); err != nil {
-		slog.Error("Match list disabled", "err", err)
+		slog.Error("Competition list disabled", "err", err)
 	} else {
-		mux.HandleFunc("GET /api/matches/today", cat.serveToday)
+		mux.HandleFunc("GET /api/competitions/today", cat.serveToday)
 		m.ended = cat.ended
 		go m.watchEnded(ctx, time.Minute)
 	}

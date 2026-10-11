@@ -142,12 +142,12 @@ test.describe('lane columns on narrow screens', () => {
 });
 
 test.describe('settings panel and tooltips', () => {
-  test('the settings button is as tall as the match picker, and the settings are listed below each other', async ({ page }) => {
+  test('the settings button is as tall as the competition picker, and the settings are listed below each other', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 700 });
     await page.goto('/?competitionId=e2e-timed');
     await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
     const h = (loc: ReturnType<typeof page.locator>) => loc.evaluate((e) => Math.round(e.getBoundingClientRect().height));
-    expect(await h(page.locator('button.topbar-group-btn').first())).toBe(await h(page.locator('#matchSelect')));
+    expect(await h(page.locator('button.topbar-group-btn').first())).toBe(await h(page.locator('#competitionSelect')));
     const tops = await page.locator('.settings-panel .setting-group:visible').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     expect(tops.length).toBeGreaterThan(2);
     expect(new Set(tops).size).toBe(tops.length); // one per row

@@ -1,7 +1,9 @@
 import { Injectable, NgZone, inject } from '@angular/core';
 import { TranslateService } from './translate.service';
+import { SettingsService } from './settings.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Subject, merge } from 'rxjs';
+import { skip } from 'rxjs/operators';
 import {
   BackendMessage,
   BackendWindow,
@@ -11,33 +13,21 @@ import {
   StandingsGroup,
 } from '../models/data.models';
 import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
-import { FeedStatus, TodayMatch } from '../models/data.models';
+import { FeedStatus, TodayCompetition } from '../models/data.models';
 import { competitionIdFromSearch, withCompetitionId } from '../logic/competition.util';
 
 export interface BackendStatus {
-  status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error' | 'No match';
+  status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error' | 'No competition';
   url: string;
   interval: number | null;
   errorMessage?: string | null;
 }
 
-/** Close code the backend uses to refuse a connection that names no valid competition. */
+/** How long a lost connection stays unreported, so a quick reconnect shows no error. */
 const LOST_ERROR_GRACE_MS = 3000;
+/** Close code the backend uses to refuse a connection that names no valid competition. */
 const CLOSE_NO_COMPETITION = 1008;
 const RENDER_INTERVAL_MS = 250;
-const DEFAULT_GROUP_THRESHOLD = 2.0;
-const MAX_GROUP_THRESHOLD = 10.0;
-const DEFAULT_MAX_GROUPS = 4;
-const DEFAULT_LAP_VARIANCE = 5;
-const DEFAULT_LAP_VARIANCE_TIMED = 0.5;
-const STORAGE_KEY_LAP_VARIANCE_TIMED = 'lapVariancePctTimed';
-const STORAGE_KEY_THRESHOLD = 'groupThresholdSec';
-const STORAGE_KEY_MAX_GROUPS = 'maxGroups';
-const STORAGE_KEY_LAP_VARIANCE = 'lapVariancePct';
-const STORAGE_KEY_SHOW_LAP_TIMES = 'showMassStartLapTimes';
-const STORAGE_KEY_FOLLOW = 'follow';
-const STORAGE_KEY_THOUSANDTHS = 'thousandths';
-const STORAGE_KEY_COMPACT_COLORS = 'compactColors';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -65,13 +55,13 @@ export class DataService {
     return raw && !raw.startsWith('${') ? raw : `${window.location.protocol}//${window.location.host}`;
   })();
 
-  /** Matches happening today, from the backend; an empty list when it cannot be loaded. */
-  async todayMatches(): Promise<TodayMatch[]> {
+  /** Competitions happening today, from the backend; an empty list when it cannot be loaded. */
+  async todayCompetitions(): Promise<TodayCompetition[]> {
     try {
-      const res = await fetch(`${this.BACKEND_HTTP_URL}/api/matches/today`);
+      const res = await fetch(`${this.BACKEND_HTTP_URL}/api/competitions/today`);
       if (!res.ok) return [];
       const list: unknown = await res.json();
-      return Array.isArray(list) ? (list as TodayMatch[]) : [];
+      return Array.isArray(list) ? (list as TodayCompetition[]) : [];
     } catch {
       return [];
     }
@@ -94,163 +84,9 @@ export class DataService {
 
   private _errors = new BehaviorSubject<string[]>([]);
   public errors$ = this._errors.asObservable();
-  private _groupThreshold = new BehaviorSubject<number>(this._loadThreshold());
-  public groupThreshold$ = this._groupThreshold.asObservable();
-
   private _displayedGroups = new BehaviorSubject<Map<string, StandingsGroup[]>>(new Map());
   public displayedGroups$ = this._displayedGroups.asObservable();
   private _groupDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-  private _maxGroups = new BehaviorSubject<number>(this._loadMaxGroups());
-  public maxGroups$ = this._maxGroups.asObservable();
-
-  get groupThreshold(): number { return this._groupThreshold.value; }
-  get maxGroups(): number { return this._maxGroups.value; }
-
-  private _lapVariance = new BehaviorSubject<number>(this._loadLapVariance());
-  get lapVarianceThreshold(): number { return this._lapVariance.value; }
-
-  setLapVarianceThreshold(value: number) {
-    const clamped = Math.max(0, Math.round(value));
-    this._lapVariance.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_LAP_VARIANCE, String(clamped)); } catch { /* noop */ }
-  }
-
-  private _loadLapVariance(): number {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY_LAP_VARIANCE);
-      if (v !== null) return Math.max(0, parseInt(v, 10));
-    } catch { /* noop */ }
-    return DEFAULT_LAP_VARIANCE;
-  }
-
-  // long track has its own threshold: its laps are far more even than mass start laps
-  private _lapVarianceTimed = new BehaviorSubject<number>(this._loadLapVarianceTimed());
-  get lapVarianceThresholdTimed(): number { return this._lapVarianceTimed.value; }
-
-  setLapVarianceThresholdTimed(value: number) {
-    const clamped = Math.max(0, Math.round(value * 10) / 10); // one decimal: long track laps are even
-    this._lapVarianceTimed.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_LAP_VARIANCE_TIMED, String(clamped)); } catch { /* noop */ }
-  }
-
-  private _loadLapVarianceTimed(): number {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY_LAP_VARIANCE_TIMED);
-      if (v !== null && !isNaN(parseFloat(v))) return Math.max(0, Math.round(parseFloat(v) * 10) / 10);
-    } catch { /* noop */ }
-    return DEFAULT_LAP_VARIANCE_TIMED;
-  }
-
-  private _showMassLapTimes = new BehaviorSubject<boolean>(this._loadShowLapTimes());
-  get showMassStartLapTimes(): boolean { return this._showMassLapTimes.value; }
-
-  setShowMassStartLapTimes(value: boolean) {
-    this._showMassLapTimes.next(value);
-    try { localStorage.setItem(STORAGE_KEY_SHOW_LAP_TIMES, String(value)); } catch { /* noop */ }
-  }
-
-  private _loadShowLapTimes(): boolean {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY_SHOW_LAP_TIMES);
-      if (v !== null) return v === 'true';
-    } catch { /* noop */ }
-    return false;
-  }
-
-  /** Compact display of long-track cards: lap time badges on one wrapping row until the final time is known. On by default. */
-  /** Compact long-track badges coloured by variance against the previous lap, like mass start. Off by default. */
-  private _compactColors = new BehaviorSubject<boolean>(this._loadCompactColors());
-  get compactColors(): boolean { return this._compactColors.value; }
-
-  setCompactColors(value: boolean) {
-    this._compactColors.next(value);
-    try { localStorage.setItem(STORAGE_KEY_COMPACT_COLORS, String(value)); } catch { /* noop */ }
-  }
-
-  private _loadCompactColors(): boolean {
-    try {
-      return localStorage.getItem(STORAGE_KEY_COMPACT_COLORS) !== 'false';
-    } catch { /* noop */ }
-    return true;
-  }
-
-  /** Times show thousandths by default; hundredths when switched off. */
-  private _showThousandths = new BehaviorSubject<boolean>(this._loadShowThousandths());
-  get showThousandths(): boolean { return this._showThousandths.value; }
-
-  setShowThousandths(value: boolean) {
-    this._showThousandths.next(value);
-    try { localStorage.setItem(STORAGE_KEY_THOUSANDTHS, String(value)); } catch { /* noop */ }
-  }
-
-  private _loadShowThousandths(): boolean {
-    try {
-      return localStorage.getItem(STORAGE_KEY_THOUSANDTHS) !== 'false';
-    } catch { /* noop */ }
-    return true;
-  }
-
-  private _follow = new BehaviorSubject<boolean>(this._loadFollow());
-  get follow(): boolean { return this._follow.value; }
-
-  setFollow(value: boolean) {
-    this._follow.next(value);
-    try { localStorage.setItem(STORAGE_KEY_FOLLOW, String(value)); } catch { /* noop */ }
-  }
-
-  private _loadFollow(): boolean {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY_FOLLOW);
-      if (v !== null) return v !== 'false';
-    } catch { /* noop */ }
-    return true;
-  }
-
-  setGroupThreshold(value: number) {
-    const clamped = Math.min(MAX_GROUP_THRESHOLD, Math.max(0, value));
-    this._groupThreshold.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_THRESHOLD, String(clamped)); } catch { /* noop */ }
-    for (const dist of this.distanceMap.values()) {
-      if (dist.isMassStart) this._recomputeGroups(dist);
-    }
-    // Flush debounce timers and immediately apply new groups
-    for (const timer of this._groupDebounceTimers.values()) {
-      clearTimeout(timer);
-    }
-    this._groupDebounceTimers.clear();
-    this._flushDisplayedGroups();
-    this.ngZone.run(() => this._publishState());
-  }
-
-  setMaxGroups(value: number) {
-    const clamped = Math.max(0, Math.round(value));
-    this._maxGroups.next(clamped);
-    try { localStorage.setItem(STORAGE_KEY_MAX_GROUPS, String(clamped)); } catch { /* noop */ }
-    for (const dist of this.distanceMap.values()) {
-      if (dist.isMassStart) this._recomputeGroups(dist);
-    }
-    for (const timer of this._groupDebounceTimers.values()) clearTimeout(timer);
-    this._groupDebounceTimers.clear();
-    this._flushDisplayedGroups();
-    this.ngZone.run(() => this._publishState());
-  }
-
-  private _loadMaxGroups(): number {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY_MAX_GROUPS);
-      if (v !== null) return Math.max(0, parseInt(v, 10));
-    } catch { /* noop */ }
-    return DEFAULT_MAX_GROUPS;
-  }
-
-  private _loadThreshold(): number {
-    try {
-      const v = localStorage.getItem(STORAGE_KEY_THRESHOLD);
-      if (v !== null) return parseFloat(v);
-    } catch { /* noop */ }
-    return DEFAULT_GROUP_THRESHOLD;
-  }
 
   private distanceMap = new Map<string, ProcessedDistance>();
   private competitorMap = new Map<string, Map<string, CompetitorUpdate>>();
@@ -262,19 +98,33 @@ export class DataService {
   private noCompetition = false;
   private ngZone = inject(NgZone);
   private ts = inject(TranslateService);
+  private settings = inject(SettingsService);
 
   constructor() {
     // A page restored from the back/forward cache comes back with a dead socket and stale results; load it afresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.resume(); });
     window.addEventListener('online', () => this.resume());
+    // changing how mass starts group shows at once
+    merge(this.settings.groupThreshold.changes$.pipe(skip(1)), this.settings.maxGroups.changes$.pipe(skip(1)))
+      .subscribe(() => this._regroup());
     this.connect();
+  }
+
+  private _regroup() {
+    for (const dist of this.distanceMap.values()) {
+      if (dist.isMassStart) this._recomputeGroups(dist);
+    }
+    for (const timer of this._groupDebounceTimers.values()) clearTimeout(timer);
+    this._groupDebounceTimers.clear();
+    this._flushDisplayedGroups();
+    this.ngZone.run(() => this._publishState());
   }
 
   connect() {
     if (this.socket$ && !this.socket$.closed) return;
     if (!this.competitionId) {
-      this._status.next({ status: 'No match', url: '', interval: null });
+      this._status.next({ status: 'No competition', url: '', interval: null });
       return;
     }
     this._errors.next([]);
@@ -482,8 +332,8 @@ export class DataService {
   private _recomputeGroups(dist: ProcessedDistance) {
     dist.standingsGroups = recomputeGroups(
       dist.processedRaces,
-      this._groupThreshold.value,
-      this._maxGroups.value,
+      this.settings.groupThreshold.value,
+      this.settings.maxGroups.value,
       (n) => this.ts.t(n === 1 ? 'lapUnit' : 'lapsUnit'),
     ) as StandingsGroup[];
   }
@@ -491,7 +341,7 @@ export class DataService {
   private _scheduleGroupDebounce(distId: string) {
     const existing = this._groupDebounceTimers.get(distId);
     if (existing) clearTimeout(existing);
-    const thresholdMs = this._groupThreshold.value * 1000;
+    const thresholdMs = this.settings.groupThreshold.value * 1000;
     const timer = setTimeout(() => {
       this._groupDebounceTimers.delete(distId);
       this._flushDisplayedGroups();
@@ -563,11 +413,11 @@ export class DataService {
     }
   }
 
-  /** Reconnecting cannot help when no competition was chosen; the viewer has to pick a match. */
+  /** Reconnecting cannot help when no competition was chosen; the viewer has to pick a competition. */
   private _stopForNoCompetition(): boolean {
     if (!this.noCompetition) return false;
     this.socket$ = null;
-    this._status.next({ status: 'No match', url: '', interval: null });
+    this._status.next({ status: 'No competition', url: '', interval: null });
     return true;
   }
 

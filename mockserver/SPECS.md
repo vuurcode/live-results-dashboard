@@ -9,11 +9,11 @@ All components:
 ## Mockserver
 
 ### Features
-- [x] Go (standard library only); `gofmt`; `DATA_SAMPLE_DIRECTORY` (default `data`) holds one subdirectory per match, named by its match id (`competitionId`)
-- [x] `GET /Competition?competitionId=<id>` serves the match's current sample; the first request starts its replay, matches replay independently
-- [x] `GET /api/matches` lists the match ids (also the health check); `POST /api/reset[?competitionId=<id>]` restarts one or all started matches
+- [x] Go (standard library only); `gofmt`; `DATA_SAMPLE_DIRECTORY` (default `data`) holds one subdirectory per competition, named by its competition id (`competitionId`)
+- [x] `GET /Competition?competitionId=<id>` serves the competition's current sample; the first request starts its replay, competitions replay independently
+- [x] `GET /api/matches` lists the competition ids (also the health check); `POST /api/reset[?competitionId=<id>]` restarts one or all started competitions
 
 ### Data (unit specs: `main_test.go`)
 - [x] A replay serves the `.json` samples in filename order, `DATA_SAMPLE_INTERVAL` seconds apart (default 5), skips unparseable ones and holds the last
-- [x] A match whose last sample has been held for `DATA_EXPIRE_AFTER` seconds (default 300, `0` never) is dropped; the next request replays it from the start
-- [x] `competitionId` is required and matches `[A-Za-z0-9_-]{1,64}` (else 400); an unknown match or one without valid samples is 404
+- [x] A competition whose last sample has been held for `DATA_EXPIRE_AFTER` seconds (default 300, `0` never) is dropped; the next request replays it from the start
+- [x] `competitionId` is required and competitions `[A-Za-z0-9_-]{1,64}` (else 400); an unknown competition or one without valid samples is 404

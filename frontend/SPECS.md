@@ -11,9 +11,9 @@ All components:
 ### Features
 - [x] Node 24 LTS, Angular, CoreUI; dev server on `4200`, prod server (nginx, config in its own folder) on `8888`
 - [x] The backend URL is a runtime environment variable of the container, never hardcoded
-- [x] The match to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the match picker is offered
-- [x] Match picker lists today's matches as `<start> - <end> · <name> (<venue>)`; choosing one reloads the page on that match; the list is asked again every 5 minutes; with no matches the page says so
-- [x] Auto-connect on load; reconnect every 5s on a lost connection and show it; a refused competition is not retried; a silent connection and a match that is not live (with the data source's own message) are reported instead of loading forever
+- [x] The competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the competition picker is offered
+- [x] Competition picker lists today's competitions as `<start> - <end> · <name> (<venue>)`; choosing one reloads the page on that competition; the list is asked again every 5 minutes; with no competitions the page says so
+- [x] Auto-connect on load; reconnect every 5s on a lost connection and show it; a refused competition is not retried; a silent connection and a competition that is not live (with the data source's own message) are reported instead of loading forever
 - [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
 - [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
@@ -31,12 +31,12 @@ All components:
 - [x] The scroll target keeps the followed element a fixed fraction down the viewport, clamped to the page
 
 ### UI (e2e specs: `frontend/e2e`)
-- [x] Page title `<event name> | Live Results Dashboard`; the event name is the page heading, replaced visually by the match picker; top bar dark, pinned with the open distance title below it; the title shrinks while pinned
+- [x] Page title `<event name> | Live Results Dashboard`; the event name is the page heading, replaced visually by the competition picker; top bar dark, pinned with the open distance title below it; the title shrinks while pinned
 - [x] Distances in a full-width accordion by `event_number` descending; the live one opens on load; done ones are slightly dimmed; badges before the name: Live (animated), Done, X/Y progress, PR N / TRC N after it
 - [x] Mass start: group cards in a strip pinned below the title, and one standings list with rank, start number, name, gap or total time, lap badges coloured by the lap diff rules, laps counter and Final lap badge; rows can be selected; a lap times toggle hides only the badges
-- [x] Timed distance: one plain row per heat with cards in lane columns: four per row from 1280px, two from 768px, one below; lane sets without a racer are hidden on narrow screens; the cards of a row, and their titles, are equally tall
+- [x] Timed distance: one plain row per heat with cards in lane columns: four per row from 1280px, two from 768px, one below; lane sets without a competitor are hidden on narrow screens; the cards of a row, and their titles, are equally tall
 - [x] Card title: name with category / club small below it; remark and invalid badges and the personal best on a line below, merged to the right of the name while racing; a card without codes keeps its title height
 - [x] Card body: lap badges with their distance above, total time at the right (on its own line when it does not fit), grey placeholders for laps to come (hidden but keeping their room for DNS, DQ, WDR)
 - [x] Watermarks, centred in the title: NEW PERSONAL BEST with its difference, `+ diff` in orange when slower than the personal best, the record or code name; a card without a time centres it on the whole card at four lanes
-- [x] The live heat has a thick red border all around and a Live badge on its racers; the page never scrolls sideways; long and unbreakable names stay inside their cards; large screens scale the root font size
-- [x] Narrow screens: match picker and a cogwheel button share one row; wide screens: a wider picker and the label on the settings button
+- [x] The live heat has a thick red border all around and a Live badge on its competitors; the page never scrolls sideways; long and unbreakable names stay inside their cards; large screens scale the root font size
+- [x] Narrow screens: competition picker and a cogwheel button share one row; wide screens: a wider picker and the label on the settings button with a space before its cogwheel

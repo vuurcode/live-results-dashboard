@@ -6,10 +6,10 @@ export interface Translations {
   displaySettings: string;
   massStartSettings: string;
   // Follow setting
-  todayMatchesLabel: string;
-  noMatchOption: string;
-  selectMatchHint: string;
-  noLiveMatchesHint: string;
+  todayCompetitionsLabel: string;
+  noCompetitionOption: string;
+  selectCompetitionHint: string;
+  noLiveCompetitionsHint: string;
   thousandthsLabel: string;
   hundredthsLabel: string;
   thousandthsPopoverTitle: string;
@@ -27,8 +27,8 @@ export interface Translations {
   feedUnavailableBody: string;
   feedEmptyTitle: string;
   feedEmptyBody: string;
-  feedNoMatchTitle: string;
-  feedNoMatchBody: string;
+  feedNoCompetitionTitle: string;
+  feedNoCompetitionBody: string;
   feedDisconnectedTitle: string;
   feedDisconnectedBody: string;
   feedSlowTitle: string;

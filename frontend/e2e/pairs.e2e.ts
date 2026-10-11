@@ -1,19 +1,19 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { MOCK_URL } from './env';
 
-// A two-lane (pairs) match: a DNF and a personal best in one pair, a skater without an opponent, a normal pair.
-const MATCH = 'e2e-pairs';
+// A two-lane (pairs) competition: a DNF and a personal best in one pair, a skater without an opponent, a normal pair.
+const COMPETITION = 'e2e-pairs';
 
 async function restartReplay(request: APIRequestContext): Promise<void> {
-  const res = await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: MATCH } });
+  const res = await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: COMPETITION } });
   expect(res.ok()).toBeTruthy();
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
 
-test.describe('two-lane match', () => {
+test.describe('two-lane competition', () => {
   test('shows pairs, a lone skater, a DNF and a personal best', async ({ page, request }) => {
     await restartReplay(request);
-    await page.goto(`/?competitionId=${MATCH}`);
+    await page.goto(`/?competitionId=${COMPETITION}`);
 
     await expect(page.locator('.timed-heat-row')).toHaveCount(3);
     await expect(page.locator('.timed-competitor-card:not(.timed-lane-placeholder)')).toHaveCount(5);
@@ -57,7 +57,7 @@ test.describe('personal best wording follows the browser language', () => {
       test.use({ locale });
       test(`uses ${term}, never ${other}`, async ({ page, request }) => {
         await restartReplay(request);
-        await page.goto(`/?competitionId=${MATCH}`);
+        await page.goto(`/?competitionId=${COMPETITION}`);
         await expect(page.locator('html')).toHaveAttribute('lang', locale.slice(0, 2));
         const cardA = page.locator('.timed-competitor-card', { hasText: 'Competitor A' });
         await expect(cardA.getByText(term, { exact: true }).first()).toBeVisible({ timeout: 15_000 });
@@ -73,7 +73,7 @@ test.describe('long names', () => {
     test(`${width}px: long and unbreakable names stay inside their cards`, async ({ page, request }) => {
       await restartReplay(request);
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(`/?competitionId=${MATCH}`);
+      await page.goto(`/?competitionId=${COMPETITION}`);
       await expect(page.locator('.timed-competitor-card', { hasText: 'Magnificent Maximiliaan' })).toBeVisible({ timeout: 15_000 });
       await expect(page.locator('.timed-competitor-card', { hasText: 'Supercalifragilistic' })).toBeVisible();
       await expect(page.locator('.timed-compact-badge').first()).toBeVisible({ timeout: 15_000 });

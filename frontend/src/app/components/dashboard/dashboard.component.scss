@@ -90,17 +90,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+// a space between the label of the settings button and its cogwheel (on narrow screens the label is hidden)
+.topbar-group-cog { margin-left: 0.4rem; }
 @media (max-width: 767.98px) {
   // Settings drop to their own full-width row and wrap instead of widening the page.
-  // The match picker and the settings share one row; the display settings shrink to a cogwheel.
+  // The competition picker and the settings share one row; the display settings shrink to a cogwheel.
   .topbar-settings { flex: 0 0 auto; }
   .topbar-settings-group { max-width: 100%; }
   .topbar-group-text { display: none; }
-  .topbar-group-cog { display: inline-block; vertical-align: -0.2em; }
+  .topbar-group-cog { display: inline-block; vertical-align: -0.2em; margin-left: 0; }
   .topbar-group-btn { min-height: 2rem; }
   .setting-group .form-switch .form-check-input { height: 1.5rem; width: 2.75rem; }
 }
-.topbar-matches-title .topbar-match-select {
+.topbar-competitions-title .topbar-competition-select {
   // white chevron: CoreUI's dark one disappears on the black bar (needs 3:1)
   --cui-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
   background-image: var(--cui-form-select-bg-img);
@@ -113,7 +115,7 @@
   padding-left: 0;
 }
 // Tooltip-style callout to the right of the picker, pointing at it
-.match-hint {
+.competition-hint {
   position: relative;
   flex: none;
   padding: 0.25rem 0.6rem;
@@ -134,14 +136,14 @@
     transform: translateY(-50%) rotate(45deg);
   }
 }
-.match-hint-alone::before { display: none; }
-.topbar-matches {
+.competition-hint-alone::before { display: none; }
+.topbar-competitions {
   // wide screens: the picker takes the room the title and settings leave, up to a readable width
   flex: 1 1 36rem;
   max-width: 80rem;
   min-width: 0;
 }
-.topbar-match-select {
+.topbar-competition-select {
   min-height: 2.5rem;
   width: 100%;
   background-color: rgba(255,255,255,0.1);
@@ -150,14 +152,14 @@
   option { color: #212529; }
 }
 @media (max-width: 767.98px) {
-  .topbar-matches { flex: 1 1 0; min-width: 0; }
-  .topbar-match-select {
+  .topbar-competitions { flex: 1 1 0; min-width: 0; }
+  .topbar-competition-select {
     width: 100%; max-width: 100%; min-height: 2rem;
     // long names shrink towards a readable minimum instead of being cut off early
-    font-size: clamp(0.75rem, calc(34rem / var(--match-label-length, 40)), 0.875rem);
+    font-size: clamp(0.75rem, calc(34rem / var(--competition-label-length, 40)), 0.875rem);
   }
-  .topbar-matches-title .topbar-match-select {
-    font-size: clamp(0.85rem, calc(50rem / var(--match-label-length, 40)), 1.25rem);
+  .topbar-competitions-title .topbar-competition-select {
+    font-size: clamp(0.85rem, calc(50rem / var(--competition-label-length, 40)), 1.25rem);
   }
 }
 .threshold-input {
@@ -207,7 +209,7 @@
   }
 }
 .topbar-group-btn {
-  font-size: 1rem; // as large as the match picker
+  font-size: 1rem; // as large as the competition picker
   font-weight: 600;
   min-height: 2.5rem;
   padding: 0.2em 0.9em;

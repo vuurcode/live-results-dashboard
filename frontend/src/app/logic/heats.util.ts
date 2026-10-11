@@ -49,7 +49,7 @@ export interface MergedHeatGroup<T> {
 /**
  * Merges consecutive heats where the first has only white/red lanes (slots
  * 0/1) and the second has only yellow/blue lanes (slots 2/3) into one row
- * labelled via `mergedLabelFor`; non-matching heats are labelled individually
+ * labelled via `mergedLabelFor`; non-competitioning heats are labelled individually
  * via `labelFor`.
  */
 export function mergeHeatGroups<T>(
