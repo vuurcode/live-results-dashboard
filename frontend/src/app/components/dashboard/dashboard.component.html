@@ -33,6 +33,22 @@
           <div class="topbar-settings-body d-flex flex-wrap align-items-center gap-2 ms-1">
             <div class="topbar-section-sep"></div>
             <div class="setting-group ms-1">
+              <label class="small text-white-50 text-nowrap mb-0 setting-label" for="compactInput">{{ 'compactLabel' | translate }}</label>
+              <div class="form-check form-switch">
+                <input
+                  id="compactInput"
+                  type="checkbox"
+                  class="form-check-input" role="switch"
+                  [checked]="dataService.compactTimed"
+                  (change)="onCompactChange($event)"
+                />
+              </div>
+              <div class="setting-popover">
+                <div class="setting-popover-title">{{ 'compactPopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('compactPopoverBody')"></div>
+              </div>
+            </div>
+            <div class="setting-group ms-2">
               <label class="small text-white-50 text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
               <div class="form-check form-switch"><input
                 id="followInput"
@@ -198,6 +214,7 @@
                         [distanceMeters]="distance.distanceMeters"
                         [distanceId]="distance.id"
                         [active]="isActiveHeatRow(distance.id, displayGroup.label)"
+                        [compact]="dataService.compactTimed"
                       />
                     }
                   </c-col>

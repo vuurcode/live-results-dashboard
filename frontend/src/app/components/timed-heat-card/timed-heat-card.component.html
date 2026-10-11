@@ -54,6 +54,16 @@
           }
         </div>
         <!-- Card body: one row per lap distance -->
+        @if (isCompact(race)) {
+          <!-- Compact: lap times only, left to right on one row, wrapping onto the next line for many laps -->
+          <div class="timed-comp-body timed-compact-body">
+            @for (lap of race.lap_times; track $index; let last = $last) {
+              <c-badge class="timed-split-badge timed-compact-badge" [class.timed-compact-latest]="last" [class.timed-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
+            } @empty {
+              <span class="timed-static-placeholder"></span>
+            }
+          </div>
+        } @else {
         <div class="timed-comp-body">
           @for (lapDist of lapSchedule; track lapDist; let i = $index) {
             @let splitTime = timedLapTime(race, i);
@@ -78,6 +88,7 @@
             </div>
           }
         </div>
+        }
       </div>
       } @else {
         <!-- Empty placeholder to preserve lane column position -->

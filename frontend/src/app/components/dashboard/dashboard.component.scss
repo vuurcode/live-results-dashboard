@@ -360,8 +360,8 @@
 }
 // Left column: fixed width so all badge strips start at the same horizontal offset
 .race-item-left {
-  flex: 0 0 16rem;
-  min-width: 0;
+  flex: 0 1 16rem; // shrinks on narrow screens so the row never exceeds the viewport
+  min-width: 7rem;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -659,6 +659,8 @@
   background: rgba(0,0,0,0.02);
   flex-wrap: nowrap;
   overflow: hidden;
+  box-sizing: border-box;
+  min-height: 2.5rem; // fits the tallest badge (1.6rem + padding): the title never changes height with or without badges
 }
 .timed-comp-name {
   font-size: 0.8em;
@@ -694,8 +696,23 @@
 }
 
 .timed-split-badge.timed-pb-beaten {
+  // thin, see-through line: the previous value stays readable
   text-decoration: line-through;
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(69, 76, 82, 0.45);
+}
+.timed-split-badge.timed-compact-latest {
+  background-color: #454c52; // dark gray: the newest lap stands out (white on it is 8.7:1)
+  color: #fff;
+}
+.timed-compact-body {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end; // on the right, where the times are in the normal layout
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  min-height: 2.1rem; // a card without laps yet keeps its height
 }
 .timed-split-badge .time-decimal {
   font-size: 0.8em; /* smaller decimal inside the split badge, still legible */

@@ -31,6 +31,7 @@ const STORAGE_KEY_MAX_GROUPS = 'maxGroups';
 const STORAGE_KEY_LAP_VARIANCE = 'lapVariancePct';
 const STORAGE_KEY_SHOW_LAP_TIMES = 'showMassStartLapTimes';
 const STORAGE_KEY_FOLLOW = 'follow';
+const STORAGE_KEY_COMPACT = 'compactTimed';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -121,6 +122,23 @@ export class DataService {
   private _loadShowLapTimes(): boolean {
     try {
       const v = localStorage.getItem(STORAGE_KEY_SHOW_LAP_TIMES);
+      if (v !== null) return v !== 'false';
+    } catch { /* noop */ }
+    return true;
+  }
+
+  /** Compact display of long-track cards: lap time badges on one wrapping row until the final time is known. On by default. */
+  private _compactTimed = new BehaviorSubject<boolean>(this._loadCompactTimed());
+  get compactTimed(): boolean { return this._compactTimed.value; }
+
+  setCompactTimed(value: boolean) {
+    this._compactTimed.next(value);
+    try { localStorage.setItem(STORAGE_KEY_COMPACT, String(value)); } catch { /* noop */ }
+  }
+
+  private _loadCompactTimed(): boolean {
+    try {
+      const v = localStorage.getItem(STORAGE_KEY_COMPACT);
       if (v !== null) return v !== 'false';
     } catch { /* noop */ }
     return true;

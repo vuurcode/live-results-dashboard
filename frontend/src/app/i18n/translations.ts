@@ -7,6 +7,9 @@ export interface Translations {
   massStartSettings: string;
   // Follow setting
   todayMatchesLabel: string;
+  compactLabel: string;
+  compactPopoverTitle: string;
+  compactPopoverBody: string;
   followLabel: string;
   followPopoverTitle: string;
   followPopoverBody: string;
@@ -66,8 +69,11 @@ export const en: Translations = {
   displaySettings: 'Display',
   massStartSettings: 'Mass Start',
   todayMatchesLabel: 'Matches today',
-  followLabel: 'Automatically follow & scroll',
-  followPopoverTitle: 'Automatically follow & scroll',
+  compactLabel: 'Compact',
+  compactPopoverTitle: 'Compact',
+  compactPopoverBody: 'Long track: show only the lap times on a single row (wrapping when there are many) until the final time is known.',
+  followLabel: 'Auto-follow updates',
+  followPopoverTitle: 'Auto-follow updates',
   followPopoverBody: 'Automatically scroll to keep the live distance in view as results come in.',
   maxGapLabel: 'Max seconds gap between groups',
   maxGapPopoverTitle: 'Max seconds gap between groups',
@@ -120,8 +126,11 @@ export const nl: Translations = {
   displaySettings: 'Weergave',
   massStartSettings: 'Massastart',
   todayMatchesLabel: 'Wedstrijden vandaag',
-  followLabel: 'Automatisch volgen & scrollen',
-  followPopoverTitle: 'Automatisch volgen & scrollen',
+  compactLabel: 'Compact',
+  compactPopoverTitle: 'Compact',
+  compactPopoverBody: 'Langebaan: toon alleen de rondetijden op één regel (met omslag bij veel rondes) tot de eindtijd bekend is.',
+  followLabel: 'Volg updates automatisch',
+  followPopoverTitle: 'Volg updates automatisch',
   followPopoverBody: 'Scroll automatisch mee om de live afstand in beeld te houden terwijl resultaten binnenkomen.',
   maxGapLabel: 'Max. seconden verschil tussen groepen',
   maxGapPopoverTitle: 'Max. seconden verschil tussen groepen',

@@ -117,3 +117,15 @@ test.describe('mass start group cards', () => {
     });
   }
 });
+
+test('competitor card titles have the same height with or without badges', async ({ page, request }) => {
+  await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
+  await page.goto('/?competitionId=e2e-pairs');
+  await expect(page.locator('.timed-comp-header').first()).toBeVisible();
+  await expect(page.locator('.timed-comp-header .timed-split-badge').first()).toBeVisible(); // some titles carry a badge
+  const heights = await page.evaluate(() =>
+    [...document.querySelectorAll('.timed-comp-header')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
+  );
+  expect(heights.length).toBeGreaterThan(1);
+  expect(new Set(heights).size).toBe(1);
+});

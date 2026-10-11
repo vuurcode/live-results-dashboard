@@ -99,7 +99,7 @@ func TestCatalogBeforeStartListedAndNoSecrets(t *testing.T) {
 	e := newCatalogEnv(t, comp("later", "DEV", "SpeedSkating.LongTrack", "2026-10-24T20:00:00Z", "2026-10-24T21:00:00Z"))
 	e.now = time.Date(2026, 10, 24, 5, 0, 0, 0, time.UTC)
 	rec := httptest.NewRecorder()
-	e.cat.serveToday(rec, httptest.NewRequest(http.MethodGet, "/api/matches/today", nil))
+	e.cat.serveToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/matches/today", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d", rec.Code)
 	}

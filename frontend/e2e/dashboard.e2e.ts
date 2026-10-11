@@ -54,6 +54,7 @@ test.describe('timed distance', () => {
 
   test('lap rows keep their height while times replace the placeholders', async ({ page, request }) => {
     await restartReplay(request, 'e2e-timed');
+    await page.addInitScript(() => localStorage.setItem('compactTimed', 'false')); // per-distance rows
     await page.goto('/?competitionId=e2e-timed');
     await expect(page.locator('.timed-lap-row').first()).toBeVisible();
 
@@ -95,6 +96,22 @@ test.describe('timed distance', () => {
 
 test.describe('mass start', () => {
   const names = (page: Page) => page.locator('.race-item-laps .race-name-fixed');
+
+  test('compact mode shows only lap time badges until the final time is known, and can be switched off', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-timed');
+    await page.goto('/?competitionId=e2e-timed');
+    const toggle = page.getByRole('switch', { name: 'Compact' });
+    await expect(toggle).toBeChecked(); // on by default
+    await expect(page.locator('.timed-compact-body').first()).toBeVisible();
+    await expect(page.locator('.timed-compact-body .timed-compact-badge').first()).toBeVisible();
+    await expect(page.locator('.timed-compact-body').first()).not.toContainText(/\d\s?m\b/); // no distances
+
+    await expect(page.locator('.timed-compact-latest').first()).toBeVisible();
+
+    await toggle.uncheck();
+    await expect(page.locator('.timed-compact-body')).toHaveCount(0);
+    await expect(page.locator('.timed-lap-row').first()).toBeVisible();
+  });
 
   test('ranks competitors and marks them finished', async ({ page, request }) => {
     await restartReplay(request, 'e2e-mass');
@@ -147,12 +164,12 @@ test('only one settings group is open at a time, and the options are toggles', a
   const display = page.getByRole('button', { name: /^Display/ });
   const massStart = page.getByRole('button', { name: /^Mass Start/ });
   await expect(display).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('switch', { name: 'Automatically follow & scroll' })).toBeVisible();
+  await expect(page.getByRole('switch', { name: 'Auto-follow updates' })).toBeVisible();
 
   await massStart.click();
   await expect(massStart).toHaveAttribute('aria-expanded', 'true');
   await expect(display).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.getByRole('switch', { name: 'Automatically follow & scroll' })).toHaveCount(0);
+  await expect(page.getByRole('switch', { name: 'Auto-follow updates' })).toHaveCount(0);
   await expect(page.getByRole('switch', { name: 'Lap times' })).toBeVisible();
 
   await display.click();

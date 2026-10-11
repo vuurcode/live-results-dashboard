@@ -119,6 +119,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!isNaN(val)) this.dataService.setLapVarianceThreshold(val);
   }
 
+  onCompactChange(event: Event): void {
+    this.dataService.setCompactTimed((event.target as HTMLInputElement).checked);
+  }
+
   onShowLapTimesChange(event: Event): void {
     this.dataService.setShowMassStartLapTimes((event.target as HTMLInputElement).checked);
   }

@@ -23,6 +23,8 @@ export class TimedHeatCardComponent {
   @Input() distanceMeters: number | null = null;
   @Input() distanceId = '';
   @Input() active = false;
+  /** Compact mode: lap times as badges on one wrapping row until the final time is known. */
+  @Input() compact = false;
 
   public ts = inject(TranslateService);
 
@@ -121,6 +123,11 @@ export class TimedHeatCardComponent {
       return this.timedLabelTitle(firstNonPr) ?? firstNonPr;
     }
     return null;
+  }
+
+  /** The compact layout applies until the final time is known (all laps done, or the run was invalidated). */
+  isCompact(race: CompetitorUpdate): boolean {
+    return this.compact && !race.invalid_reason && !(this.distanceMeters != null && isTimedFinished(race, this.distanceMeters));
   }
 
   /** True once the skater has finished faster than the personal best shown on the card. */
