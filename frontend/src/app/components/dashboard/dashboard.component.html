@@ -21,7 +21,7 @@
             <option value="" selected disabled>{{ 'noMatchOption' | translate }}</option>
           }
           @for (m of matches; track m.id) {
-            <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.venue.name }} · {{ m.name }}@if (hasNotStarted(m)) { · {{ m.start | date: 'HH:mm' }}}</option>
+            <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.start | date: 'HH:mm' }} · {{ m.name }} ({{ m.venue.name }})</option>
           }
         </select>
         @if (noMatch) {
