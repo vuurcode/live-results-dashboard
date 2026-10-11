@@ -81,6 +81,9 @@ export class DataService {
   public status$ = this._status.asObservable();
   private _reset = new Subject<void>();
   public reset$ = this._reset.asObservable();
+  /** The page came back from suspension and the connection was renewed. */
+  private resumed = new Subject<void>();
+  public resumed$ = this.resumed.asObservable();
   private _processedData = new BehaviorSubject<ProcessedDistance[]>([]);
   public processedData$ = this._processedData.asObservable();
   private _eventName = new BehaviorSubject<string>('');
@@ -263,6 +266,8 @@ export class DataService {
   constructor() {
     // A page restored from the back/forward cache comes back with a dead socket and stale results; load it afresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.resume(); });
+    window.addEventListener('online', () => this.resume());
     this.connect();
   }
 
@@ -285,6 +290,16 @@ export class DataService {
       error: (err: unknown) => this._handleError(err),
       complete: () => this._handleDisconnect(),
     });
+  }
+
+  /** A suspended phone leaves a socket that looks open but is dead; drop it and fetch the current results. */
+  resume() {
+    if (!this.competitionId || this.noCompetition) return;
+    this._cancelReconnect();
+    this.socket$?.complete();
+    this.socket$ = null;
+    this.connect();
+    this.resumed.next();
   }
 
   disconnect() {
@@ -416,6 +431,8 @@ export class DataService {
     const dist = this.distanceMap.get(comp.distance_id);
     if (dist) {
       const existing = distComps.get(comp.id);
+      const lapsChanged = existing != null && existing.lap_times.join() !== comp.lap_times.join();
+      comp.lapsUpdatedAt = lapsChanged ? comp.lastUpdated : existing?.lapsUpdatedAt;
 
       // Ensure frontend-only fields are preserved / initialised
       comp.position = existing?.position ?? 0;

@@ -42,6 +42,8 @@ export interface CompetitorUpdate {
   position_change: 'up' | 'down' | null;
   /** Set by frontend on receive for flash-update animation */
   lastUpdated?: number;
+  /** Set by frontend when a lap time arrived or changed; races that have not been timed since loading have none */
+  lapsUpdatedAt?: number;
   /** Computed by frontend grouping logic */
   group_number?: number | null;
   /** Computed by frontend grouping logic */
