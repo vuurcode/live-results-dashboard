@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // ── raw source data ───────────────────────────────────────────────────────────
@@ -144,6 +145,20 @@ func extractInt(re *regexp.Regexp, s string) *int {
 	return &n
 }
 
+// Codes in a race's remark or invalid reason for which the data source may hold times that are not allowed to be shown:
+// did not start, disqualified, withdrawn. A did-not-finish keeps its times.
+var timeHidingCodes = map[string]bool{"DNS": true, "DQ": true, "WDR": true}
+
+// hidesTimes reports whether the invalid reason or remark (space separated codes) marks a race whose times must not be shown.
+func hidesTimes(invalidReason, remark string) bool {
+	for _, code := range strings.Fields(invalidReason + " " + remark) {
+		if timeHidingCodes[strings.ToUpper(code)] {
+			return true
+		}
+	}
+	return false
+}
+
 // process turns raw source data into fully computed dashboard state.
 func process(raw *rawData) *processedData {
 	out := &processedData{name: raw.Name}
@@ -171,6 +186,9 @@ func process(raw *rawData) *processedData {
 		processed := make([]sortable, 0, len(races))
 		for _, race := range races {
 			laps := race.Laps
+			if hidesTimes(race.InvalidReason, race.Remark) {
+				laps = nil // the laps are never sent, so the viewer cannot show them
+			}
 			if isMassStart && len(laps) > 0 {
 				laps = laps[1:] // omit warmup
 			}

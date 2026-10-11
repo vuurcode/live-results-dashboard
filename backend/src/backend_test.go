@@ -98,6 +98,45 @@ func TestProcessTimedHeats(t *testing.T) {
 	}
 }
 
+func TestTimesOfRacesThatMustNotShowThemAreNotSent(t *testing.T) {
+	for _, code := range []string{"DNS", "DQ", "WDR", "dq"} {
+		for _, inInvalid := range []bool{true, false} {
+			r := race("1", 1, lap("00:00:10.000", "00:00:10.000"), lap("00:00:20.000", "00:00:10.000"))
+			if inInvalid {
+				r.InvalidReason = code
+			} else {
+				r.Remark = "PR " + code
+			}
+			raw := &rawData{Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{r, race("2", 1)}}}}
+			c := process(raw).distances[0].competitors
+			for _, comp := range c {
+				if comp.ID == r.ID && (comp.LapsCount != 0 || len(comp.LapTimes) != 0 || comp.TotalTime != "" || comp.FormattedTotalTime != "") {
+					t.Errorf("%s (invalid reason: %v): times were sent: %+v", code, inInvalid, comp)
+				}
+			}
+		}
+	}
+	shown := race("1", 1, lap("00:00:10.000", "00:00:10.000"))
+	shown.Remark = "DNF"
+	if c := process(&rawData{Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{shown, race("2", 1)}}}}).distances[0].competitors[0]; c.LapsCount != 1 {
+		t.Errorf("a did-not-finish keeps its times: %+v", c)
+	}
+}
+
+func TestSettingNoTimeStatusDoesNotResetTheCache(t *testing.T) {
+	s := newStore(slog.Default())
+	s.update(snapshot(2, true))
+	r := race("1", 1, lap("00:00:10.000", "00:00:10.000"), lap("00:00:20.000", "00:00:10.000"))
+	r.Remark = "DQ"
+	res := s.update(process(&rawData{Name: "E", Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{r, race("2", 1)}}}}))
+	if res.reset {
+		t.Error("a race that stops showing its times is not a reset")
+	}
+	if len(res.compUpdates) != 1 || res.compUpdates[0].LapsCount != 0 {
+		t.Errorf("expected one update without laps, got %+v", res.compUpdates)
+	}
+}
+
 func TestStartNumberAcceptsNumbers(t *testing.T) {
 	var r rawRace
 	if err := json.Unmarshal([]byte(`{"competitor":{"startNumber":12}}`), &r); err != nil || r.Competitor.StartNumber != "12" {

@@ -88,7 +88,7 @@ func (s *store) update(curr *processedData) diffResult {
 reset:
 	for _, d := range curr.distances {
 		for _, c := range d.competitors {
-			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount {
+			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount && !hidesTimes(deref(c.InvalidReason), deref(c.Remark)) {
 				s.log.Warn("Reset detected, clearing cache", "name", c.Name, "from", prev.comp.LapsCount, "to", c.LapsCount)
 				res.reset = true
 				break reset
@@ -176,4 +176,11 @@ func ptrEq(a, b *string) bool {
 		return a == b
 	}
 	return *a == *b
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
