@@ -32,6 +32,10 @@ test.describe('two-lane match', () => {
     await expect(cardB.getByText('DNF', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
     await expect(cardA.locator('.timed-lap-row.timed-lap-done')).toHaveCount(2);
     await expect(cardA.getByText('PB', { exact: true })).toBeVisible();
+    // the old personal best on the card title is struck through once it has been beaten
+    await expect(cardA.locator('.timed-pb-beaten')).toHaveCSS('text-decoration-line', 'line-through');
+    // ... and stays plain for a skater who did not improve it (Competitor C finished slower than 43.0)
+    await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor C' }).locator('.timed-pb-beaten')).toHaveCount(0);
   });
 });
 

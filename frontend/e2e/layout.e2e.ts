@@ -88,3 +88,32 @@ test.describe('pinned titles', () => {
     expect(rowBox!.width).toBeGreaterThanOrEqual(cardBox!.width - 2.5); // minus the card border
   });
 });
+
+test.describe('mass start group cards', () => {
+  for (const width of [390, 1280, 3840]) {
+    test(`${width}px: cards are readable, equal and never cut off`, async ({ page, request }) => {
+      await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
+      await page.waitForTimeout(800);
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/?competitionId=e2e-mass');
+      const cards = page.locator('.groups-strip .group-strip-card');
+      await expect(cards.first()).toBeVisible({ timeout: 15_000 });
+      const { widths, rem, cut } = await page.evaluate(() => {
+        const strip = document.querySelector('.groups-strip') as HTMLElement;
+        const cs = [...strip.querySelectorAll('.group-strip-card')] as HTMLElement[];
+        const stripBox = strip.getBoundingClientRect();
+        return {
+          widths: cs.map((c) => c.getBoundingClientRect().width),
+          rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+          // a card may be scrolled out of view, but must never be clipped without the strip being scrollable
+          cut: strip.scrollWidth > strip.clientWidth && getComputedStyle(strip).overflowX === 'hidden' && stripBox.width > 0,
+        };
+      });
+      for (const w of widths) {
+        expect(w).toBeGreaterThanOrEqual(11 * rem - 1);
+        expect(w).toBeLessThanOrEqual(22 * rem + 1);
+      }
+      expect(cut).toBe(false);
+    });
+  }
+});

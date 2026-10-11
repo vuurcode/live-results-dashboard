@@ -693,6 +693,10 @@
   min-height: 1.6rem;
 }
 
+.timed-split-badge.timed-pb-beaten {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
 .timed-split-badge .time-decimal {
   font-size: 0.8em; /* smaller decimal inside the split badge, still legible */
   color: inherit; /* same colour as the badge text: no opacity, which would drop the contrast */
@@ -932,18 +936,15 @@
 
 // ===== HORIZONTAL GROUPS STRIP =====
 .groups-strip {
-  overflow-x: hidden;
+  overflow-x: auto;
   border-bottom: 1px solid var(--cui-border-color, #dee2e6);
 }
 .group-strip-card {
-  // Each card takes an equal share of the available width.
-  // xs: 1 card = 100%, sm: 2 = 50%, md: 3 = 33%, lg: 4 = 25%, xl: 5 = 20%
-  width: 100%;
-  @media (min-width: 576px)  { width: calc(50% - 0.5rem); }
-  @media (min-width: 768px)  { width: calc(33.333% - 0.5rem); }
-  @media (min-width: 992px)  { width: calc(25% - 0.5rem); }
-  @media (min-width: 1200px) { width: calc(20% - 0.5rem); }
-  min-width: 0; // allow text-truncate to work
+  // Cards share the row evenly, but never get too narrow to read a name nor wider than a card needs;
+  // when they do not all fit, the strip scrolls sideways instead of cutting cards off.
+  flex: 1 1 0;
+  min-width: 11rem;
+  max-width: 22rem;
 }
 .strip-name {
   max-width: 8rem;

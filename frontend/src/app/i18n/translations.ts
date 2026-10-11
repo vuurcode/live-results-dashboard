@@ -48,6 +48,7 @@ export interface Translations {
   pbLabel: string;
   remarkNewPb: string;
   remarkShortPb: string;
+  pbImprovedTitle: string;
   remarkFall: string;
   remarkDisqualified: string;
   remarkDidNotStart: string;
@@ -102,6 +103,7 @@ export const en: Translations = {
   pbLabel: 'PB:',
   remarkNewPb: 'New PB',
   remarkShortPb: 'PB',
+  pbImprovedTitle: 'Previous personal best, improved',
   remarkFall: 'Fall',
   remarkDisqualified: 'Disqualified',
   remarkDidNotStart: 'Did not start',
@@ -155,6 +157,7 @@ export const nl: Translations = {
   pbLabel: 'PR:',
   remarkNewPb: 'Nieuw PR',
   remarkShortPb: 'PR',
+  pbImprovedTitle: 'Vorig persoonlijk record, verbeterd',
   remarkFall: 'Val',
   remarkDisqualified: 'Gediskwalificeerd',
   remarkDidNotStart: 'Niet gestart',

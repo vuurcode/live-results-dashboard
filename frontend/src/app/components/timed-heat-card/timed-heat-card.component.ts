@@ -123,6 +123,11 @@ export class TimedHeatCardComponent {
     return null;
   }
 
+  /** True once the skater has finished faster than the personal best shown on the card. */
+  isPbImproved(race: CompetitorUpdate): boolean {
+    return !!this.distanceMeters && !!this.timedPrComparison(race, this.distanceMeters)?.faster;
+  }
+
   /** Badge text: the upstream code `PR` is shown as the local term (PB in English, PR in Dutch); other codes are international. */
   remarkBadgeText(code: string): string {
     return code === 'PR' ? this.ts.t('remarkShortPb') : code;
