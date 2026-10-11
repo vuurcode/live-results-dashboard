@@ -7,6 +7,7 @@ import {
   splitLapTime,
   splitFormattedTime,
   isRecentUpdate,
+  sameHundredths,
 } from './time.util';
 
 describe('parseSeconds', () => {
@@ -115,4 +116,10 @@ describe('isRecentUpdate', () => {
   it('is false for an undefined timestamp', () => {
     expect(isRecentUpdate(undefined, 1000)).toBe(false);
   });
+});
+
+describe('sameHundredths', () => {
+  it('is true when only the thousandths differ', () => expect(sameHundredths('1:23.456', '1:23.459')).toBe(true));
+  it('is false when the hundredths differ', () => expect(sameHundredths('43.009', '43.010')).toBe(false));
+  it('truncates instead of rounding', () => expect(sameHundredths('43.999', '43.990')).toBe(true));
 });

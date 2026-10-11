@@ -3,7 +3,8 @@ import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
 import { TranslateService } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
-import { parseSeconds, splitLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
+import { lapBadgeColor } from '../../logic/lap-color.util';
+import { splitLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
 import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount as pendingLapCountUtil } from '../../logic/heats.util';
 
 @Component({
@@ -55,16 +56,9 @@ export class MassStartRaceRowComponent {
    *   within threshold     → 'lap-badge-normal' (green)
    */
   lapBadgeColor(lapTimes: string[], i: number): string {
-    if (i === 0 || !lapTimes[i - 1]) return 'lap-badge-normal';
-    const curr = parseSeconds(lapTimes[i]);
-    const prev = parseSeconds(lapTimes[i - 1]);
-    if (!prev) return 'lap-badge-normal';
-    const threshold = this.lapVarianceThreshold / 100;
-    const ratio = (curr - prev) / prev;
-    if (ratio > threshold)  return 'lap-badge-slow';   // current slower  → orange
-    if (ratio < -threshold) return 'lap-badge-fast';   // current faster  → purple
-    return 'lap-badge-normal';
+    return lapBadgeColor(lapTimes, i, this.lapVarianceThreshold);
   }
+
 
   /**
    * Returns the number of pending (not-yet-completed) laps for a mass-start competitor.

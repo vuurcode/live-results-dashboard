@@ -66,3 +66,12 @@ export function isRecentUpdate(timestamp: number | undefined, now = Date.now(), 
   if (!timestamp) return false;
   return now - timestamp < windowMs;
 }
+
+/**
+ * True when two times have the same hundredths, so only the thousandths can tell them apart
+ * (e.g. a finish time against a personal best). Skating truncates rather than rounds.
+ */
+export function sameHundredths(a: string, b: string): boolean {
+  const hundredths = (t: string) => Math.floor(parseSeconds(t) * 100 + 1e-6);
+  return hundredths(a) === hundredths(b);
+}
