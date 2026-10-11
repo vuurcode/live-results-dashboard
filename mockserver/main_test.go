@@ -27,12 +27,16 @@ func writeSamples(t *testing.T, base, match string, samples ...string) {
 	}
 }
 
-func newTestServer(t *testing.T, interval time.Duration) (*httptest.Server, string) {
+func newTestServer(t *testing.T, interval time.Duration, expireAfter ...time.Duration) (*httptest.Server, string) {
 	t.Helper()
 	base := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	s := &server{cfg: config{baseDir: base, interval: interval}, ctx: ctx, replays: map[string]*replay{}}
+	cfg := config{baseDir: base, interval: interval}
+	if len(expireAfter) > 0 {
+		cfg.expireAfter = expireAfter[0]
+	}
+	s := &server{cfg: cfg, ctx: ctx, replays: map[string]*replay{}}
 	ts := httptest.NewServer(s.routes())
 	t.Cleanup(ts.Close)
 	return ts, base
@@ -172,4 +176,23 @@ func TestCatalogEndpoints(t *testing.T) {
 	if strings.Contains(body, `"id":"empty"`) {
 		t.Error("competition without samples must not be listed")
 	}
+}
+
+func TestMatchExpiresAfterItsLastUpdate(t *testing.T) {
+	ts, base := newTestServer(t, 10*time.Millisecond)
+	writeSamples(t, base, "m", `{"s":1}`, `{"s":2}`)
+	url := ts.URL + "/Competition?competitionId=m"
+	do(t, "GET", url)
+	waitForBody(t, url, `{"s":2}`)
+	time.Sleep(300 * time.Millisecond)
+	if _, body := do(t, "GET", url); body != `{"s":2}` {
+		t.Fatalf("without an expiry the last sample is held, got %q", body)
+	}
+
+	ts2, base2 := newTestServer(t, 10*time.Millisecond, 100*time.Millisecond)
+	writeSamples(t, base2, "m", `{"s":1}`, `{"s":2}`)
+	url2 := ts2.URL + "/Competition?competitionId=m"
+	do(t, "GET", url2)
+	waitForBody(t, url2, `{"s":2}`)
+	waitForBody(t, url2, `{"s":1}`) // dropped after 100ms without an update: the replay starts over
 }

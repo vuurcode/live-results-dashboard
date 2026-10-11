@@ -4,6 +4,8 @@
 // match's id is its subdirectory name. The first GET /Competition?competitionId=<id>
 // starts that match's replay: its JSON samples are served in ascending filename
 // order, DATA_SAMPLE_INTERVAL seconds apart, holding the last sample at the end.
+// A match whose last sample has been held for DATA_EXPIRE_AFTER seconds (default 300) is dropped,
+// so the next request replays it from the start.
 // Matches replay independently of each other.
 //
 //	GET  /api/matches                    ids of the available matches (also a health check)
@@ -34,13 +36,14 @@ import (
 var matchIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type config struct {
-	baseDir    string
-	interval   time.Duration
-	listenAddr string
+	baseDir     string
+	interval    time.Duration
+	expireAfter time.Duration // how long the last sample is held before the match is dropped; 0 never
+	listenAddr  string
 }
 
 func loadConfig() config {
-	cfg := config{baseDir: "data", interval: 5 * time.Second, listenAddr: ":8080"}
+	cfg := config{baseDir: "data", interval: 5 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080"}
 	if v := os.Getenv("DATA_SAMPLE_DIRECTORY"); v != "" {
 		cfg.baseDir = v
 	}
@@ -52,6 +55,13 @@ func loadConfig() config {
 			cfg.interval = time.Duration(f * float64(time.Second))
 		} else {
 			slog.Warn("Ignoring invalid DATA_SAMPLE_INTERVAL", "value", v)
+		}
+	}
+	if v := os.Getenv("DATA_EXPIRE_AFTER"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			cfg.expireAfter = time.Duration(f * float64(time.Second))
+		} else {
+			slog.Warn("Ignoring invalid DATA_EXPIRE_AFTER", "value", v)
 		}
 	}
 	return cfg
@@ -155,6 +165,14 @@ func (s *server) start(id string) (*replay, error) {
 			}
 		}
 		slog.Info("Replay complete, holding last sample", "match", id)
+		if s.cfg.expireAfter <= 0 {
+			return
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(s.cfg.expireAfter):
+			s.expire(id, r)
+		}
 	}()
 	return r, nil
 }
@@ -172,6 +190,19 @@ func (s *server) replayFor(id string) (*replay, error) {
 	}
 	s.replays[id] = r
 	return r, nil
+}
+
+// expire drops a replay that has not changed for a while, unless it was replaced in the meantime;
+// the next request for the match starts it over.
+func (s *server) expire(id string, r *replay) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.replays[id] != r {
+		return
+	}
+	r.cancel()
+	delete(s.replays, id)
+	slog.Info("Replay expired", "match", id, "after", s.cfg.expireAfter)
 }
 
 func (s *server) reset(id string) error {

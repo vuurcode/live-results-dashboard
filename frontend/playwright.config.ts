@@ -28,6 +28,7 @@ export default defineConfig({
         LISTEN_ADDR: `:${MOCK_PORT}`,
         DATA_SAMPLE_DIRECTORY: path.join(__dirname, 'e2e/fixtures/matches'),
         DATA_SAMPLE_INTERVAL: '1.5',
+        DATA_EXPIRE_AFTER: '0', // the tests keep the last sample of a match for as long as they need
       },
     },
     {
