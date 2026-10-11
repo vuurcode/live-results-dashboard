@@ -129,3 +129,27 @@ test('competitor card titles have the same height with or without badges', async
   expect(heights.length).toBeGreaterThan(1);
   expect(new Set(heights).size).toBe(1);
 });
+
+test('a competitor title stays pinned while its tall card scrolls, and lap row totals do not shift past 10 minutes', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 400 });
+  await page.addInitScript(() => localStorage.setItem('compactTimed', 'false'));
+  await page.goto('/?competitionId=e2e-timed');
+  const card = page.locator('.timed-competitor-card').first();
+  await expect(card.locator('.timed-lap-row').first()).toBeVisible();
+  const { cardTop, cardH } = await card.evaluate((c) => {
+    const r = c.getBoundingClientRect();
+    return { cardTop: r.top + window.scrollY, cardH: r.height };
+  });
+  const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom);
+  await page.evaluate((y) => window.scrollTo(0, y), cardTop + 10); // card top is now above the pinned bars
+  await page.waitForTimeout(300);
+  const headerTop = await card.locator('.timed-comp-header').evaluate((h) => h.getBoundingClientRect().top);
+  expect(cardH).toBeGreaterThan(0);
+  expect(headerTop).toBeGreaterThanOrEqual(barBottom - 1);
+  expect(headerTop).toBeLessThan(barBottom + 80);
+  await expect(card.locator('.timed-comp-header')).toBeInViewport();
+
+  // totals are right-aligned in a fixed-width box, so the badge before it keeps its position
+  const widths = await page.evaluate(() => [...document.querySelectorAll('.timed-lap-time')].map((e) => Math.round(e.getBoundingClientRect().width)));
+  expect(new Set(widths).size).toBe(1);
+});

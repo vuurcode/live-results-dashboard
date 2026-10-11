@@ -571,7 +571,7 @@
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 0.375rem;
   background: #fff;
-  overflow: hidden;
+  overflow: clip; // clips the rounded corners without becoming a scroll container, so the title can stick
   container-type: inline-size; // the watermarks size themselves from the card width (cqw)
   transition: outline 0.1s;
   position: relative;
@@ -661,6 +661,20 @@
   overflow: hidden;
   box-sizing: border-box;
   min-height: 2.5rem; // fits the tallest badge (1.6rem + padding): the title never changes height with or without badges
+  // A card taller than the viewport keeps its title visible, pinned below the top bar and distance title.
+  position: sticky;
+  top: calc(var(--topbar-h, 3rem) + 1.65rem);
+  z-index: 5;
+  background: #f8f8f8; // opaque (the translucent tint would show the rows scrolling beneath)
+  container-type: scroll-state;
+}
+@container scroll-state(stuck: top) {
+  .timed-comp-header {
+    min-height: 1.9rem;
+    padding-top: 0.1rem;
+    padding-bottom: 0.1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
 }
 .timed-comp-name {
   font-size: 0.8em;
@@ -791,6 +805,7 @@
   margin-right: 0.4rem;
 }
 .timed-lap-time {
+  min-width: 9ch; // room for 00:00.000: the badge to its left must not shift once times pass 10 minutes
   font-size: 0.82em;
   font-variant-numeric: tabular-nums;
   color: #adb5bd;
