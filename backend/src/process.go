@@ -40,6 +40,7 @@ type rawCompetitor struct {
 	Name        string     `json:"name"`
 	StartNumber flexString `json:"startNumber"`
 	Category    string     `json:"category"`
+	ClubCode    string     `json:"clubCode"`
 }
 
 type rawLap struct {
@@ -97,6 +98,7 @@ type Competitor struct {
 	ID                 string   `json:"id"`
 	DistanceID         string   `json:"distance_id"`
 	Category           *string  `json:"category"`
+	ClubCode           *string  `json:"club_code"`
 	Heat               int      `json:"heat"`
 	Lane               string   `json:"lane"`
 	FormattedTotalTime string   `json:"formatted_total_time"`
@@ -215,6 +217,7 @@ func process(raw *rawData) *processedData {
 					ID:                 race.ID,
 					DistanceID:         dist.ID,
 					Category:           strPtr(race.Competitor.Category),
+					ClubCode:           strPtr(race.Competitor.ClubCode),
 					Heat:               race.Heat,
 					Lane:               lane,
 					FormattedTotalTime: formattedTotal,
