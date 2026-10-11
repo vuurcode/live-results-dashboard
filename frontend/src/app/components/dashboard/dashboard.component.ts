@@ -1,3 +1,4 @@
+import { isNeverLive } from '../../logic/race-codes';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -91,7 +92,7 @@ export class DashboardComponent implements OnInit {
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
   selectedLabelLength(matches: TodayMatch[]): number {
     const m = matches.find(x => x.id === this.dataService.competitionId);
-    return m ? `00:00 · ${m.name} (${m.venue.name})`.length : 20;
+    return m ? `00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
   }
 
   /** Open another match; the page reads its competitionId on load. */
@@ -266,7 +267,7 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  /** The heat whose lap times updated most recently, ignoring mass starts; heats that were never timed here are never live. */
+  /** The heat whose lap times updated most recently (the later one when they changed together; the page follows by the same rule), ignoring mass starts; heats that were never timed here are never live. */
   private findActiveHeat(distances: ProcessedDistance[]): { distanceId: string; label: string } | null {
     let maxTime = 0;
     let result: { distanceId: string; label: string } | null = null;
@@ -274,7 +275,7 @@ export class DashboardComponent implements OnInit {
       if (distance.isMassStart) continue;
       for (const group of this.mergedHeatGroups(distance)) {
         for (const race of group.races) {
-          if (race?.lapsUpdatedAt && race.lapsUpdatedAt > maxTime) {
+          if (race?.lapsUpdatedAt && !isNeverLive(race) && race.lapsUpdatedAt >= maxTime) {
             maxTime = race.lapsUpdatedAt;
             result = { distanceId: distance.id, label: group.label };
           }

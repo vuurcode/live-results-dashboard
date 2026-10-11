@@ -174,7 +174,7 @@ test.describe('mass start', () => {
 test('lists the matches of today and opens the chosen one', async ({ page }) => {
   await page.goto('/?competitionId=e2e-timed');
   const select = page.getByLabel('Matches today');
-  await expect(select.locator('option')).toHaveCount(5); // the five fixture matches; the mock's other-day and other-venue entries are filtered out
+  await expect(select.locator('option')).toHaveCount(6); // the six fixture matches; the mock's other-day and other-venue entries are filtered out
   await expect(select).toHaveValue('e2e-timed');
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);
@@ -190,7 +190,7 @@ test('the match picker replaces the event name, venue first, start time only bef
   await expect(page.getByRole('heading', { level: 1 })).toHaveClass(/visually-hidden/);
   const labels = await select.locator('option').allTextContents();
   const running = labels.find((l) => l.includes('E2E Timed Event'))!;
-  expect(running.trim()).toMatch(/^\d{2}:\d{2} · E2E Timed Event \(Mock Ice Rink\)$/);
+  expect(running.trim()).toMatch(/^\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Timed Event \(Mock Ice Rink\)$/);
 });
 
 test('only one settings group is open at a time, and the options are toggles', async ({ page, request }) => {

@@ -96,7 +96,7 @@
   .topbar-settings { flex: 0 0 auto; }
   .topbar-settings-group { max-width: 100%; }
   .topbar-group-text { display: none; }
-  .topbar-group-cog { display: inline; font-size: 1.25rem; line-height: 1; }
+  .topbar-group-cog { display: inline-block; vertical-align: -0.2em; }
   .topbar-group-btn { min-height: 2rem; }
   .setting-group .form-switch .form-check-input { height: 1.5rem; width: 2.75rem; }
 }
