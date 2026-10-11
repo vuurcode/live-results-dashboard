@@ -9,10 +9,6 @@
 .timed-heat-row {
   // no visual styling — plain stacking
 }
-// Active heat row: a thick border all around shows it received the last update
-.timed-heat-row-active {
-  border: 0.35rem solid #dc3545;
-}
 .timed-heat-label {
   position: relative;
   display: flex;

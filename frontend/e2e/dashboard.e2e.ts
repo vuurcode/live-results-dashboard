@@ -94,6 +94,31 @@ test.describe('timed distance', () => {
   });
 });
 
+test.describe('live heat', () => {
+  test('each competitor still racing in the live heat has a red border; a card with a result, or a border of its own, does not', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-multi');
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await page.goto('/?competitionId=e2e-multi');
+    const live = page.locator('[data-live]');
+    await expect(live).toHaveCount(1);
+    const cards = live.locator('.timed-competitor-card:not(.timed-lane-placeholder)');
+    await expect(page.locator('.timed-card-live').first()).toBeVisible({ timeout: 20_000 });
+    await expect(live).toHaveCSS('border-top-width', '0px'); // the row itself carries no border
+    const states = await cards.evaluateAll((els) => els.map((c) => ({
+      live: c.classList.contains('timed-card-live'),
+      border: getComputedStyle(c).borderTopColor,
+      other: ['race-finished', 'timed-card-pr', 'timed-card-record', 'timed-card-red', 'timed-card-orange'].some((k) => c.classList.contains(k)),
+      badge: !!c.querySelector('.timed-comp-live'),
+    })));
+    expect(states.some((s) => s.live)).toBe(true);
+    for (const s of states) {
+      expect(s.live, JSON.stringify(s)).toBe(!s.other && s.badge);
+      if (s.live) expect(s.border).toBe('rgb(220, 53, 69)');
+    }
+    expect(await page.locator('.timed-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
+  });
+});
+
 test.describe('mass start', () => {
   const names = (page: Page) => page.locator('.race-item-laps .race-name-fixed');
 

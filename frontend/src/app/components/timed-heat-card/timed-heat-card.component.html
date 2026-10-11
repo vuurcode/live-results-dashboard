@@ -1,5 +1,5 @@
 <div class="timed-heat-row"
-     [class.timed-heat-row-active]="active"
+     [attr.data-live]="active ? '' : null"
      [attr.data-heat-label]="label"
      [attr.data-distance-id]="distanceId">
   <div class="timed-heat-label">
@@ -17,6 +17,7 @@
       <div
           class="timed-competitor-card"
           [class.race-finished]="distanceMeters != null && isTimedFinished(race, distanceMeters)"
+          [class.timed-card-live]="liveBorder(race)"
           [class.timed-card-pr]="timedCardVariant(race) === 'pr'"
           [class.timed-card-record]="timedCardVariant(race) === 'record'"
           [class.timed-card-red]="timedCardVariant(race) === 'red'"

@@ -234,6 +234,8 @@
     overflow-wrap: anywhere;
     white-space: pre-line; // keeps the explicit line break (TRC + category) but wraps long labels inside the card
   }
+  // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
+  &.timed-card-live { border-color: #dc3545; outline: 2px solid #dc3545; outline-offset: -3px; }
   &.timed-card-pr {
     border: 2px solid #6f42c1;
     .timed-comp-title::before { color: rgba(111, 66, 193, 0.85); }

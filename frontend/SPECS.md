@@ -38,5 +38,5 @@ All components:
 - [x] Card title: name with category / club small below it; remark and invalid badges and the personal best on a line below, merged to the right of the name while racing; a card without codes keeps its title height
 - [x] Card body: lap badges with their distance above, total time at the right (on its own line when it does not fit), grey placeholders for laps to come (hidden but keeping their room for DNS, DQ, WDR)
 - [x] Watermarks, centred in the title: NEW PERSONAL BEST with its difference, `+ diff` in orange when slower than the personal best, the record or code name; a card without a time centres it on the whole card at four lanes
-- [x] The live heat has a thick red border all around and a Live badge on its competitors; the page never scrolls sideways; long and unbreakable names stay inside their cards; large screens scale the root font size
+- [x] In the live heat every competitor still racing has a thick red border and a Live badge, until the result is in or the card has a border of its own (personal best, record, fall); the page never scrolls sideways; long and unbreakable names stay inside their cards; large screens scale the root font size
 - [x] Narrow screens: competition picker and a cogwheel button share one row; wide screens: a wider picker and the label on the settings button with a space before its cogwheel

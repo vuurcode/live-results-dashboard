@@ -14,8 +14,8 @@ for (const [width, height] of [[390, 740], [1024, 768]] as const) {
       return { top: r.top, bottom: r.bottom, bar: document.querySelector('header')!.getBoundingClientRect().bottom };
     });
     const live = await page.evaluate(() => {
-      const r = document.querySelector('.timed-heat-row-active')!.getBoundingClientRect();
-      return { distance: document.querySelector('.timed-heat-row-active')!.getAttribute('data-distance-id'), label: document.querySelector('.timed-heat-row-active')!.getAttribute('data-heat-label'), top: r.top };
+      const r = document.querySelector('[data-live]')!.getBoundingClientRect();
+      return { distance: document.querySelector('[data-live]')!.getAttribute('data-distance-id'), label: document.querySelector('[data-live]')!.getAttribute('data-heat-label'), top: r.top };
     });
     expect(live, 'the heat marked live is the one the page followed').toMatchObject({ distance: 'dist-3000', label: 'Heat 2' });
     expect(live.top, 'the heat marked live is in the upper part of the screen').toBeGreaterThan(0);

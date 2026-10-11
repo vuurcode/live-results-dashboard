@@ -7,7 +7,7 @@ import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, s
 import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
 import { categoryName } from '../../logic/category.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
-import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
+import { isTimedFinished, timedRaceComplete, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
 /** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
 const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
@@ -182,9 +182,14 @@ export class TimedHeatCardComponent {
     return codes.some(c => !!c && NO_TIME_CODES.has(c.toUpperCase()));
   }
 
-  /** The live tag goes on the cards of the live heat, except for competitors who did not start or withdrew. */
+  /** The live tag goes on the cards of the live heat, except for competitors who did not start or withdrew, and those whose result is in. */
   showLive(race: CompetitorUpdate): boolean {
-    return this.active && !isNeverLive(race);
+    return this.active && !isNeverLive(race) && !(this.distanceMeters != null && timedRaceComplete(race, this.distanceMeters));
+  }
+
+  /** A live card has the live border, unless the card already has a border of its own (a personal best, a record, a fall ...). */
+  liveBorder(race: CompetitorUpdate): boolean {
+    return this.showLive(race) && this.timedCardVariant(race) === null;
   }
 
   /** True for a race that did not start, was disqualified or withdrew: its placeholder badges are not shown (their room is kept). */
