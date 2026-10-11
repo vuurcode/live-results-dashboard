@@ -13,3 +13,7 @@
 # Where directives go
 
 - Generic development directives (workflow, testing, commits, conventions) belong in this file, not in personal memory. Use memory only for things specific to the user or session context.
+
+# Code comments
+
+- Comments describe what the code is and why it is that way, never the change that produced it. Don't write what was added, removed, renamed or fixed, what it used to do, or what an earlier version did ("no longer", "now", "instead of the old ...", "as before"); that belongs in the commit history. When editing code, also drop comments of that kind that you find.
