@@ -214,6 +214,7 @@
   &.timed-card-no-time .timed-comp-title { @media (min-width: $four-lanes-min) { position: static; } }
   .timed-watermark {
     @include card-watermark(clamp(0.8rem, 4.5cqw, 1.4rem));
+    &.timed-watermark-slower { color: rgba(176, 84, 0, 0.9); } // orange, 4.9:1 on white
     &.timed-watermark-pr { color: rgba(111, 66, 193, 0.85); } // 4.7:1 on white (0.80 gave 4.2:1)
     .timed-watermark-text { font-size: 0.6em; } // the label is smaller than the diff below it
     .timed-watermark-decimal { font-size: 0.65em; }
@@ -284,27 +285,7 @@
   .time-decimal { color: #212529 !important; opacity: 0.9; }
 }
 
-.timed-pr-diff-badge {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.6em !important;
-  line-height: 1;
-  padding: 0.18em 0.4em;
-  border-radius: 0.25rem;
-  min-height: 1.6rem;
-  height: auto;
-  flex-shrink: 0;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  color: #fff !important;
-  .time-decimal { color: #fff !important; opacity: 0.9; }
-  // "Slower than PB" uses the yellow warning background: white text is only 1.9:1 on it
-  &.bg-warning {
-    color: #212529 !important;
-    .time-decimal { color: #212529 !important; opacity: 0.9; }
-  }
-}
+.timed-ghost-hidden { visibility: hidden; } // keeps the room of the placeholders
 // ===== TIME STYLING =====
 .race-time {
   font-variant-numeric: tabular-nums;

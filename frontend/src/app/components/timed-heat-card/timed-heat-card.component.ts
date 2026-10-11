@@ -4,7 +4,7 @@ import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../models/data.models';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
-import { NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
+import { GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
 import { categoryName } from '../../logic/category.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
@@ -180,6 +180,12 @@ export class TimedHeatCardComponent {
   watermarkCentered(race: CompetitorUpdate): boolean {
     const codes = [race.invalid_reason, ...this.splitRemarks(race.remark)];
     return codes.some(c => !!c && NO_TIME_CODES.has(c.toUpperCase()));
+  }
+
+  /** True for a race that did not start, was disqualified or withdrew: its placeholder badges are not shown (their room is kept). */
+  ghostsHidden(race: CompetitorUpdate): boolean {
+    const codes = [race.invalid_reason, ...this.splitRemarks(race.remark)];
+    return codes.some(c => !!c && GHOST_HIDING_CODES.has(c.toUpperCase()));
   }
 
   /** Watermark text: invalid_reason takes priority over remark; resolved via label map.
