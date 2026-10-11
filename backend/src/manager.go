@@ -124,6 +124,14 @@ func (m *manager) roomCount() int {
 
 func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	r, c, err := m.join(req.URL.Query().Get("competitionId"))
+	if errors.Is(err, errBadCompetitionID) {
+		// A browser cannot read the status of a failed handshake and would retry forever, so the
+		// refusal is a close frame it can recognise.
+		if conn, acceptErr := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}}); acceptErr == nil {
+			_ = conn.Close(websocket.StatusPolicyViolation, err.Error())
+		}
+		return
+	}
 	if err != nil {
 		code := http.StatusBadRequest
 		if errors.Is(err, errTooManyRooms) {
@@ -134,7 +142,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	}
 	defer m.leave(r, c)
 
-	// Any origin is accepted, as before: the frontend reaches us through a proxy.
+	// Any origin is accepted: the frontend reaches us through a proxy.
 	conn, err := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}})
 	if err != nil {
 		slog.Warn("WebSocket accept failed", "err", err)

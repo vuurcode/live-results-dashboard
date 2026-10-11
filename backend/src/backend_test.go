@@ -393,9 +393,15 @@ func TestRejectedCompetitionIDs(t *testing.T) {
 		return code
 	}
 	for _, q := range []string{"", "?competitionId=", "?competitionId=a/b", "?competitionId=a%0d%0ab", "?competitionId=" + strings.Repeat("x", 65), "?competitionId=a.b"} {
-		if got := status(q); got != http.StatusBadRequest {
-			t.Errorf("%q: status %d, want 400", q, got)
+		conn, _, err := tb.dial(t, ctx, q, nil)
+		if err != nil {
+			t.Fatalf("%q: %v", q, err)
 		}
+		_, _, err = conn.Read(ctx)
+		if got := websocket.CloseStatus(err); got != websocket.StatusPolicyViolation {
+			t.Errorf("%q: close status %d, want %d", q, got, websocket.StatusPolicyViolation)
+		}
+		conn.CloseNow()
 	}
 
 	// maxCompetitions = 2: a third distinct competition is refused, existing ones still accept clients.
