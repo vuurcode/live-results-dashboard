@@ -15,7 +15,7 @@ const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
   standalone: true,
   imports: [NgClass, BadgeModule],
   templateUrl: './timed-heat-card.component.html',
-  styleUrls: ['../dashboard/dashboard.component.scss'],
+  styleUrls: ['./timed-heat-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TimedHeatCardComponent {

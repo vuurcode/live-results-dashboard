@@ -12,7 +12,7 @@ import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount
   standalone: true,
   imports: [BadgeModule, TranslatePipe],
   templateUrl: './mass-start-race-row.component.html',
-  styleUrls: ['../dashboard/dashboard.component.scss'],
+  styleUrls: ['./mass-start-race-row.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MassStartRaceRowComponent {

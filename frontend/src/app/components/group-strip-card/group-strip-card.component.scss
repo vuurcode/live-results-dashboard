@@ -1,0 +1,24 @@
+@use '../dashboard/tokens' as *;
+@use '../dashboard/shared';
+
+.race-item-group {
+  border: 1px solid transparent;
+}
+.strip-name {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+// Gap badge between groups — warning yellow (reverted)
+.gap-badge {
+  display: inline-block;
+  font-size: 0.65em;
+  font-family: monospace;
+  font-weight: 600;
+  padding: 0.15em 0.45em;
+  border-radius: 0.3em;
+  background-color: var(--cui-warning, #f9b115);
+  color: #212529;
+  letter-spacing: 0.02em;
+}

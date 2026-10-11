@@ -1,0 +1,260 @@
+@use '../dashboard/tokens' as *;
+@use '../dashboard/shared';
+
+.timed-flash-update {
+  animation: flashGreen 2s ease-in-out forwards; // keep in sync with SPLIT_FLASH_MS in timed-heat-card.component.ts
+}
+// ===== TIMED DISTANCES =====
+// Plain heat row — no border/background, just a label + cards below
+.timed-heat-row {
+  // no visual styling — plain stacking
+}
+// Active heat row: a grey background shows it received the last update
+.timed-heat-row-active {
+  background: #dee2e6;
+  border-radius: 0.375rem;
+  .timed-heat-label { color: #495057; } // 6.4:1 on the grey (the usual label colour is too light for it)
+}
+.timed-heat-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78em;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+.timed-heat-lane-bgs {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  // Hide lane colour strips when cards stack to single column
+  @media (max-width: 800px) { display: none; }
+}
+.timed-heat-lane-bg {
+  flex: 1 1 0;
+  background: color-mix(in srgb, var(--lane-color, transparent) 5%, transparent);
+}
+.timed-heat-label-text,
+.timed-heat-start-chips {
+  position: relative;
+  z-index: 1;
+}
+// The current heat is marked by a badge behind each racer's name
+.timed-comp-live { font-size: 0.6em; vertical-align: middle; margin-left: 0.4rem; }
+// up to 4 lane columns per row, then 2 per row on narrow viewports, then 1 column on very narrow ones
+.timed-competitors-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.timed-lane-col, .timed-heat-lane-bg {
+  // On narrow screens a set of lanes with no racer in this heat (white/red or yellow/blue) takes no room and shows no colour.
+  @media (max-width: 800px) { &.lane-set-empty { display: none; } }
+}
+.timed-lane-col {
+  flex: 1 1 0;
+  min-width: 0;
+  @media (max-width: 800px) { flex: 1 1 40%; } // two per row (a lone last lane takes the full row)
+  @media (max-width: 520px) { flex: 0 0 100%; }
+  padding: 0.4rem 0.25rem 1rem;
+  background: color-mix(in srgb, var(--lane-color, transparent) 5%, transparent);
+}
+.timed-badge-purple,
+.timed-badge-red,
+.timed-badge-orange {
+  font-size: 0.6em !important;
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: #fff !important;
+}
+.timed-badge-purple { background-color: #6f42c1 !important; } // white: 6.5:1
+.timed-badge-red    { background-color: #c93434 !important; } // white: 5.2:1 (pure red gave 4.0:1)
+.timed-badge-orange { background-color: #fd7e14 !important; color: #212529 !important; } // dark text: 6.0:1 (white gave 2.6:1)
+// Card title: badge + name + Finished badge inline after name
+.timed-comp-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.5rem;
+  row-gap: 0.2rem;
+  padding: 0.4rem 1rem; // the same side padding as the card body below
+  border-bottom: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.timed-comp-name {
+  font-size: 0.8em;
+  flex: 0 0 100%; // the name has the first line to itself, the badges the second
+  max-width: 100%;
+  overflow-wrap: anywhere; // ... and only a name longer than the card wraps instead of being cut off
+}
+.timed-comp-meta {
+  flex: 0 0 100%;
+  min-height: 1.1em; // the line is there (empty) on every card, so titles have the same height
+  margin-top: -0.2rem;
+  font-size: 0.5rem; // the same as the captions above the badges
+  line-height: 1.1;
+  color: #495057; // 7.5:1 on the title background
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timed-comp-badges {
+  // The second line of the title, aligned left.
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-end; // the remark badges share their bottom edge with the PB time badge on the right
+  gap: 0.3rem;
+  min-height: 2.6rem; // reserved also without badges, so the title has the same height on every card
+  > c-badge { display: inline-flex; align-items: center; } // as tall as the PB time badge on the right (see min-height below)
+  // larger than the lap badges, for readability
+  .timed-badge-purple, .timed-badge-red, .timed-badge-orange, .timed-finished-badge,
+  .timed-split-badge, .timed-pr-diff-badge { font-size: 0.8rem !important; min-height: 1.6rem; }
+}
+// Opaque gray split-time badge prepended before the cumulative time in timed lap rows
+.timed-split-badge {
+  /* align closely with the personal-best badge sizing & feel */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6em; /* match .timed-pr-badge */
+  line-height: 1;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding: 0.18em 0.4em; /* slightly tighter than lap-time-badge */
+  border-radius: 0.25rem;
+  background-color: rgba(0,0,0,0.08); /* soft gray */
+  color: #454c52; /* 5.9:1 on the soft gray, also while the green update flash is showing */
+  flex-shrink: 0;
+  height: auto;
+  min-height: 1.6rem;
+}
+
+.timed-split-badge.timed-pb-beaten {
+  // thin, see-through line: the previous value stays readable
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(69, 76, 82, 0.45);
+}
+.timed-split-badge.timed-compact-latest {
+  background-color: #454c52; // dark gray: the newest lap stands out (white on it is 8.7:1)
+  color: #fff;
+  // the green update flash would put white text on pale green: flash a dark green instead
+  &.timed-flash-update { animation: flashLatestGreen 2s ease-in-out forwards; }
+}
+// Placeholder badges for the laps (and the finish) of a card that has not started: the distance stays readable, the badge itself is a plain light grey shape
+.timed-split-badge.timed-ghost-badge {
+  font-size: 0.78em; // the size of a lap badge
+  min-width: 3rem;
+  background-color: #e9ecef;
+  color: transparent;
+  &.timed-ghost-total { font-size: 1.5rem; padding: 0.25em 0.6em; min-width: 4.5rem; } // the size of the total badge it stands in for
+}
+.timed-compact-lap {
+  display: inline-flex;
+  flex-direction: column; // the lap distance sits small above its badge
+  align-items: center;
+  gap: 0.2rem;
+  line-height: 1.1;
+}
+.timed-split-badge.timed-compact-badge { font-size: 0.78em; min-width: 3rem; } // larger lap times; every badge is wide enough for a 6-character distance above it
+.compact-dist {
+  // never wider than the badge below it: width 0 + min-width 100% keeps the label out of the column's
+  // intrinsic width, so the badge sets it; the label is small enough for even 5-digit distances
+  width: 0;
+  min-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  letter-spacing: -0.02em;
+  font-size: 0.5rem;
+  color: #6c757d; // 4.7:1 on white; small and subtle
+  font-variant-numeric: tabular-nums;
+}
+.timed-compact-final {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end; // the total badge sits right; its caption is centred over it
+  margin-left: 0.25rem; // the total follows the badges
+  line-height: 1.1;
+  gap: 0.3rem; // between the distance and the badge
+  .timed-lap-time { min-width: 0; color: inherit; font-weight: 600; }
+}
+.timed-compact-done .timed-lap-time {
+  // finished: the final time as a dark grey badge
+  background-color: #454c52;
+  color: #fff; // 8.7:1
+}
+.compact-reached {
+  align-self: center;
+  text-align: center;
+  font-size: 0.5rem;
+  color: #6c757d; // 4.7:1 on white; small and subtle
+  font-variant-numeric: tabular-nums;
+}
+.timed-comp-body.timed-compact-body { // beats the plain .timed-comp-body padding defined further down
+  // The badges sit in columns as wide as a badge (so as many fit on a row as the badges allow), spread over the width: a short last row lines up left with the rows above it,
+  // and the side padding stays what it is on a full row. The total time takes the last columns of the last row.
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 3rem);
+  justify-content: space-between; // first column at the left padding, last at the right: the same edges as the title
+  justify-items: center;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 1rem; // roomier: the single row already saves a lot of height
+  min-height: 4.7rem; // a card without laps yet keeps its height (also once the distances and the total are there)
+  .timed-compact-final { grid-column: -4 / -1; justify-self: end; }
+  .timed-compact-final.timed-compact-own-line { grid-column: 1 / -1; justify-self: center; } // the laps fill a row: the total gets its own, centred
+}
+
+.timed-comp-body {
+  padding: 0.25rem 0; // the rows carry the side padding, so a highlighted row spans the whole card
+}
+// One lap row inside competitor card body
+.timed-lap-time {
+  padding-right: 0.25rem;
+  min-width: 9ch; // room for 00:00.000: the badge to its left must not shift once times pass 10 minutes
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+  color: #adb5bd;
+  text-align: right;
+}
+// Static placeholder for timed lap rows without a time yet
+.timed-static-placeholder {
+  display: inline-block;
+  width: 3rem;
+  height: 0.55rem;
+  background: #ced4da;
+  border-radius: 0.2rem;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.timed-pb-current {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+  gap: 0.3rem; // as above the lap badges
+  .timed-pb-current-label {
+    // as wide as the badge below it and no wider: width 0 + min-width 100% keeps the caption out of the column's width
+    width: 0;
+    min-width: 100%;
+    white-space: nowrap;
+    text-align: center;
+    font-size: 0.5rem;
+    color: #495057;
+  } // 7.6:1 on the title background
+}

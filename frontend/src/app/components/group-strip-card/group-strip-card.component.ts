@@ -11,7 +11,7 @@ import { raceListAnimation, groupCardAnimation, raceListKey } from '../dashboard
   standalone: true,
   imports: [BadgeModule, CardModule, TranslatePipe],
   templateUrl: './group-strip-card.component.html',
-  styleUrls: ['../dashboard/dashboard.component.scss'],
+  styleUrls: ['./group-strip-card.component.scss'],
   animations: [raceListAnimation, groupCardAnimation],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

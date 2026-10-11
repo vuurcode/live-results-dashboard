@@ -1,0 +1,98 @@
+@use '../dashboard/tokens' as *;
+@use '../dashboard/shared';
+
+// Mass-start row with lap badges
+.race-item-laps {
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: outline 0.1s, background-color 0.1s;
+  gap: 0.5rem;
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+}
+// Left column: fixed width so all badge strips start at the same horizontal offset
+.race-item-left {
+  flex: 0 1 16rem; // shrinks on narrow screens so the row never exceeds the viewport
+  min-width: 7rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+// Competitor name: truncate beyond fixed width
+.race-name-fixed {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 10rem;
+}
+// Lap counter: pinned at a fixed right offset so it never shifts with time text width
+.laps-counter-text {
+  position: absolute;
+  right: 9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  color: #454c52;
+  white-space: nowrap;
+  line-height: 1;
+}
+// Scrollable strip of lap time badges — centred
+.lap-times-strip {
+  /* Left-align badges so they start at a fixed offset (vertical alignment across rows) */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* align badges to the left edge of the centre column */
+  gap: 0.12rem; /* very small gap - single whitespace feel */
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 0 0.75rem 0 0.9rem; /* ensure consistent left offset from name column */
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Placeholder badge — identical sizing to real lap-time-badge so width/height match exactly */
+.lap-time-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem; /* match .lap-time-badge */
+  line-height: 1;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  padding: 0.14em 0.32em; /* match .lap-time-badge */
+  border-radius: 0.22rem;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #e9ecef 25%, #f3f5f6 50%, #e9ecef 75%);
+  color: transparent;
+  opacity: 1 !important;
+  animation: lapPlaceholderPulse 1.4s ease-in-out infinite;
+  min-width: 2.6rem; /* match .lap-time-badge */
+}
+// Raised ordinal suffix in finished rank badge
+.rank-sup {
+  font-size: 0.65em;
+  vertical-align: super;
+  line-height: 0;
+}
+// Ordinal rank in front of each standings row
+.rank-label {
+  font-size: 0.78em;
+  min-width: 2.2em;
+  text-align: right;
+  flex-shrink: 0;
+  color: #adb5bd;
+}
+// Gap shown on standings rows (mirrors group card intra-group gap style)
+.standings-gap-label {
+  font-size: 0.78em;
+  font-style: italic;
+  color: #454c52; // CoreUI's translucent secondary colour gave 3.7:1
+  white-space: nowrap;
+}
