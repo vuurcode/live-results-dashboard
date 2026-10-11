@@ -9,6 +9,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      # Angular's compiler pins its supported TypeScript range; upgrade it together with Angular.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-frontend-majors:
         patterns: ["*"]
