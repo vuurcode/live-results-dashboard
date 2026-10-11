@@ -15,6 +15,9 @@ import (
 
 const writeTimeout = 10 * time.Second
 
+// defaultPingInterval keeps a quiet connection busy enough for proxies (nginx closes after 60s of silence).
+const defaultPingInterval = 25 * time.Second
+
 var (
 	errBadCompetitionID = errors.New("invalid or missing competitionId")
 	errTooManyRooms     = errors.New("too many competitions are being followed")
@@ -147,10 +150,24 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 
 	// The frontend never sends; CloseRead handles control frames and cancels ctx on close.
 	ctx := conn.CloseRead(req.Context())
+	pingEvery := m.cfg.pingInterval
+	if pingEvery <= 0 {
+		pingEvery = defaultPingInterval
+	}
+	ping := time.NewTicker(pingEvery)
+	defer ping.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-ping.C:
+			pctx, cancel := context.WithTimeout(ctx, writeTimeout)
+			err := conn.Ping(pctx)
+			cancel()
+			if err != nil {
+				r.log.Warn("Ping failed, dropping client", "err", err)
+				return
+			}
 		case msg, ok := <-c.send:
 			if !ok {
 				_ = conn.Close(websocket.StatusPolicyViolation, "client too slow")

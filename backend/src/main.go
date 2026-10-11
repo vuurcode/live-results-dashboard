@@ -49,6 +49,7 @@ type config struct {
 	defaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	maxCompetitions      int           // distinct competitions followed at once
 	idleGrace            time.Duration // how long an empty competition keeps polling before it is closed
+	pingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
 	catalogURL      string        // base URL serving /api/venues and /api/competitions
 	catalogTTL      time.Duration // how long the competitions list is cached; venues are cached forever
@@ -77,6 +78,7 @@ func loadConfig() config {
 		defaultCompetitionID: os.Getenv("DEFAULT_COMPETITION_ID"),
 		maxCompetitions:      25,
 		idleGrace:            30 * time.Second,
+		pingInterval:         defaultPingInterval,
 
 		catalogURL:      os.Getenv("MATCH_INFO_BASE_URL"),
 		catalogTTL:      24 * time.Hour,

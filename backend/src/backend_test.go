@@ -214,7 +214,7 @@ func newTestBackend(t *testing.T, mutate func(*config)) *testBackend {
 
 	cfg := config{
 		dataSourceURL: upstream.URL, dataSourceInterval: 3600, // one fetch per room: the test controls timing
-		maxCompetitions: 2, idleGrace: 50 * time.Millisecond,
+		maxCompetitions: 2, idleGrace: 50 * time.Millisecond, pingInterval: time.Hour,
 	}
 	if mutate != nil {
 		mutate(&cfg)
@@ -377,6 +377,28 @@ func TestRejoinWithinGraceKeepsRoom(t *testing.T) {
 	readUntilCompetitor(t, ctx, conn2)
 	if tb.hitCount("A") != 1 {
 		t.Errorf("rejoin within the grace period refetched: hits = %d", tb.hitCount("A"))
+	}
+}
+
+func TestIdleClientIsPingedAndStaysConnected(t *testing.T) {
+	tb := newTestBackend(t, func(c *config) { c.pingInterval = 20 * time.Millisecond })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, _ := tb.dial(t, ctx, "?competitionId=A", nil)
+	defer conn.CloseNow()
+	readUntilCompetitor(t, ctx, conn)
+
+	// Nothing more is sent, so the reads below only see pings (answered by the client library).
+	// A server that gave up on the client would close the connection instead of letting the read time out.
+	idle, stop := context.WithTimeout(ctx, 300*time.Millisecond)
+	defer stop()
+	var err error
+	for err == nil {
+		_, _, err = conn.Read(idle)
+	}
+	if idle.Err() == nil || websocket.CloseStatus(err) != -1 {
+		t.Errorf("idle read ended early with %v, want it to run until the deadline with the connection intact", err)
 	}
 }
 
