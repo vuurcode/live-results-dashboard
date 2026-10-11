@@ -185,6 +185,8 @@ type testBackend struct {
 	mu     sync.Mutex
 	hits   map[string]int
 	agents map[string]string
+	body   string // when set, the upstream answers with this instead of the sample match
+	status int    // when set, the upstream answers with this HTTP status
 }
 
 func newTestBackend(t *testing.T, mutate func(*config)) *testBackend {
@@ -195,7 +197,16 @@ func newTestBackend(t *testing.T, mutate func(*config)) *testBackend {
 		tb.mu.Lock()
 		tb.hits[id]++
 		tb.agents[id] = r.Header.Get("User-Agent")
+		body, status := tb.body, tb.status
 		tb.mu.Unlock()
+		if status != 0 {
+			w.WriteHeader(status)
+			return
+		}
+		if body != "" {
+			_, _ = w.Write([]byte(body))
+			return
+		}
 		_, _ = w.Write([]byte(`{"name":"Event ` + id + `","distances":[{"id":"d1","name":"500 meter","eventNumber":1,"races":[
 			{"id":"r1","heat":1,"lane":"white","competitor":{"name":"A","startNumber":"7"},"laps":[{"time":"00:00:40.000","lapTime":"00:00:40.000"}]}]}]}`))
 	}))
@@ -316,7 +327,7 @@ func TestClientsShareOneFetchLoopPerCompetition(t *testing.T) {
 	}
 	defer late.CloseNow()
 	types, _ := readUntilCompetitor(t, ctx, late)
-	if strings.Join(types, ",") != "status,event_name,distance_meta,competitor_update" {
+	if strings.Join(types, ",") != "status,feed_status,event_name,distance_meta,competitor_update" {
 		t.Errorf("late joiner replay = %v", types)
 	}
 	if tb.hitCount("A") != 1 {
@@ -450,5 +461,73 @@ func TestUserAgentFixedOverridesMirroring(t *testing.T) {
 	fixed.set("Browser/1.0")
 	if got := fixed.get(); got != "MyDashboard/1.0" {
 		t.Errorf("fixed = %q, want MyDashboard/1.0", got)
+	}
+}
+
+// readFeedStatus reads messages until a feed_status arrives and returns it.
+func readFeedStatus(t *testing.T, ctx context.Context, conn *websocket.Conn) feedStatus {
+	t.Helper()
+	for {
+		_, b, err := conn.Read(ctx)
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		var v struct {
+			Type string
+			Data feedStatus
+		}
+		_ = json.Unmarshal(b, &v)
+		if v.Type == "feed_status" {
+			return v.Data
+		}
+	}
+}
+
+func TestFeedStatusTellsClientsWhenTheMatchIsNotLive(t *testing.T) {
+	tb := newTestBackend(t, nil)
+	tb.body = `{"success":false,"errorMessage":"Not live right now","name":"Event X","errorMode":2}`
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, _, err := tb.dial(t, ctx, "?competitionId=x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.CloseNow() }()
+	if got := readFeedStatus(t, ctx, conn); got.State != "not_live" || got.Message != "Not live right now" {
+		t.Fatalf("got %+v", got)
+	}
+	// a client joining later is told straight away
+	late, _, err := tb.dial(t, ctx, "?competitionId=x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = late.CloseNow() }()
+	if got := readFeedStatus(t, ctx, late); got.State != "not_live" {
+		t.Fatalf("late client got %+v", got)
+	}
+}
+
+func TestFeedStatusUnavailableHidesDetailsAndOkOnData(t *testing.T) {
+	tb := newTestBackend(t, nil)
+	tb.status = http.StatusBadGateway
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, _, err := tb.dial(t, ctx, "?competitionId=y", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.CloseNow() }()
+	if got := readFeedStatus(t, ctx, conn); got.State != "unavailable" || got.Message != "" {
+		t.Fatalf("got %+v", got)
+	}
+
+	tb2 := newTestBackend(t, nil)
+	c2, _, err := tb2.dial(t, ctx, "?competitionId=z", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c2.CloseNow() }()
+	if got := readFeedStatus(t, ctx, c2); got.State != "ok" {
+		t.Fatalf("got %+v", got)
 	}
 }

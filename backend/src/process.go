@@ -11,8 +11,10 @@ import (
 // ── raw source data ───────────────────────────────────────────────────────────
 
 type rawData struct {
-	Name      string        `json:"name"`
-	Distances []rawDistance `json:"distances"`
+	Success      *bool         `json:"success"` // false when the match is not live; absent in older payloads
+	ErrorMessage string        `json:"errorMessage"`
+	Name         string        `json:"name"`
+	Distances    []rawDistance `json:"distances"`
 }
 
 type rawDistance struct {

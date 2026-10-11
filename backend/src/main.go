@@ -215,6 +215,11 @@ func (f *fetcher) fetchOnce(ctx context.Context) error {
 		return fmt.Errorf("decode: %w", err)
 	}
 	f.room.apply(process(&raw))
+	if raw.Success != nil && !*raw.Success {
+		f.room.setFeed("not_live", raw.ErrorMessage)
+	} else {
+		f.room.setFeed("ok", "")
+	}
 	return nil
 }
 
@@ -224,6 +229,7 @@ func (f *fetcher) loop(ctx context.Context) {
 	for {
 		if err := f.fetchOnce(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			f.room.log.Error("Error fetching data", "err", err)
+			f.room.setFeed("unavailable", "") // details stay in the log: they can name the data source
 		}
 		select {
 		case <-ctx.Done():

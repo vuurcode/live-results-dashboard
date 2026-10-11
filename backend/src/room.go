@@ -27,6 +27,7 @@ type room struct {
 	idleTime *time.Timer
 
 	mu      sync.Mutex
+	feed    *feedStatus // what the data source says about the match; nil until the first answer
 	st      *store
 	clients map[*client]struct{}
 }
@@ -38,6 +39,26 @@ func newRoom(id, url string, cfg config, cancel func()) *room {
 		st:      newStore(),
 		clients: map[*client]struct{}{},
 	}
+}
+
+// feedStatus tells clients why there may be no data: the data source says the match is not live,
+// or cannot be reached. The message is the data source's own text (not localised).
+type feedStatus struct {
+	State   string `json:"state"` // "ok", "not_live" or "unavailable"
+	Message string `json:"message,omitempty"`
+}
+
+// setFeed records the state of the data source and tells the clients when it changes.
+func (r *room) setFeed(state, message string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	next := feedStatus{State: state, Message: message}
+	if r.feed != nil && *r.feed == next {
+		return
+	}
+	r.feed = &next
+	r.log.Info("Feed status", "state", state)
+	r.broadcastLocked([][]byte{wrap("feed_status", marshal(next))})
 }
 
 // apply diffs freshly processed data and broadcasts the changes.
@@ -90,7 +111,7 @@ func (r *room) register() *client {
 	defer r.mu.Unlock()
 
 	replay := r.st.replay()
-	c := &client{send: make(chan []byte, len(replay)+1+queueSlack)}
+	c := &client{send: make(chan []byte, len(replay)+2+queueSlack)}
 	c.send <- wrap("status", marshal(map[string]any{
 		"competition_id":       r.id,
 		"data_source_url":      r.url,
@@ -98,6 +119,9 @@ func (r *room) register() *client {
 	}))
 	if len(replay) > 0 {
 		r.log.Info("Replaying latest state to new client", "messages", len(replay))
+	}
+	if r.feed != nil {
+		c.send <- wrap("feed_status", marshal(*r.feed))
 	}
 	for _, m := range replay {
 		c.send <- m
