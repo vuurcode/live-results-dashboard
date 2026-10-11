@@ -4,7 +4,7 @@ import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../models/data.models';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
-import { GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
+import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
 import { categoryName } from '../../logic/category.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
@@ -182,6 +182,11 @@ export class TimedHeatCardComponent {
     return codes.some(c => !!c && NO_TIME_CODES.has(c.toUpperCase()));
   }
 
+  /** The live tag goes on the cards of the live heat, except for racers who did not start or withdrew. */
+  showLive(race: CompetitorUpdate): boolean {
+    return this.active && !isNeverLive(race);
+  }
+
   /** True for a race that did not start, was disqualified or withdrew: its placeholder badges are not shown (their room is kept). */
   ghostsHidden(race: CompetitorUpdate): boolean {
     const codes = [race.invalid_reason, ...this.splitRemarks(race.remark)];
@@ -244,9 +249,9 @@ export class TimedHeatCardComponent {
     return [this.categoryLabel(race.category), race.club_code].filter(Boolean).join(' / ');
   }
 
-  /** Name and meta share one line while the race runs; a finished race or a final code gets the room of two lines. */
+  /** The badges sit beside the name until the race has a code (DNS, PR, ...); then the title gets the room of three lines. */
   titleExpanded(race: CompetitorUpdate): boolean {
-    return this.compactDone(race) || !!race.invalid_reason || race.finished_rank != null;
+    return !!race.invalid_reason || this.splitRemarks(race.remark).length > 0;
   }
 
   /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no racer in this heat. */

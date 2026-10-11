@@ -190,12 +190,15 @@
 .timed-competitor-card {
   width: 100%;
   min-width: 0;
+  grid-row: 1 / span 2; // see .timed-competitors-row
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr);
   cursor: default;
   border: 1px solid rgba(0,0,0,0.12);
   border-radius: 0.375rem;
   background: #fff;
   overflow: clip; // clips the rounded corners without becoming a scroll container, so the title can stick
-  container-type: inline-size; // the watermarks size themselves from the card width (cqw)
   transition: outline 0.1s;
   position: relative;
   &.race-selected {
@@ -213,14 +216,20 @@
   .timed-comp-title { position: relative; }
   &.timed-card-no-time .timed-comp-title { @media (min-width: $four-lanes-min) { position: static; } }
   .timed-watermark {
-    @include card-watermark(clamp(0.8rem, 4.5cqw, 1.4rem));
+    @include card-watermark(clamp(0.8rem, calc(4.5vw / var(--card-lanes, 1)), 1.4rem));
+    &.timed-watermark-slower, &.timed-watermark-pr { // dead centre of the title, at every width
+      top: 50%;
+      right: auto;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-6deg);
+    }
     &.timed-watermark-slower { color: rgba(176, 84, 0, 0.9); } // orange, 4.9:1 on white
     &.timed-watermark-pr { color: rgba(111, 66, 193, 0.85); } // 4.7:1 on white (0.80 gave 4.2:1)
     .timed-watermark-text { font-size: 0.6em; } // the label is smaller than the diff below it
     .timed-watermark-decimal { font-size: 0.65em; }
   }
   .timed-comp-title[data-watermark]::before {
-    @include card-watermark(clamp(0.7rem, 3.5cqw, 1.2rem));
+    @include card-watermark(clamp(0.7rem, calc(3.5vw / var(--card-lanes, 1)), 1.2rem));
     content: attr(data-watermark);
     overflow-wrap: anywhere;
     white-space: pre-line; // keeps the explicit line break (TRC + category) but wraps long labels inside the card

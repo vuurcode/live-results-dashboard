@@ -53,15 +53,7 @@ test.describe('card watermark placement', () => {
     });
   }
 
-  test(`${FOUR_LANES_MIN - 1}px: a PB watermark sits in the top right of the title`, async ({ page, request }) => {
-    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
-    const o = await pbPlacement(page, FOUR_LANES_MIN - 1);
-    expect(o.rightGap).toBeLessThan(0.1);
-    expect(o.dx).toBeGreaterThan(0.15);
-    expect(o.topGap).toBeLessThan(12);
-  });
-
-  for (const width of [FOUR_LANES_MIN, 2560]) {
+  for (const width of [320, 700, FOUR_LANES_MIN - 1, FOUR_LANES_MIN, 2560]) {
     test(`${width}px: a PB watermark is dead centre in the title`, async ({ page, request }) => {
       await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
       const o = await pbPlacement(page, width);
@@ -127,4 +119,43 @@ test.describe('record cards', () => {
       await expect(card.locator('.timed-compact-final .timed-lap-time').first()).toHaveCSS('background-color', 'rgb(111, 66, 193)');
     }
   });
+});
+
+test.describe('cards on one row', () => {
+  for (const width of [800, 1280]) {
+    test(`${width}px: the cards of a row, and their titles, are as tall as the tallest`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto('/?competitionId=e2e-lanes');
+      const cards = page.locator('.timed-heat-row').nth(1).locator('.timed-competitor-card:not(.timed-lane-placeholder)');
+      await expect(cards).toHaveCount(4);
+      const boxes = await cards.evaluateAll((els) => els.map((e) => ({
+        top: Math.round(e.getBoundingClientRect().top),
+        card: Math.round(e.getBoundingClientRect().height),
+        title: Math.round(e.querySelector('.timed-comp-title')!.getBoundingClientRect().height),
+        header: Math.round(e.querySelector('.timed-comp-header')!.getBoundingClientRect().height),
+      })));
+      for (const top of new Set(boxes.map((b) => b.top))) {
+        const row = boxes.filter((b) => b.top === top);
+        expect(new Set(row.map((b) => b.card)).size, `card heights ${JSON.stringify(row)}`).toBe(1);
+        expect(new Set(row.map((b) => b.title)).size, `title heights ${JSON.stringify(row)}`).toBe(1);
+        expect(new Set(row.map((b) => b.header)).size, `header heights ${JSON.stringify(row)}`).toBe(1);
+      }
+    });
+  }
+});
+
+test.describe('card content is never clipped', () => {
+  for (const width of [320, 800, 1400]) {
+    test(`${width}px: a card is tall enough for its title and its body, also while the total wraps to its own line`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto('/?competitionId=e2e-timed');
+      const cards = page.locator('.timed-competitor-card:not(.timed-lane-placeholder)');
+      await expect(cards).toHaveCount(4);
+      const clipped = await cards.evaluateAll((els) => els.filter((c) => {
+        const content = [...c.children].reduce((sum, child) => sum + child.getBoundingClientRect().height, 0);
+        return content > c.getBoundingClientRect().height + 1 || [...c.children].some((child) => child.scrollHeight > child.clientHeight + 1);
+      }).length);
+      expect(clipped).toBe(0);
+    });
+  }
 });

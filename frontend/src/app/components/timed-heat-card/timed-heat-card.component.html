@@ -42,7 +42,7 @@
             }
           }
           <div class="timed-comp-header" [class.timed-comp-header-merged]="!titleExpanded(race)">
-            <span class="timed-comp-name">{{ race.name }}@if (active) { <c-badge color="danger" class="glowing-badge timed-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
+            <span class="timed-comp-name">{{ race.name }}@if (showLive(race)) { <c-badge color="danger" class="glowing-badge timed-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
             <!-- category / club code, small below the name; the line keeps its height when there is none -->
             <span class="timed-comp-meta">{{ metaLine(race) }}</span>
             <!-- Badges on their own line; the row keeps its height when there are none -->
@@ -55,9 +55,6 @@
               }
               @if (race.personal_record) {
                 <div class="ms-auto d-flex align-items-end gap-1">
-                  @if (distanceMeters) {
-                    @let prComp = timedPrComparison(race, distanceMeters);
-                  }
                   <span class="timed-pb-current"><span class="timed-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="timed-split-badge" [class.timed-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>
                 </div>
               }

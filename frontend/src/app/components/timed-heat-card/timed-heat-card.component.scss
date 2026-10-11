@@ -9,10 +9,9 @@
 .timed-heat-row {
   // no visual styling — plain stacking
 }
-// Active heat row: a thick top and bottom border shows it received the last update
+// Active heat row: a thick border all around shows it received the last update
 .timed-heat-row-active {
-  border-top: 0.35rem solid #dc3545;
-  border-bottom: 0.35rem solid #dc3545;
+  border: 0.35rem solid #dc3545;
 }
 .timed-heat-label {
   position: relative;
@@ -48,21 +47,26 @@
 // The current heat is marked by a badge behind each racer's name
 .timed-comp-live { font-size: 0.6em; vertical-align: middle; margin-left: 0.4rem; }
 // up to 4 lane columns per row, then 2 per row on narrow viewports, then 1 column on very narrow ones
+// The lane columns and the cards in them share the rows of this grid (two rows per line: title and body), so the cards of a line
+// are as tall as the tallest one, and so are their titles.
 .timed-competitors-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  --card-lanes: 1; // the watermarks size themselves from the card width, about the viewport width over the lanes in a row
+  @media (min-width: 768px) { --card-lanes: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: $four-lanes-min) { --card-lanes: 4; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .timed-lane-col, .timed-heat-lane-bg {
   // On narrow screens a set of lanes with no racer in this heat (white/red or yellow/blue) takes no room and shows no colour.
   @media (max-width: $four-lanes-min - 1px) { &.lane-set-empty { display: none; } }
 }
 .timed-lane-col {
-  flex: 1 1 0;
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr); // long names wrap or cut off inside the column
   min-width: 0;
-  @media (max-width: $four-lanes-min - 1px) { flex: 1 1 40%; } // two per row (a lone last lane takes the full row)
-  @media (max-width: 767.98px) { flex: 0 0 100%; }
+  @media (min-width: 768px) and (max-width: $four-lanes-min - 1px) { &:last-child:nth-child(odd) { grid-column: 1 / -1; } } // a lone last lane takes the full row
   padding: 0.4rem 0.25rem 1rem;
   background: color-mix(in srgb, var(--lane-color, transparent) 5%, transparent);
 }
@@ -78,7 +82,10 @@
 .timed-badge-red    { background-color: #c93434 !important; } // white: 5.2:1 (pure red gave 4.0:1)
 .timed-badge-orange { background-color: #fd7e14 !important; color: #212529 !important; } // dark text: 6.0:1 (white gave 2.6:1)
 // Card title: badge + name + Finished badge inline after name
+.timed-comp-title { display: flex; flex-direction: column; } // the header fills the title, which is as tall as the tallest of its row
 .timed-comp-header {
+  flex: 1 1 auto;
+  align-content: flex-start;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
