@@ -11,7 +11,7 @@ export const sv: Translations = {
   thousandthsLabel: 'Tusendelsprecision',
   hundredthsLabel: 'Hundradelsprecision',
   thousandthsPopoverTitle: 'Hundradels- eller tusendelsprecision',
-  thousandthsPopoverBody: 'Lång bana: visa tider i hundradelar, som är brukligt inom skridskoåkning. Tusendelar visas automatiskt när de behövs för att avgöra ett personbästa, alltså när den nya tiden och det tidigare bästa har samma hundradelar. Slå på för att alltid visa tusendelar.',
+  thousandthsPopoverBody: 'Lång bana: tiderna visas i tusendelar. Slå av för hundradelar, som är brukligt inom skridskoåkning; tusendelar visas då ändå automatiskt när de behövs för att avgöra ett personbästa, alltså när den nya tiden och det tidigare bästa har samma hundradelar.',
   compactColorsLabel: 'Färger för varvtidsskillnad',
   compactColorsPopoverTitle: 'Färger för varvtidsskillnad',
   compactColorsPopoverBody: 'Färgar de kompakta varvmärkena efter hur varje varv står sig mot det föregående, som vid masstart, med hjälp av <i>gränsen för varvtidsskillnad</i>. <br><br><span class="popover-badge popover-badge-green">grön</span> → Inom gränsen <br><span class="popover-badge popover-badge-orange">orange</span> → Långsammare <br><span class="popover-badge popover-badge-purple">lila</span> → Snabbare <br><span class="popover-badge popover-badge-light">ljusgrå</span> → Ingen skillnad visas: första varvet, och andra varvet när det första är ett delvarv (t.ex. på 5000 m)',

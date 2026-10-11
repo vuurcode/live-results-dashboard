@@ -11,7 +11,7 @@ export const fr: Translations = {
   thousandthsLabel: 'Précision au millième',
   hundredthsLabel: 'Précision au centième',
   thousandthsPopoverTitle: 'Précision au centième ou au millième',
-  thousandthsPopoverBody: 'Piste longue : affiche les temps au centième, comme c’est l’usage en patinage de vitesse. Les millièmes apparaissent automatiquement lorsqu’ils sont nécessaires pour départager un record personnel, c’est-à-dire lorsque le nouveau temps et l’ancien record ont les mêmes centièmes. Activez pour toujours afficher les millièmes.',
+  thousandthsPopoverBody: 'Piste longue : les temps s’affichent au millième. Désactivez pour le centième, comme c’est l’usage en patinage de vitesse ; les millièmes apparaissent alors quand même lorsqu’ils sont nécessaires pour départager un record personnel, c’est-à-dire lorsque le nouveau temps et l’ancien record ont les mêmes centièmes.',
   compactColorsLabel: 'Couleurs de l’écart de temps au tour',
   compactColorsPopoverTitle: 'Couleurs de l’écart de temps au tour',
   compactColorsPopoverBody: 'Colore les pastilles compactes de tour selon l’écart de chaque tour avec le précédent, comme pour le départ groupé, d’après le <i>seuil d’écart de temps au tour</i>. <br><br><span class="popover-badge popover-badge-green">vert</span> → Dans le seuil <br><span class="popover-badge popover-badge-orange">orange</span> → Plus lent <br><span class="popover-badge popover-badge-purple">violet</span> → Plus rapide <br><span class="popover-badge popover-badge-light">gris clair</span> → Aucun écart affiché : le premier tour, et le deuxième lorsque le premier est un tour partiel (p. ex. sur 5000 m)',

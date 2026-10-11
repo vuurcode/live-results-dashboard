@@ -11,7 +11,7 @@ export const es: Translations = {
   thousandthsLabel: 'Precisión de milésimas',
   hundredthsLabel: 'Precisión de centésimas',
   thousandthsPopoverTitle: 'Precisión de centésimas o milésimas',
-  thousandthsPopoverBody: 'Pista larga: muestra los tiempos en centésimas, como es habitual en el patinaje de velocidad. Las milésimas aparecen automáticamente cuando hacen falta para decidir una marca personal, es decir, cuando el nuevo tiempo y la mejor marca anterior tienen las mismas centésimas. Actívalo para mostrar siempre las milésimas.',
+  thousandthsPopoverBody: 'Pista larga: los tiempos muestran milésimas. Desactívalo para ver centésimas, como es habitual en el patinaje de velocidad; las milésimas siguen apareciendo cuando hacen falta para decidir una marca personal, es decir, cuando el nuevo tiempo y la mejor marca anterior tienen las mismas centésimas.',
   compactColorsLabel: 'Colores de la diferencia de tiempo por vuelta',
   compactColorsPopoverTitle: 'Colores de la diferencia de tiempo por vuelta',
   compactColorsPopoverBody: 'Colorea las etiquetas compactas de vuelta según cómo se compara cada vuelta con la anterior, como en la salida en grupo, usando el <i>umbral de diferencia de tiempo por vuelta</i>. <br><br><span class="popover-badge popover-badge-green">verde</span> → Dentro del umbral <br><span class="popover-badge popover-badge-orange">naranja</span> → Más lento <br><span class="popover-badge popover-badge-purple">morado</span> → Más rápido <br><span class="popover-badge popover-badge-light">gris claro</span> → No se muestra diferencia: la primera vuelta, y la segunda cuando la primera es parcial (p. ej. en 5000 m)',

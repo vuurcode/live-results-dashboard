@@ -11,7 +11,7 @@ export const it: Translations = {
   thousandthsLabel: 'Precisione al millesimo',
   hundredthsLabel: 'Precisione al centesimo',
   thousandthsPopoverTitle: 'Precisione al centesimo o al millesimo',
-  thousandthsPopoverBody: 'Pista lunga: mostra i tempi al centesimo, come d’uso nel pattinaggio di velocità. I millesimi compaiono automaticamente quando servono a decidere un record personale, cioè quando il nuovo tempo e il precedente record hanno gli stessi centesimi. Attiva per mostrare sempre i millesimi.',
+  thousandthsPopoverBody: 'Pista lunga: i tempi mostrano i millesimi. Disattiva per i centesimi, come d’uso nel pattinaggio di velocità; i millesimi compaiono comunque quando servono a decidere un record personale, cioè quando il nuovo tempo e il precedente record hanno gli stessi centesimi.',
   compactColorsLabel: 'Colori della differenza di tempo sul giro',
   compactColorsPopoverTitle: 'Colori della differenza di tempo sul giro',
   compactColorsPopoverBody: 'Colora i badge compatti dei giri in base a come ciascun giro si confronta con il precedente, come nella partenza in gruppo, usando la <i>soglia di differenza di tempo sul giro</i>. <br><br><span class="popover-badge popover-badge-green">verde</span> → Entro la soglia <br><span class="popover-badge popover-badge-orange">arancione</span> → Più lento <br><span class="popover-badge popover-badge-purple">viola</span> → Più veloce <br><span class="popover-badge popover-badge-light">grigio chiaro</span> → Nessuna differenza mostrata: il primo giro, e il secondo quando il primo è un giro parziale (ad es. sui 5000 m)',

@@ -11,7 +11,7 @@ export const de: Translations = {
   thousandthsLabel: 'Tausendstel-Genauigkeit',
   hundredthsLabel: 'Hundertstel-Genauigkeit',
   thousandthsPopoverTitle: 'Hundertstel- oder Tausendstel-Genauigkeit',
-  thousandthsPopoverBody: 'Lange Bahn: Zeiten in Hundertsteln anzeigen, wie im Eisschnelllauf üblich. Tausendstel erscheinen automatisch, wenn sie nötig sind, um eine persönliche Bestzeit zu entscheiden, also wenn die neue Zeit und die bisherige Bestzeit dieselben Hundertstel haben. Einschalten, um immer Tausendstel zu zeigen.',
+  thousandthsPopoverBody: 'Lange Bahn: Zeiten zeigen Tausendstel. Ausschalten für Hundertstel, wie im Eisschnelllauf üblich; Tausendstel erscheinen dann trotzdem automatisch, wenn sie nötig sind, um eine persönliche Bestzeit zu entscheiden, also wenn die neue Zeit und die bisherige Bestzeit dieselben Hundertstel haben.',
   compactColorsLabel: 'Farben für Rundenzeit-Unterschied',
   compactColorsPopoverTitle: 'Farben für Rundenzeit-Unterschied',
   compactColorsPopoverBody: 'Färbt die kompakten Rundenabzeichen danach, wie jede Runde im Vergleich zur vorherigen ist, wie beim Massenstart, anhand der <i>Schwelle für Rundenzeit-Unterschied</i>. <br><br><span class="popover-badge popover-badge-green">grün</span> → Innerhalb der Schwelle <br><span class="popover-badge popover-badge-orange">orange</span> → Langsamer <br><span class="popover-badge popover-badge-purple">lila</span> → Schneller <br><span class="popover-badge popover-badge-light">hellgrau</span> → Kein Unterschied angezeigt: die erste Runde und die zweite, wenn die erste eine Teilrunde ist (z. B. über 5000 m)',

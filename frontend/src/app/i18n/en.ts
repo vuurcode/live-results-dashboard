@@ -11,7 +11,7 @@ export const en: Translations = {
   thousandthsLabel: 'Thousandths precision',
   hundredthsLabel: 'Hundredths precision',
   thousandthsPopoverTitle: 'Hundreds or thousandths precision',
-  thousandthsPopoverBody: 'Long track: show times in hundredths, as is usual in skating. Thousandths appear automatically when they are needed to settle a personal best, i.e. when the new time and the previous best have the same hundredths. Switch on to always show thousandths.',
+  thousandthsPopoverBody: 'Long track: times show thousandths. Switch off to show hundredths, as is usual in skating; thousandths then still appear when they are needed to settle a personal best, i.e. when the new time and the previous best have the same hundredths.',
   compactColorsLabel: 'Lap time diff colours',
   compactColorsPopoverTitle: 'Lap time diff colours',
   compactColorsPopoverBody: 'Colour the compact lap badges by how each lap compares to the previous one, like mass start, using the <i>Lap time diff threshold</i>. <br><br><span class="popover-badge popover-badge-green">green</span> \u2192 Within threshold <br><span class="popover-badge popover-badge-orange">orange</span> \u2192 Slower <br><span class="popover-badge popover-badge-purple">purple</span> \u2192 Faster <br><span class="popover-badge popover-badge-light">light grey</span> \u2192 No difference shown: the first lap, and the second when the first is a partial lap (e.g. on a 5000 m)',

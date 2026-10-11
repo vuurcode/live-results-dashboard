@@ -11,7 +11,7 @@ export const nl: Translations = {
   thousandthsLabel: 'Precisie duizendsten',
   hundredthsLabel: 'Precisie honderdsten',
   thousandthsPopoverTitle: 'Precisie honderdsten of duizendsten',
-  thousandthsPopoverBody: 'Langebaan: toon tijden in honderdsten, zoals gebruikelijk bij schaatsen. Duizendsten verschijnen vanzelf als ze nodig zijn om een persoonlijk record te beslissen, dus als de nieuwe tijd en het vorige record dezelfde honderdsten hebben. Zet aan om altijd duizendsten te tonen.',
+  thousandthsPopoverBody: 'Langebaan: tijden tonen duizendsten. Zet uit voor honderdsten, zoals gebruikelijk bij schaatsen; duizendsten verschijnen dan nog steeds vanzelf als ze nodig zijn om een persoonlijk record te beslissen, dus als de nieuwe tijd en het vorige record dezelfde honderdsten hebben.',
   compactColorsLabel: 'Kleur rondetijdverschil',
   compactColorsPopoverTitle: 'Kleur rondetijdverschil',
   compactColorsPopoverBody: 'Kleur de compacte rondebadges naar het verschil met de vorige ronde, zoals bij massastart, met de drempel <i>rondetijdverschil</i>. <br><br><span class="popover-badge popover-badge-green">groen</span> \u2192 Binnen drempel <br><span class="popover-badge popover-badge-orange">oranje</span> \u2192 Langzamer <br><span class="popover-badge popover-badge-purple">paars</span> \u2192 Sneller <br><span class="popover-badge popover-badge-light">lichtgrijs</span> \u2192 Geen verschil getoond: de eerste ronde, en de tweede als de eerste een deel van een ronde is (bijv. op de 5000 m)',

@@ -11,7 +11,7 @@ export const nb: Translations = {
   thousandthsLabel: 'Tusendels presisjon',
   hundredthsLabel: 'Hundredels presisjon',
   thousandthsPopoverTitle: 'Hundredels eller tusendels presisjon',
-  thousandthsPopoverBody: 'Lang bane: vis tider i hundredeler, slik det er vanlig i skøyteløp. Tusendeler vises automatisk når de trengs for å avgjøre en pers, altså når den nye tiden og forrige bestetid har samme hundredeler. Slå på for alltid å vise tusendeler.',
+  thousandthsPopoverBody: 'Lang bane: tidene viser tusendeler. Slå av for hundredeler, slik det er vanlig i skøyteløp; tusendeler vises da likevel automatisk når de trengs for å avgjøre en pers, altså når den nye tiden og forrige bestetid har samme hundredeler.',
   compactColorsLabel: 'Farger for rundetidsforskjell',
   compactColorsPopoverTitle: 'Farger for rundetidsforskjell',
   compactColorsPopoverBody: 'Farger de kompakte rundemerkene etter hvordan hver runde er sammenlignet med forrige, som ved fellesstart, ved hjelp av <i>grensen for rundetidsforskjell</i>. <br><br><span class="popover-badge popover-badge-green">grønn</span> → Innenfor grensen <br><span class="popover-badge popover-badge-orange">oransje</span> → Tregere <br><span class="popover-badge popover-badge-purple">lilla</span> → Raskere <br><span class="popover-badge popover-badge-light">lysegrå</span> → Ingen forskjell vises: første runde, og andre runde når den første er en delrunde (f.eks. på 5000 m)',
