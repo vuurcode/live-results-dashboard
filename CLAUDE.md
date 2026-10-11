@@ -17,3 +17,7 @@
 # Code comments
 
 - Comments describe what the code is and why it is that way, never the change that produced it. Don't write what was added, removed, renamed or fixed, what it used to do, or what an earlier version did ("no longer", "now", "instead of the old ...", "as before"); that belongs in the commit history. When editing code, also drop comments of that kind that you find.
+
+# Personal data
+
+- Never commit or mention personal data (PII) in committed files, data, commit messages or PR descriptions: no real names of skaters, officials or clubs, no contact details, no payment data. Sample and test data is anonymized.
