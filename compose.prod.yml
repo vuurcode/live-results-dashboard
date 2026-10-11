@@ -1,0 +1,51 @@
+services:
+  # Production, built without Claude or dev tooling:
+  #   LIVE_RESULTS_BASE_URL=https://<host> MATCH_INFO_BASE_URL=https://<host> docker compose -f compose.prod.yml up -d --build
+  # http://localhost:8888
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Containerfile
+    environment:
+      LIVE_RESULTS_BASE_URL: ${LIVE_RESULTS_BASE_URL:-}
+      MATCH_INFO_BASE_URL: ${MATCH_INFO_BASE_URL:-}
+      LIVE_RESULTS_INTERVAL: ${LIVE_RESULTS_INTERVAL:-5}
+    restart: unless-stopped
+    networks:
+      - dashboard-net
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Containerfile
+    ports:
+      - "8888:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - dashboard-net
+
+  # Opt-in: TUNNEL_DIR=/path/outside/project docker compose -f compose.prod.yml up -d (with the block below uncommented)
+  # TUNNEL_DIR holds config.yml, cert.pem and tunnel-credentials.json; keep it outside
+  # the project so the dev container (and Claude) can never see it.
+#  tunnel:
+#    image: cloudflare/cloudflared:latest
+#    container_name: tunnel
+#    restart: unless-stopped
+#    command: tunnel run
+#    volumes:
+#      - ${TUNNEL_DIR:?set TUNNEL_DIR to the directory holding the tunnel files}/config.yml:/etc/cloudflared/config.yml:ro
+#      - ${TUNNEL_DIR}/cert.pem:/etc/cloudflared/cert.pem:ro
+#      - ${TUNNEL_DIR}/tunnel-credentials.json:/etc/cloudflared/tunnel-credentials.json:ro
+#    depends_on:
+#      - frontend
+#      - backend
+#    networks:
+#      - dashboard-net
+
+networks:
+  dashboard-net:
+    driver: bridge

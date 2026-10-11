@@ -3,7 +3,7 @@ Dashboard app with three components: frontend, backend, mockserver.
 When updating or adding there specs, make sure to prefix (or update the prefix) with `[ ]` to mark it TODO. After processing, mark completed items with `[x]`.
 
 Each component:
-- [x] Runs in a container via `compose.yml` and `Containerfile`
+- [x] Runs in a container via `compose.dev.yml` / `compose.prod.yml` and `Containerfile`
 - [x] No host package installs
 - [x] Basic code formatting tools
 - [x] No HTTPS between containers
