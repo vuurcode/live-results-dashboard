@@ -166,9 +166,9 @@ export class DataService {
 
   private _loadCompactColors(): boolean {
     try {
-      return localStorage.getItem(STORAGE_KEY_COMPACT_COLORS) === 'true';
+      return localStorage.getItem(STORAGE_KEY_COMPACT_COLORS) !== 'false';
     } catch { /* noop */ }
-    return false;
+    return true;
   }
 
   /** Long-track times show hundredths by default; thousandths only when switched on (or needed to settle a PB). */
@@ -200,7 +200,7 @@ export class DataService {
       const v = localStorage.getItem(STORAGE_KEY_FOLLOW);
       if (v !== null) return v !== 'false';
     } catch { /* noop */ }
-    return false;
+    return true;
   }
 
   setGroupThreshold(value: number) {

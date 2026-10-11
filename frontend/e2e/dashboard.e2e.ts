@@ -111,13 +111,14 @@ test.describe('mass start', () => {
     await expect(page.locator('.timed-compact-final .compact-reached').first()).toBeAttached();
   });
 
-  test('lap colours (off by default) colour the compact badges by variance against the previous lap', async ({ page, request }) => {
+  test('lap colours (on by default) colour the compact badges by variance against the previous lap', async ({ page, request }) => {
     await restartReplay(request, 'e2e-timed');
     await page.goto('/?competitionId=e2e-timed');
     await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
     const toggle = page.getByRole('switch', { name: 'Lap time diff colours' });
-    await expect(toggle).not.toBeChecked();
+    await expect(toggle).toBeChecked();
     await expect(page.locator('.timed-compact-badge').first()).toBeVisible({ timeout: 30000 });
+    await toggle.uncheck();
     await expect(page.locator('.timed-compact-badge[class*="lap-badge-"]')).toHaveCount(0);
     await toggle.check();
     await expect(page.locator('.timed-compact-badge.lap-badge-normal').first()).toBeVisible();

@@ -55,6 +55,7 @@ test.describe('pinned titles', () => {
   });
 
   test('the pinned distance title shrinks while it is stuck', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('follow', 'false')); // auto-follow would move the page on its own
     await page.setViewportSize({ width: 1280, height: 260 });
     await page.goto('/?competitionId=e2e-timed');
     const button = page.locator('.accordion-header .accordion-button').first();
