@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { MOCK_URL } from './env';
 
-// Four lanes in a row from 1280px; below that two per row, so a card stays wide enough to read.
+// Four lanes in a row from 1280px; from 768px two per row; below that one, so a card stays wide enough to read.
 const FOUR_LANES_MIN = 1280;
 const READABLE_CARD_WIDTH = 300;
 
 test.describe('four lanes in a row', () => {
-  for (const [width, perRow] of [[FOUR_LANES_MIN - 1, 2], [FOUR_LANES_MIN, 4], [2560, 4]] as const) {
+  for (const [width, perRow] of [[767, 1], [768, 2], [FOUR_LANES_MIN - 1, 2], [FOUR_LANES_MIN, 4], [2560, 4]] as const) {
     test(`${width}px: a full heat shows ${perRow} cards per row, each readable`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto('/?competitionId=e2e-lanes');

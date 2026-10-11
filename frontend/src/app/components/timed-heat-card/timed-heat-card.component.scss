@@ -9,11 +9,10 @@
 .timed-heat-row {
   // no visual styling — plain stacking
 }
-// Active heat row: a grey background shows it received the last update
+// Active heat row: a thick top and bottom border shows it received the last update
 .timed-heat-row-active {
-  background: #dee2e6;
-  border-radius: 0.375rem;
-  .timed-heat-label { color: #495057; } // 6.4:1 on the grey (the usual label colour is too light for it)
+  border-top: 0.35rem solid #dc3545;
+  border-bottom: 0.35rem solid #dc3545;
 }
 .timed-heat-label {
   position: relative;
@@ -63,7 +62,7 @@
   flex: 1 1 0;
   min-width: 0;
   @media (max-width: $four-lanes-min - 1px) { flex: 1 1 40%; } // two per row (a lone last lane takes the full row)
-  @media (max-width: 520px) { flex: 0 0 100%; }
+  @media (max-width: 767.98px) { flex: 0 0 100%; }
   padding: 0.4rem 0.25rem 1rem;
   background: color-mix(in srgb, var(--lane-color, transparent) 5%, transparent);
 }
@@ -108,10 +107,11 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-// A racing card shows the name and the category / club on one line, so several cards fit in a single-lane view.
+// A racing card puts the badges on the right of the name, so several cards fit in a single-lane view; the category / club stays below the name.
 .timed-comp-header-merged {
-  .timed-comp-name { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .timed-comp-meta { flex: 1 1 0; min-width: 0; min-height: 0; margin-top: 0; }
+  .timed-comp-name { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .timed-comp-badges { order: 1; flex: 0 1 auto; justify-content: flex-end; min-height: 2.45rem; margin-left: auto; } // as tall as the PB time with its caption, so the title keeps its height with or without badges
+  .timed-comp-meta { order: 2; }
 }
 .timed-comp-badges {
   // The second line of the title, aligned left.
@@ -125,7 +125,7 @@
   > c-badge { display: inline-flex; align-items: center; } // as tall as the PB time badge on the right (see min-height below)
   // larger than the lap badges, for readability
   .timed-badge-purple, .timed-badge-red, .timed-badge-orange, .timed-finished-badge,
-  .timed-split-badge, .timed-pr-diff-badge { font-size: 0.8rem !important; min-height: 1.6rem; }
+  .timed-split-badge { font-size: 0.8rem !important; min-height: 1.6rem; }
 }
 // Opaque gray split-time badge prepended before the cumulative time in timed lap rows
 .timed-split-badge {

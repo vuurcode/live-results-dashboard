@@ -114,20 +114,20 @@ test.describe('mass start group cards', () => {
   }
 });
 
-test('competitor card titles have the same height with or without badges', async ({ page, request }) => {
+test('racing competitor card titles have the same height with or without badges', async ({ page, request }) => {
   await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
   await page.goto('/?competitionId=e2e-pairs');
   await expect(page.locator('.timed-comp-header').first()).toBeVisible();
   await expect(page.locator('.timed-comp-header .timed-split-badge').first()).toBeVisible(); // some titles carry a badge
   const heights = await page.evaluate(() =>
-    [...document.querySelectorAll('.timed-comp-header')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
+    [...document.querySelectorAll('.timed-comp-header-merged')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
   );
   expect(heights.length).toBeGreaterThan(1);
-  expect(new Set(heights).size).toBe(1);
+  expect([...new Set(heights)], String(heights)).toHaveLength(1);
 });
 
 test.describe('lane columns on narrow screens', () => {
-  for (const [width, perRow] of [[1280, 2], [700, 2], [400, 1]] as const) {
+  for (const [width, perRow] of [[1280, 2], [768, 2], [767, 1], [400, 1]] as const) {
     test(`${width}px: a pair is shown ${perRow === 2 ? 'side by side' : 'one per row'}`, async ({ page, request }) => {
       await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
       await page.setViewportSize({ width, height: 800 });
