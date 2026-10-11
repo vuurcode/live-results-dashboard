@@ -32,12 +32,11 @@ test.describe('two-lane match', () => {
     await expect(cardB.getByText('DNF', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
     await expect(cardA.locator('.timed-compact-badge')).toHaveCount(2);
     await expect(cardA.getByText('PB', { exact: true })).toBeVisible();
-    // times are in hundredths by default (PB 43.0 and 41.0 differ in the hundredths), thousandths on request
-    await expect(cardA.locator('.timed-compact-final .race-time')).toHaveText(/^\d+:?\d*\.\d{2}$/);
-    await page.getByRole('button', { name: /^Display/ }).click();
-    await page.locator('#thousandthsInput').check();
+    // times are in thousandths by default, hundredths on request
     await expect(cardA.locator('.timed-compact-final .race-time')).toHaveText(/\.\d{3}$/);
+    await page.getByRole('button', { name: /^Display/ }).click();
     await page.locator('#thousandthsInput').uncheck();
+    await expect(cardA.locator('.timed-compact-final .race-time')).toHaveText(/^\d+:?\d*\.\d{2}$/);
     // the old personal best on the card title is struck through once it has been beaten
     await expect(cardA.locator('.timed-pb-beaten')).toHaveCSS('text-decoration-line', 'line-through');
     // ... and stays plain for a skater who did not improve it (Competitor C finished slower than 43.0)

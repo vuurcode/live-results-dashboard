@@ -172,7 +172,7 @@ export class DataService {
     return true;
   }
 
-  /** Long-track times show hundredths by default; thousandths only when switched on (or needed to settle a PB). */
+  /** Times show thousandths by default; hundredths when switched off. */
   private _showThousandths = new BehaviorSubject<boolean>(this._loadShowThousandths());
   get showThousandths(): boolean { return this._showThousandths.value; }
 
@@ -183,9 +183,9 @@ export class DataService {
 
   private _loadShowThousandths(): boolean {
     try {
-      return localStorage.getItem(STORAGE_KEY_THOUSANDTHS) === 'true';
+      return localStorage.getItem(STORAGE_KEY_THOUSANDTHS) !== 'false';
     } catch { /* noop */ }
-    return false;
+    return true;
   }
 
   private _follow = new BehaviorSubject<boolean>(this._loadFollow());
