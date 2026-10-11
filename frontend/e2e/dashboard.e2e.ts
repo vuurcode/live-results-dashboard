@@ -20,10 +20,23 @@ test.describe('competition selection', () => {
     await expect(page).toHaveTitle('E2E Mass Start Event | Live Results Dashboard');
   });
 
-  test('uses the default competition when the URL names none', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
+  test('follows no match when the URL names none, and offers the match list', async ({ page }) => {
+    let sockets = 0;
+    page.on('websocket', (ws) => { if (ws.url().includes('/ws')) sockets++; });
     await page.goto('/');
-    await expect(page.locator('.topbar-title')).toHaveText('E2E Timed Event');
+    await expect(page.getByRole('status').filter({ hasText: 'Choose a match' })).toBeVisible();
+    await expect(page.locator('#matchSelect')).toBeVisible();
+    await expect(page.locator('#matchSelect option[disabled]')).toHaveText('No match selected');
+    await expect(page.locator('.match-hint')).toHaveText('Select a live match to watch it');
+    await expect(page.locator('.skeleton-title')).toHaveCount(0);
+    expect(sockets).toBe(0);
+  });
+
+  test('says so when there are no matches to pick from', async ({ page }) => {
+    await page.route('**/api/matches/today', (route) => route.fulfill({ json: [] }));
+    await page.goto('/');
+    await expect(page.locator('.match-hint')).toHaveText('There are no matches to watch right now');
+    await expect(page.locator('#matchSelect')).toHaveCount(0);
   });
 
   test('two viewers of one competition both get its data', async ({ browser, request }) => {

@@ -15,12 +15,14 @@ import { FeedStatus, TodayMatch } from '../models/data.models';
 import { competitionIdFromSearch, withCompetitionId } from '../logic/competition.util';
 
 export interface BackendStatus {
-  status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error';
+  status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error' | 'No match';
   url: string;
   interval: number | null;
   errorMessage?: string | null;
 }
 
+/** Close code the backend uses to refuse a connection that names no valid competition. */
+const CLOSE_NO_COMPETITION = 1008;
 const RENDER_INTERVAL_MS = 250;
 const DEFAULT_GROUP_THRESHOLD = 2.0;
 const MAX_GROUP_THRESHOLD = 10.0;
@@ -39,7 +41,7 @@ const STORAGE_KEY_COMPACT_COLORS = 'compactColors';
 @Injectable({ providedIn: 'root' })
 export class DataService {
   private socket$: WebSocketSubject<BackendMessage> | null = null;
-  /** Competition to follow, from the page URL (`?competitionId=...`); the backend falls back to its default. */
+  /** Competition to follow, from the page URL (`?competitionId=...`); without one nothing is followed. */
   public readonly competitionId = competitionIdFromSearch(window.location.search);
   private readonly BACKEND_URL = withCompetitionId((() => {
     const raw = (window as BackendWindow).BACKEND_URL;
@@ -252,6 +254,7 @@ export class DataService {
   private renderLoopRunning = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private noCompetition = false;
   private ngZone = inject(NgZone);
   private ts = inject(TranslateService);
 
@@ -261,10 +264,18 @@ export class DataService {
 
   connect() {
     if (this.socket$ && !this.socket$.closed) return;
+    if (!this.competitionId) {
+      this._status.next({ status: 'No match', url: '', interval: null });
+      return;
+    }
     this._errors.next([]);
     this._feed.next(null);
     this._status.next({ status: 'Connecting...', url: '', interval: null });
-    this.socket$ = webSocket<BackendMessage>({ url: this.BACKEND_URL });
+    this.noCompetition = false;
+    this.socket$ = webSocket<BackendMessage>({
+      url: this.BACKEND_URL,
+      closeObserver: { next: (e: CloseEvent) => { this.noCompetition = e.code === CLOSE_NO_COMPETITION; } },
+    });
     this.socket$.subscribe({
       next: (msg) => this._enqueue(msg),
       error: (err: unknown) => this._handleError(err),
@@ -513,7 +524,16 @@ export class DataService {
     }
   }
 
+  /** Reconnecting cannot help when no competition was chosen; the viewer has to pick a match. */
+  private _stopForNoCompetition(): boolean {
+    if (!this.noCompetition) return false;
+    this.socket$ = null;
+    this._status.next({ status: 'No match', url: '', interval: null });
+    return true;
+  }
+
   private _handleError(err: unknown) {
+    if (this._stopForNoCompetition()) return;
     console.error('WebSocket error:', err);
     this.addError('Connection to backend lost. Reconnecting in 5s…');
     this.socket$ = null;
@@ -522,6 +542,7 @@ export class DataService {
   }
 
   private _handleDisconnect() {
+    if (this._stopForNoCompetition()) return;
     if (
       this._status.value.status === 'Connected' ||
       this._status.value.status === 'Connecting...'

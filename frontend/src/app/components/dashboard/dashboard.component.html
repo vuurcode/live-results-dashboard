@@ -5,25 +5,31 @@
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
     @let matches = (todayMatches$ | async) ?? [];
     @let picked = !!dataService.competitionId && isTodayMatch(matches, dataService.competitionId);
+    @let noMatch = (dataService.status$ | async)?.status === 'No match';
     <!-- When the followed match is in today's list, the picker takes the place of the event name
          (it shows the same name); the name stays in the page as a visually hidden heading. -->
     @if (eventName$ | async; as name) {
       <h1 class="fw-bold fs-5 m-0 topbar-title" [class.visually-hidden]="picked">{{ name }}</h1>
-    } @else if (!picked) {
+    } @else if (!picked && !noMatch) {
       <span class="skeleton-text skeleton-title topbar-title">&nbsp;</span>
     }
     @if (matches.length > 0) {
-      <div class="topbar-matches d-flex align-items-center gap-2" [class.topbar-matches-title]="picked">
-        <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
-        <select id="matchSelect" class="form-select form-select-sm topbar-match-select" (change)="onMatchChange($event)">
+      <div class="topbar-matches d-flex align-items-center gap-2" [class.topbar-matches-title]="picked || noMatch">
+        <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked || noMatch" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
+        <select id="matchSelect" class="form-select form-select-sm topbar-match-select" [attr.aria-describedby]="noMatch ? 'matchHint' : null" (change)="onMatchChange($event)">
           @if (!picked) {
-            <option value="" selected disabled>–</option>
+            <option value="" selected disabled>{{ 'noMatchOption' | translate }}</option>
           }
           @for (m of matches; track m.id) {
             <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.venue.name }} · {{ m.name }}@if (hasNotStarted(m)) { · {{ m.start | date: 'HH:mm' }}}</option>
           }
         </select>
+        @if (noMatch) {
+          <span id="matchHint" class="match-hint">{{ 'selectMatchHint' | translate }}</span>
+        }
       </div>
+    } @else if (noMatch) {
+      <span class="match-hint match-hint-alone">{{ 'noLiveMatchesHint' | translate }}</span>
     }
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
       <!-- Display settings (collapsible) -->
@@ -192,6 +198,16 @@
   <!-- ===== MAIN CONTENT ===== -->
   <main class="flex-grow-1 px-4 pb-4">
     @if ((sortedDistances$ | async)?.length) {
+      @let liveFeed = dataService.feed$ | async;
+      @if (liveFeed?.state === 'not_live') {
+        <div class="empty-notice alert alert-warning mt-2" role="status">
+          <h2 class="h6 mb-1">{{ 'feedNotLiveTitle' | translate }}</h2>
+          <p class="mb-0">{{ 'feedNotLiveBody' | translate }}</p>
+          @if (liveFeed?.message) {
+            <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ liveFeed?.message }}</q></p>
+          }
+        </div>
+      }
       <c-accordion [alwaysOpen]="true">
         @for (distance of sortedDistances$ | async; track distance.id) {
           <div [attr.data-distance-header]="distance.id" class="accordion-scroll-anchor"></div>

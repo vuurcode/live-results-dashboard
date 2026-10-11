@@ -122,6 +122,29 @@ $tint-fast-bg: #e2d9f3; $tint-fast-fg: #3b2273;
   border-color: transparent;
   padding-left: 0;
 }
+// Tooltip-style callout to the right of the picker, pointing at it
+.match-hint {
+  position: relative;
+  flex: none;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #212529;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  &::before {
+    content: '';
+    position: absolute;
+    left: -0.35rem;
+    top: 50%;
+    width: 0.7rem;
+    height: 0.7rem;
+    background: #fff;
+    transform: translateY(-50%) rotate(45deg);
+  }
+}
+.match-hint-alone::before { display: none; }
 .topbar-match-select {
   min-height: 2.5rem;
   width: 36rem;

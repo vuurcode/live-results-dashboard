@@ -7,6 +7,9 @@ export interface Translations {
   massStartSettings: string;
   // Follow setting
   todayMatchesLabel: string;
+  noMatchOption: string;
+  selectMatchHint: string;
+  noLiveMatchesHint: string;
   thousandthsLabel: string;
   hundredthsLabel: string;
   thousandthsPopoverTitle: string;
@@ -24,6 +27,8 @@ export interface Translations {
   feedUnavailableBody: string;
   feedEmptyTitle: string;
   feedEmptyBody: string;
+  feedNoMatchTitle: string;
+  feedNoMatchBody: string;
   feedDisconnectedTitle: string;
   feedDisconnectedBody: string;
   feedSlowTitle: string;
@@ -92,6 +97,9 @@ export const en: Translations = {
   displaySettings: 'Display/visualization settings',
   massStartSettings: 'Mass Start',
   todayMatchesLabel: 'Matches today',
+  noMatchOption: 'No match selected',
+  selectMatchHint: 'Select a live match to watch it',
+  noLiveMatchesHint: 'There are no matches to watch right now',
   thousandthsLabel: 'Thousandths precision',
   hundredthsLabel: 'Hundredths precision',
   thousandthsPopoverTitle: 'Hundreds or thousandths precision',
@@ -109,6 +117,8 @@ export const en: Translations = {
   feedUnavailableBody: 'We keep trying. This page updates by itself when it is back.',
   feedEmptyTitle: 'No results yet',
   feedEmptyBody: 'The match is live, but no results have been published yet.',
+  feedNoMatchTitle: 'Choose a match',
+  feedNoMatchBody: 'No match is selected. Pick one from the list at the top of the page.',
   feedDisconnectedTitle: 'Connection lost',
   feedDisconnectedBody: 'Reconnecting to the server. This page updates by itself.',
   feedSlowTitle: 'Still waiting for data\u2026',
@@ -172,6 +182,9 @@ export const nl: Translations = {
   displaySettings: 'Weergave-/visualisatie-instellingen',
   massStartSettings: 'Massastart',
   todayMatchesLabel: 'Wedstrijden vandaag',
+  noMatchOption: 'Geen wedstrijd geselecteerd',
+  selectMatchHint: 'Kies een live wedstrijd om te volgen',
+  noLiveMatchesHint: 'Er zijn nu geen wedstrijden om te volgen',
   thousandthsLabel: 'Precisie duizendsten',
   hundredthsLabel: 'Precisie honderdsten',
   thousandthsPopoverTitle: 'Precisie honderdsten of duizendsten',
@@ -189,6 +202,8 @@ export const nl: Translations = {
   feedUnavailableBody: 'We blijven het proberen. Deze pagina ververst vanzelf zodra de bron terug is.',
   feedEmptyTitle: 'Nog geen resultaten',
   feedEmptyBody: 'De wedstrijd is live, maar er zijn nog geen resultaten gepubliceerd.',
+  feedNoMatchTitle: 'Kies een wedstrijd',
+  feedNoMatchBody: 'Er is geen wedstrijd geselecteerd. Kies er een uit de lijst bovenaan de pagina.',
   feedDisconnectedTitle: 'Verbinding verbroken',
   feedDisconnectedBody: 'Opnieuw verbinden met de server. Deze pagina ververst vanzelf.',
   feedSlowTitle: 'Nog even wachten op gegevens\u2026',

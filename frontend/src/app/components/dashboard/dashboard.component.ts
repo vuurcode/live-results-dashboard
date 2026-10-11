@@ -459,6 +459,7 @@ interface EmptyNotice {
 
 /** What to tell the viewer while there are no results to show. */
 function emptyNotice(feed: FeedStatus | null, connection: string, waitedLong: boolean): EmptyNotice | null {
+  if (connection === 'No match') return { titleKey: 'feedNoMatchTitle', bodyKey: 'feedNoMatchBody' };
   if (connection === 'Error' || connection === 'Disconnected') return { titleKey: 'feedDisconnectedTitle', bodyKey: 'feedDisconnectedBody' };
   if (feed?.state === 'not_live') return { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message };
   if (feed?.state === 'unavailable') return { titleKey: 'feedUnavailableTitle', bodyKey: 'feedUnavailableBody' };
