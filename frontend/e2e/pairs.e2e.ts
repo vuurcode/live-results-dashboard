@@ -54,3 +54,32 @@ test.describe('personal best wording follows the browser language', () => {
     });
   }
 });
+
+test.describe('long names', () => {
+  for (const width of [320, 1280]) {
+    test(`${width}px: long and unbreakable names stay inside their cards`, async ({ page, request }) => {
+      await restartReplay(request);
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`/?competitionId=${MATCH}`);
+      await expect(page.locator('.timed-competitor-card', { hasText: 'Magnificent Maximiliaan' })).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('.timed-competitor-card', { hasText: 'Supercalifragilistic' })).toBeVisible();
+      await expect(page.locator('.timed-lap-row.timed-lap-done').first()).toBeVisible({ timeout: 15_000 });
+
+      const problems = await page.evaluate(() => {
+        const out: string[] = [];
+        for (const card of document.querySelectorAll('.timed-competitor-card')) {
+          const c = card.getBoundingClientRect();
+          for (const el of card.querySelectorAll('.timed-comp-name, .timed-watermark, .timed-badge-orange, .timed-split-badge')) {
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && (r.left < c.left - 1 || r.right > c.right + 1)) {
+              out.push(`${el.className} sticks out of "${card.querySelector('.timed-comp-name')?.textContent?.slice(0, 20)}"`);
+            }
+          }
+        }
+        if (document.documentElement.scrollWidth > document.documentElement.clientWidth) out.push('page scrolls horizontally');
+        return out;
+      });
+      expect(problems).toEqual([]);
+    });
+  }
+});

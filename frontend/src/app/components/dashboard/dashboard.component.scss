@@ -608,15 +608,15 @@
     left: 50%;
     width: 90%;
     transform: translate(-50%, -50%) rotate(-20deg);
-    font-size: clamp(0.8rem, 4.5cqw, 3rem);
+    font-size: clamp(0.8rem, 5cqw, 3rem);
     font-weight: 1000;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     line-height: 1.25;
     text-align: center;
-    word-break: break-word;
+    overflow-wrap: anywhere;
     pointer-events: none;
-    white-space: pre;
+    white-space: pre-line; // keeps the explicit line break (TRC + category) but wraps long labels inside the card
   }
   &.timed-card-pr {
     border: 2px solid #6f42c1;
