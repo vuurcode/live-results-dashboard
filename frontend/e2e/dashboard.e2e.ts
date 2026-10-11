@@ -47,6 +47,8 @@ test.describe('timed distance', () => {
     for (const name of ['Competitor A', 'Competitor B', 'Competitor C', 'Competitor D']) {
       await expect(page.locator('.timed-competitor-card', { hasText: name })).toBeVisible();
     }
+    // category and club code sit small below the name
+    await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor A' }).locator('.timed-comp-meta')).toHaveText(/\S/);
     // 4 competitors x 3 laps (200 / 600 / 1000 m) once the whole replay has played
     await expect(page.locator('.timed-compact-badge')).toHaveCount(12);
     await expect(page.locator('.compact-dist').filter({ hasText: '1000m' })).toHaveCount(4);
@@ -109,15 +111,19 @@ test.describe('mass start', () => {
     // the Lap delta threshold is configurable here too, and only while the colours are on
     const threshold = page.getByLabel('Lap time diff threshold');
     await expect(threshold).toBeVisible();
-    // long track defaults to 1%, takes one decimal, and its example follows the setting
-    await expect(threshold).toHaveValue('1');
+    // long track defaults to 0.5%, takes one decimal, and its example follows the setting (also while stepping)
+    await expect(threshold).toHaveValue('0.5');
     const example = page.locator('.settings-panel .setting-popover-example');
-    await expect(example.locator('.popover-badge-grey')).toHaveText('1%');
-    await threshold.fill('0.5');
-    await threshold.blur();
     await expect(example.locator('.popover-badge-grey')).toHaveText('0.5%');
     await expect(example.locator('.popover-badge-orange')).toHaveText('40.2\u202fs');
     await expect(example.locator('.popover-badge-purple')).toHaveText('39.8\u202fs');
+    await threshold.press('ArrowUp'); // a step of 0.1 updates the example at once
+    await expect(example.locator('.popover-badge-grey')).toHaveText('0.6%');
+    await threshold.fill('1');
+    await threshold.blur();
+    await expect(example.locator('.popover-badge-grey')).toHaveText('1%');
+    await expect(example.locator('.popover-badge-orange')).toHaveText('40.4\u202fs');
+    await expect(example.locator('.popover-badge-purple')).toHaveText('39.6\u202fs');
     await toggle.uncheck();
     await expect(page.getByLabel('Lap time diff threshold')).toBeHidden(); // slid shut
   });

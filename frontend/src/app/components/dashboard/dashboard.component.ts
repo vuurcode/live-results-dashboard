@@ -93,6 +93,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.massStartSettingsOpen = group === 'massStart' && open;
   }
 
+  /** A click anywhere outside the settings buttons and panels folds them away. */
+  @HostListener('document:click', ['$event'])
+  closeSettingsOnOutsideClick(event: MouseEvent): void {
+    if (!this.displaySettingsOpen && !this.massStartSettingsOpen) return;
+    if (event.composedPath().some((el) => el instanceof Element && el.classList.contains('topbar-settings-group'))) return;
+    this.closeSettings();
+  }
+
   /** Escape folds the settings panel away. */
   @HostListener('document:keydown.escape')
   closeSettings(): void {
@@ -132,6 +140,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   lapExample(pct: number): Record<string, string> {
     const fmt = (n: number) => this.ts.num(n);
     return { pct: fmt(pct), slow: fmt(40 * (1 + pct / 100)), fast: fmt(40 * (1 - pct / 100)) };
+  }
+
+  /**
+   * The mouse wheel and the spinner buttons change a number input without a `change` event (that waits for blur),
+   * so the example text would lag behind. They have no `inputType`; typing does and is applied on `change`, so a
+   * half-typed "0." is not overwritten.
+   */
+  onLapVarianceStep(event: Event, timed: boolean): void {
+    if ((event as InputEvent).inputType) return;
+    if (timed) this.onLapVarianceTimedChange(event);
+    else this.onLapVarianceChange(event);
   }
 
   onLapVarianceTimedChange(event: Event): void {
@@ -432,7 +451,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 }
 
 interface EmptyNotice {
-  kind: 'not_live' | 'unavailable' | 'empty' | 'disconnected' | 'slow';
   titleKey: TranslationKey;
   bodyKey: TranslationKey;
   /** The data source's own text, shown as a quote */
@@ -441,9 +459,9 @@ interface EmptyNotice {
 
 /** What to tell the viewer while there are no results to show. */
 function emptyNotice(feed: FeedStatus | null, connection: string, waitedLong: boolean): EmptyNotice | null {
-  if (connection === 'Error' || connection === 'Disconnected') return { kind: 'disconnected', titleKey: 'feedDisconnectedTitle', bodyKey: 'feedDisconnectedBody' };
-  if (feed?.state === 'not_live') return { kind: 'not_live', titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message };
-  if (feed?.state === 'unavailable') return { kind: 'unavailable', titleKey: 'feedUnavailableTitle', bodyKey: 'feedUnavailableBody' };
-  if (feed?.state === 'ok') return { kind: 'empty', titleKey: 'feedEmptyTitle', bodyKey: 'feedEmptyBody' };
-  return waitedLong ? { kind: 'slow', titleKey: 'feedSlowTitle', bodyKey: 'feedSlowBody' } : null;
+  if (connection === 'Error' || connection === 'Disconnected') return { titleKey: 'feedDisconnectedTitle', bodyKey: 'feedDisconnectedBody' };
+  if (feed?.state === 'not_live') return { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: feed.message };
+  if (feed?.state === 'unavailable') return { titleKey: 'feedUnavailableTitle', bodyKey: 'feedUnavailableBody' };
+  if (feed?.state === 'ok') return { titleKey: 'feedEmptyTitle', bodyKey: 'feedEmptyBody' };
+  return waitedLong ? { titleKey: 'feedSlowTitle', bodyKey: 'feedSlowBody' } : null;
 }

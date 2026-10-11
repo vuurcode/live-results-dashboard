@@ -35,6 +35,8 @@
         <!-- Card title: the full name, with the status and PB badges on a line below -->
         <div class="timed-comp-header">
           <span class="timed-comp-name">{{ race.name }}</span>
+          <!-- category / club code, small below the name; the line keeps its height when there is none -->
+          <span class="timed-comp-meta">{{ metaLine(race) }}</span>
           <!-- Badges on their own line; the row keeps its height when there are none -->
           <div class="timed-comp-badges">
             @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
@@ -48,7 +50,7 @@
                 @if (distanceMeters) {
                   @let prComp = timedPrComparison(race, distanceMeters);
                   @if (prComp && !prComp.faster) { <!-- a new PB shows its diff in the watermark -->
-                    <c-badge [color]="prComp.faster ? '' : 'warning'" class="timed-pr-diff-badge" [class.timed-pr-diff-faster]="prComp.faster">{{ prComp.faster ? '-' : '+' }} {{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[1] }}</small></c-badge>
+                    <c-badge color="warning" class="timed-pr-diff-badge">+ {{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[1] }}</small></c-badge>
                   }
                 }
                 <span class="timed-pb-current"><span class="timed-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="timed-split-badge" [class.timed-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>

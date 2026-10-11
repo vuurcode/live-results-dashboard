@@ -133,7 +133,7 @@ test('a competitor title stays pinned while its tall card scrolls,', async ({ pa
   });
   await page.evaluate((y) => window.scrollTo(0, y), cardTop + 10); // card top is now above the pinned bars
   await page.waitForTimeout(300);
-  const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom); // (the disclaimer above it has scrolled away)
+  const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom); // measured once scrolled: the top bar sticks to the top then
   const headerTop = await card.locator('.timed-comp-header').evaluate((h) => h.getBoundingClientRect().top);
   expect(cardH).toBeGreaterThan(0);
   expect(headerTop).toBeGreaterThanOrEqual(barBottom - 1);
@@ -257,4 +257,15 @@ test.describe('card side padding', () => {
       }
     });
   }
+});
+
+test('a click outside the settings folds them away, a click inside does not', async ({ page }) => {
+  await page.goto('/?competitionId=e2e-timed');
+  const display = page.getByRole('button', { name: /^Display/ });
+  await display.click();
+  await expect(display).toHaveAttribute('aria-expanded', 'true');
+  await page.locator('.settings-panel').click({ position: { x: 5, y: 5 } });
+  await expect(display).toHaveAttribute('aria-expanded', 'true');
+  await page.locator('.disclaimer-bar').click();
+  await expect(display).toHaveAttribute('aria-expanded', 'false');
 });

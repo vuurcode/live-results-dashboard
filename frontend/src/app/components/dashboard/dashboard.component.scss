@@ -1,3 +1,29 @@
+// Soft tints of the lap time diff colours (dark text on a light tint: > 9:1), used by the lap badges and the help text
+$tint-normal-bg: #d1e7dd; $tint-normal-fg: #0a3622;
+$tint-slow-bg: #ffe5d0; $tint-slow-fg: #6a3200;
+$tint-fast-bg: #e2d9f3; $tint-fast-fg: #3b2273;
+
+// The note laid over the top of a racer card (a PB's diff, or a remark such as TRC); the font size differs per kind
+@mixin card-watermark($font-size) {
+  position: absolute;
+  top: 0.9rem; // at the top of the card, well clear of its border, so it covers little of the rows
+  left: 50%;
+  width: max-content;
+  max-width: 90%;
+  padding: 0.1em 0.5em;
+  border-radius: 0.3em;
+  background: rgba(255, 255, 255, 0.65); // see-through white keeps the text readable over the rows
+  transform: translateX(-50%) rotate(-6deg);
+  font-size: $font-size; // follows the card width but is capped in rem: cards are wide and short, so it scales with zoom, not with width alone
+  font-weight: 1000;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  z-index: 6; // above the (opaque, sticky) title: the watermark spans title and content
+}
+
 
 // Zero-height scroll target placed before each accordion item
 .accordion-scroll-anchor {
@@ -38,8 +64,8 @@
 :host ::ng-deep c-accordion-item {
   overflow: visible !important;
 }
-// While (un)folding, the collapse wrapper must clip without becoming a scroll container: as one, it made every
-// card title count as pinned (hiding its badge line) until the animation ended, so the cards jumped taller.
+// While (un)folding, the collapse wrapper clips without becoming a scroll container: as one, it would make
+// every card title count as pinned (hiding its badge line) until the animation ends.
 :host ::ng-deep .accordion-collapse.collapsing { overflow: clip; }
 // Done accordion items: reduced opacity when collapsed
 :host ::ng-deep c-accordion-item.accordion-done:has(.accordion-button.collapsed) {
@@ -81,7 +107,6 @@
   // Settings drop to their own full-width row and wrap instead of widening the page.
   .topbar-settings { flex: 1 1 100%; margin-left: 0 !important; }
   .topbar-settings-group { max-width: 100%; }
-  .topbar-section-sep { display: none; }
   .topbar-group-btn { min-height: 2rem; }
   .setting-group .form-switch .form-check-input { height: 1.5rem; width: 2.75rem; }
 }
@@ -120,14 +145,6 @@
   color: rgba(255,255,255,0.35);
   white-space: nowrap;
 }
-// Vertical separator after the section label
-.topbar-section-sep {
-  width: 1px;
-  height: 1.2rem;
-  background: rgba(255,255,255,0.2);
-  flex-shrink: 0;
-  margin: 0 0.25rem;
-}
 .threshold-input {
   width: 4.5rem;
   background: rgba(255,255,255,0.1);
@@ -137,7 +154,7 @@
 }
 // Collapsible settings group toggle button
 .topbar-settings-group { display: contents; } // the buttons share one row; each panel opens below it
-// The opened settings: a panel under the top bar, listing the settings in columns (one column on a phone).
+// The opened settings: a panel under the top bar, listing the settings below each other.
 .settings-panel {
   position: absolute;
   right: 0;
@@ -154,7 +171,6 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
   max-height: calc(100vh - var(--topbar-h, 3rem));
   overflow-y: auto;
-  .topbar-section-sep { display: none; }
   .setting-group {
     flex-wrap: wrap; // the help text takes a row of its own under the setting
     justify-content: space-between;
@@ -222,9 +238,9 @@
   border-radius: 0.25rem;
   color: #fff;
   vertical-align: baseline;
-  &.popover-badge-green  { background: #d1e7dd; color: #0a3622; }
-  &.popover-badge-orange { background: #ffe5d0; color: #6a3200; }
-  &.popover-badge-purple { background: #e2d9f3; color: #3b2273; }
+  &.popover-badge-green  { background: $tint-normal-bg; color: $tint-normal-fg; }
+  &.popover-badge-orange { background: $tint-slow-bg; color: $tint-slow-fg; }
+  &.popover-badge-purple { background: $tint-fast-bg; color: $tint-fast-fg; }
   &.popover-badge-grey   { background: #454c52; color: #fff; border-color: #454c52; } // the current threshold
 }
 .setting-group .form-switch {
@@ -476,9 +492,9 @@
   text-align: center;
 
   // soft tints with dark text: the colour hints at the difference without shouting
-  &.lap-badge-normal { background: #d1e7dd; color: #0a3622; }
-  &.lap-badge-slow   { background: #ffe5d0; color: #6a3200; }
-  &.lap-badge-fast   { background: #e2d9f3; color: #3b2273; }
+  &.lap-badge-normal { background: $tint-normal-bg; color: $tint-normal-fg; }
+  &.lap-badge-slow   { background: $tint-slow-bg; color: $tint-slow-fg; }
+  &.lap-badge-fast   { background: $tint-fast-bg; color: $tint-fast-fg; }
 
   &.lap-badge-latest {
     opacity: 1;
@@ -547,7 +563,7 @@
 .timed-heat-row {
   // no visual styling — plain stacking
 }
-// Active heat row: a grey background shows it received the last update (an outline would overlap the neighbouring rows)
+// Active heat row: a grey background shows it received the last update
 .timed-heat-row-active {
   background: #dee2e6;
   border-radius: 0.375rem;
@@ -646,47 +662,15 @@
     pointer-events: none;
   }
   .timed-watermark {
-    position: absolute;
-    top: 0.9rem; // at the top of the card, well clear of its border, so it covers little of the rows
-    left: 50%;
-    width: max-content;
-    max-width: 90%;
-    padding: 0.1em 0.5em;
-    border-radius: 0.3em;
-    background: rgba(255, 255, 255, 0.65); // see-through white keeps the text readable over the rows
-    transform: translateX(-50%) rotate(-6deg);
-    font-size: clamp(0.8rem, 4.5cqw, 1.4rem); // follows the card width but is capped in rem: cards are wide and short, so it scales with zoom, not with width alone
-    font-weight: 1000;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    line-height: 1.25;
-    text-align: center;
-    pointer-events: none;
-    z-index: 6; // above the (opaque, sticky) title: the watermark spans title and content
+    @include card-watermark(clamp(0.8rem, 4.5cqw, 1.4rem));
     &.timed-watermark-pr { color: rgba(111, 66, 193, 0.85); } // 4.7:1 on white (0.80 gave 4.2:1)
     .timed-watermark-text { font-size: 0.6em; } // the label is smaller than the diff below it
     .timed-watermark-decimal { font-size: 0.65em; }
   }
   &[data-watermark]::before {
+    @include card-watermark(clamp(0.7rem, 3.5cqw, 1.2rem));
     content: attr(data-watermark);
-    position: absolute;
-    top: 0.9rem; // at the top of the card, well clear of its border, so it covers little of the rows
-    left: 50%;
-    width: max-content;
-    max-width: 90%;
-    padding: 0.1em 0.5em;
-    border-radius: 0.3em;
-    background: rgba(255, 255, 255, 0.65); // see-through white keeps the text readable over the rows
-    transform: translateX(-50%) rotate(-6deg);
-    font-size: clamp(0.7rem, 3.5cqw, 1.2rem);
-    font-weight: 1000;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    line-height: 1.25;
-    text-align: center;
     overflow-wrap: anywhere;
-    pointer-events: none;
-    z-index: 6; // above the (opaque, sticky) title: the watermark spans title and content
     white-space: pre-line; // keeps the explicit line break (TRC + category) but wraps long labels inside the card
   }
   &.timed-card-pr {
@@ -742,13 +726,24 @@
 }
 @container scroll-state(stuck: top) {
   // a container query only styles descendants of the container (the pinned title itself)
-  .timed-comp-header .timed-comp-badges { display: none; } // pinned: just the name
+  .timed-comp-header .timed-comp-badges, .timed-comp-header .timed-comp-meta { display: none; } // pinned: just the name
 }
 .timed-comp-name {
   font-size: 0.8em;
   flex: 0 0 100%; // the name has the first line to itself, the badges the second
   max-width: 100%;
   overflow-wrap: anywhere; // ... and only a name longer than the card wraps instead of being cut off
+}
+.timed-comp-meta {
+  flex: 0 0 100%;
+  min-height: 1.1em; // the line is there (empty) on every card, so titles have the same height
+  margin-top: -0.2rem;
+  font-size: 0.5rem; // the same as the captions above the badges
+  line-height: 1.1;
+  color: #495057; // 7.5:1 on the title background
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .timed-comp-badges {
   // The second line of the title, aligned left.
@@ -806,9 +801,9 @@
   100% { background-color: #454c52; }
 }
 .timed-split-badge.timed-compact-badge {
-  &.lap-badge-normal { background-color: #d1e7dd; color: #0a3622; } // soft tints with dark text (> 9:1)
-  &.lap-badge-slow   { background-color: #ffe5d0; color: #6a3200; }
-  &.lap-badge-fast   { background-color: #e2d9f3; color: #3b2273; }
+  &.lap-badge-normal { background-color: $tint-normal-bg; color: $tint-normal-fg; } // beats the plain badge rule above
+  &.lap-badge-slow   { background-color: $tint-slow-bg; color: $tint-slow-fg; }
+  &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
   &.timed-compact-partial { background-color: #e9ecef; color: #212529; } // the first lap has no previous lap to differ from: light grey while the diff colours are on
   &.timed-compact-latest[class*='lap-badge-'] { box-shadow: 0 0 0 2px #212529; } // the newest lap keeps standing out
   &.timed-flash-update[class*='lap-badge-'] { animation: none; }
@@ -860,7 +855,7 @@
   font-variant-numeric: tabular-nums;
 }
 .timed-comp-body.timed-compact-body { // beats the plain .timed-comp-body padding defined further down
-  // The badges sit in columns as wide as a badge (so as many fit on a row as before), spread over the width: a short last row lines up left with the rows above it,
+  // The badges sit in columns as wide as a badge (so as many fit on a row as the badges allow), spread over the width: a short last row lines up left with the rows above it,
   // and the side padding stays what it is on a full row. The total time takes the last columns of the last row.
   display: grid;
   grid-template-columns: repeat(auto-fill, 3rem);
@@ -905,9 +900,6 @@
   white-space: nowrap;
 }
 
-.timed-pr-diff-badge.timed-pr-diff-faster {
-  background-color: #6f42c1 !important;
-}
 .timed-pr-diff-badge {
   display: inline-flex !important;
   align-items: center;

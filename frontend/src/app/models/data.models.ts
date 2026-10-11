@@ -50,6 +50,8 @@ export interface CompetitorUpdate {
   personal_record: string | null;
   /** Competitor category (e.g. "DC1", "SC2"); null when absent */
   category: string | null;
+  /** Club code of the competitor (e.g. "CLUB 1"); null or absent when unknown */
+  club_code?: string | null;
   /** Reason the result is invalid (e.g. "DSQ", "DNS"); null when valid */
   invalid_reason: string | null;
   /** Remark string (e.g. "PB", "SB"); null when absent */

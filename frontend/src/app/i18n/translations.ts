@@ -70,7 +70,6 @@ export interface Translations {
   finished: string;
   finishLabel: string;
   // Timed personal best label and remarks
-  pbLabel: string;
   pbCurrentLabel: string;
   pbPreviousLabel: string;
   remarkNewPb: string;
@@ -152,7 +151,6 @@ export const en: Translations = {
   lapCompleted: 'Lap completed',
   finished: 'Finished',
   finishLabel: 'Finish',
-  pbLabel: 'PB:',
   pbCurrentLabel: 'Current PB',
   pbPreviousLabel: 'Previous PB',
   remarkNewPb: 'New personal best',
@@ -233,7 +231,6 @@ export const nl: Translations = {
   lapCompleted: 'Ronde voltooid',
   finished: 'Gefinisht',
   finishLabel: 'Finish',
-  pbLabel: 'PR:',
   pbCurrentLabel: 'Huidig PR',
   pbPreviousLabel: 'Vorig PR',
   remarkNewPb: 'Nieuw persoonlijk record',

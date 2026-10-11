@@ -59,7 +59,6 @@ export class MassStartRaceRowComponent {
     return lapBadgeColor(lapTimes, i, this.lapVarianceThreshold);
   }
 
-
   /**
    * Returns the number of pending (not-yet-completed) laps for a mass-start competitor.
    * = totalLaps - lap_times.length, clamped to 0.

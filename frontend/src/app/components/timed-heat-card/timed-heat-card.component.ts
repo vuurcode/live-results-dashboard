@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, Input, afterEveryRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, Input, afterEveryRender, inject } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../models/data.models';
@@ -6,6 +6,9 @@ import { TranslateService, TranslationKey } from '../../services/translate.servi
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
+
+/** The usual lane colours by slot, for lanes no racer has shown a colour for yet. */
+const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
 
 @Component({
   selector: 'app-timed-heat-card',
@@ -36,16 +39,28 @@ export class TimedHeatCardComponent {
 
   /** Number of badge columns the compact body currently has (it follows the card width). */
   private columns = 0;
+  private observed: Element | null = null;
+  private observer: ResizeObserver | null = null;
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.observer?.disconnect());
+    // The grid is only measured when the body appears or is resized, not on every render
     afterEveryRender(() => {
       const body = this.host.nativeElement.querySelector('.timed-compact-body');
-      const tracks = body ? getComputedStyle(body).gridTemplateColumns.split(' ').length : 0;
-      if (tracks !== this.columns) {
-        this.columns = tracks;
-        this.cdr.markForCheck();
-      }
+      if (!body || body === this.observed) return;
+      this.observer ??= new ResizeObserver(() => this.measureColumns());
+      if (this.observed) this.observer.unobserve(this.observed);
+      this.observer.observe(body); // also reports the first size
+      this.observed = body;
     });
+  }
+
+  private measureColumns(): void {
+    const tracks = this.observed ? getComputedStyle(this.observed).gridTemplateColumns.split(' ').length : 0;
+    if (tracks !== this.columns) {
+      this.columns = tracks;
+      this.cdr.markForCheck();
+    }
   }
 
   /** True when the lap badges fill at least a whole row: the total time then gets a line of its own. */
@@ -72,14 +87,6 @@ export class TimedHeatCardComponent {
     TR:  'remarkNewTrackRecord',
     TRC: 'remarkTrackRecordCourse',
   };
-
-  /**
-   * Returns the lapTime string for the nth lap (0-based) of a timed competitor,
-   * or null if that lap has not been completed yet.
-   */
-  timedLapTime(race: CompetitorUpdate, lapIndex: number): string | null {
-    return race.lap_times?.[lapIndex] ?? null;
-  }
 
   /**
    * Returns the cumulative total time up to and including lap `lapIndex` as a
@@ -170,7 +177,12 @@ export class TimedHeatCardComponent {
 
   /** Lane colour of a slot: the racer's own, else the colour other heats show for it, else the standard order. */
   laneColor(race: CompetitorUpdate | null, slot: number): string | null {
-    return race?.lane ?? this.laneColors[slot] ?? ['white', 'red', 'yellow', 'blue'][slot] ?? null;
+    return race?.lane ?? this.laneColors[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
+  }
+
+  /** Category and club code for under the name: "DA1 / IFX", or whichever of the two there is. */
+  metaLine(race: CompetitorUpdate): string {
+    return [race.category, race.club_code].filter(Boolean).join(' / ');
   }
 
   /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no racer in this heat. */

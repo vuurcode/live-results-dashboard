@@ -33,7 +33,20 @@
         </button>
         @if (displaySettingsOpen) {
           <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'displaySettings' | translate">
-            <div class="topbar-section-sep"></div>
+            <div class="setting-group ms-2">
+              <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
+              <div class="form-check form-switch"><input
+                id="followInput"
+                type="checkbox"
+                class="form-check-input" role="switch"
+                [checked]="dataService.follow"
+                (change)="onFollowChange($event)"
+              /></div>
+              <div class="setting-popover">
+                <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
+              </div>
+            </div>
             <div class="setting-group ms-2">
               <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (dataService.showThousandths ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
               <div class="form-check form-switch">
@@ -77,6 +90,7 @@
                   class="form-control form-control-sm threshold-input"
                   [value]="dataService.lapVarianceThresholdTimed"
                   (change)="onLapVarianceTimedChange($event)"
+                  (input)="onLapVarianceStep($event, true)"
                 />
                 <span class="small text-white-50">%</span>
                 <div class="setting-popover">
@@ -85,20 +99,6 @@
                   <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(dataService.lapVarianceThresholdTimed))"></div>
                 </div>
               </div>
-              </div>
-            </div>
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
-              <div class="form-check form-switch"><input
-                id="followInput"
-                type="checkbox"
-                class="form-check-input" role="switch"
-                [checked]="dataService.follow"
-                (change)="onFollowChange($event)"
-              /></div>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
               </div>
             </div>
           </div>
@@ -112,7 +112,6 @@
           </button>
           @if (massStartSettingsOpen) {
             <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'massStartSettings' | translate">
-              <div class="topbar-section-sep"></div>
               <div class="setting-group ms-1">
                 <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
                 <input
@@ -153,6 +152,7 @@
                   class="form-control form-control-sm threshold-input"
                   [value]="dataService.lapVarianceThreshold"
                   (change)="onLapVarianceChange($event)"
+                  (input)="onLapVarianceStep($event, false)"
                 />
                 <span class="small text-white-50">%</span>
                 <div class="setting-popover">
@@ -309,7 +309,7 @@
       @let notice = emptyNotice$ | async;
       @if (notice) {
         <!-- Nothing to show: say why instead of loading forever -->
-        <div class="empty-notice alert alert-info" role="status" [attr.data-kind]="notice.kind">
+        <div class="empty-notice alert alert-info" role="status">
           <h2 class="h6 mb-1">{{ notice.titleKey | translate }}</h2>
           <p class="mb-0">{{ notice.bodyKey | translate }}</p>
           @if (notice.message) {
