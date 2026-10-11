@@ -127,15 +127,20 @@ func getenv(key, fallback string) string {
 	return fallback
 }
 
-// userAgent mirrors the most recent inbound User-Agent onto outbound
+// userAgent is the User-Agent sent on outbound fetches: the USER_AGENT setting when given,
+// otherwise the most recent inbound User-Agent, mirrored onto outbound
 // DATA_SOURCE_URL fetches — some upstream data sources apply UA-based bot
 // filtering and reject the default Go identifier.
 type userAgent struct {
-	mu sync.RWMutex
-	ua string
+	mu    sync.RWMutex
+	ua    string
+	fixed string // USER_AGENT: when set it is always sent and nothing is mirrored
 }
 
 func (u *userAgent) set(ua string) {
+	if u.fixed != "" {
+		return
+	}
 	if s := sanitizeUserAgent(ua); s != "" {
 		u.mu.Lock()
 		u.ua = s
@@ -144,6 +149,9 @@ func (u *userAgent) set(ua string) {
 }
 
 func (u *userAgent) get() string {
+	if u.fixed != "" {
+		return u.fixed
+	}
 	u.mu.RLock()
 	defer u.mu.RUnlock()
 	return u.ua
@@ -232,7 +240,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	ua := &userAgent{}
+	ua := &userAgent{fixed: sanitizeUserAgent(os.Getenv("USER_AGENT"))}
 	m := newManager(ctx, cfg, ua)
 
 	mux := http.NewServeMux()

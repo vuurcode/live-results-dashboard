@@ -439,3 +439,16 @@ func TestUpstreamURL(t *testing.T) {
 		}
 	}
 }
+
+func TestUserAgentFixedOverridesMirroring(t *testing.T) {
+	mirror := &userAgent{}
+	mirror.set("Browser/1.0")
+	if got := mirror.get(); got != "Browser/1.0" {
+		t.Errorf("mirrored = %q", got)
+	}
+	fixed := &userAgent{fixed: sanitizeUserAgent("MyDashboard/1.0\r\n")}
+	fixed.set("Browser/1.0")
+	if got := fixed.get(); got != "MyDashboard/1.0" {
+		t.Errorf("fixed = %q, want MyDashboard/1.0", got)
+	}
+}
