@@ -443,7 +443,6 @@ func TestUpstreamURL(t *testing.T) {
 	cases := []struct{ base, want string }{
 		{"http://h/api/data", "http://h/api/data?competitionId=abc"},
 		{"http://h/api/data?x=1", "http://h/api/data?competitionId=abc&x=1"},
-		{"http://h/c/{id}/results", "http://h/c/abc/results"},
 		{"http://h", "http://h/?competitionId=abc"},
 		{"http://h/", "http://h/?competitionId=abc"},
 		{"http://h:8080?x=1", "http://h:8080/?competitionId=abc&x=1"},
@@ -535,5 +534,17 @@ func TestFeedStatusUnavailableHidesDetailsAndOkOnData(t *testing.T) {
 	defer func() { _ = c2.CloseNow() }()
 	if got := readFeedStatus(t, ctx, c2); got.State != "ok" {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestLiveResultsBaseURL(t *testing.T) {
+	for _, tc := range []struct{ base, want string }{
+		{"https://h.test", "https://h.test/Competition"},
+		{"https://h.test/", "https://h.test/Competition"},
+	} {
+		t.Setenv("LIVE_RESULTS_BASE_URL", tc.base)
+		if got := loadConfig().dataSourceURL; got != tc.want {
+			t.Errorf("base=%q: got %q, want %q", tc.base, got, tc.want)
+		}
 	}
 }

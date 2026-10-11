@@ -37,8 +37,8 @@ export default defineConfig({
       reuseExistingServer: !ci,
       env: {
         LISTEN_ADDR: `:${BACKEND_PORT}`,
-        DATA_SOURCE_URL: `${MOCK_URL}/api/data`,
-        DATA_SOURCE_INTERVAL: '0.5',
+        LIVE_RESULTS_BASE_URL: MOCK_URL,
+        LIVE_RESULTS_INTERVAL: '0.5',
         DEFAULT_COMPETITION_ID: 'e2e-timed',
         IDLE_GRACE_SECONDS: '0.5',
       },

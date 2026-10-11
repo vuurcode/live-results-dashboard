@@ -156,7 +156,7 @@ const retryAfterFailure = 30 * time.Second
 func newCatalog(cfg config, ua *userAgent) (*catalog, error) {
 	base, err := url.Parse(cfg.catalogURL)
 	if err != nil || base.Scheme == "" || base.Host == "" {
-		return nil, fmt.Errorf("invalid CATALOG_URL %q", cfg.catalogURL)
+		return nil, fmt.Errorf("invalid MATCH_INFO_BASE_URL %q", cfg.catalogURL)
 	}
 	return &catalog{
 		base: base, country: cfg.venueCountry, discipline: cfg.venueDiscipline, ttl: cfg.catalogTTL,

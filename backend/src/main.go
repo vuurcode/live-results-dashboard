@@ -1,7 +1,7 @@
 // Live Results Dashboard — Backend
 //
 // Clients connect to /ws?competitionId=<id>. For each competition that has at
-// least one client, the backend fetches raw race data from DATA_SOURCE_URL on
+// least one client, the backend fetches raw race data from the live results API on
 // each interval (one fetch loop per competition, however many clients follow
 // it), processes it (sorting, ranking, heat grouping), then pushes
 // per-competitor and per-distance update messages to that competition's clients.
@@ -35,6 +35,8 @@ import (
 )
 
 const (
+	// dataSourcePath is where the live results API serves a competition; LIVE_RESULTS_BASE_URL supplies the part before it.
+	dataSourcePath     = "/Competition"
 	maxUserAgentLength = 256
 	maxBodyBytes       = 64 << 20
 	fetchTimeout       = 10 * time.Second
@@ -59,12 +61,16 @@ func (c config) interval() time.Duration {
 }
 
 func loadConfig() config {
-	if v, ok := os.LookupEnv("DATA_SOURCE_URL"); ok && v == "" {
-		slog.Error("DATA_SOURCE_URL is set but empty; set it to the live data source URL")
+	base, baseSet := os.LookupEnv("LIVE_RESULTS_BASE_URL")
+	if baseSet && base == "" {
+		slog.Error("LIVE_RESULTS_BASE_URL is set but empty; set it to the base URL of the live results API")
 		os.Exit(1)
 	}
+	if !baseSet {
+		base = "http://localhost:8080"
+	}
 	cfg := config{
-		dataSourceURL:      getenv("DATA_SOURCE_URL", "http://localhost:8080/api/data"),
+		dataSourceURL:      strings.TrimRight(base, "/") + dataSourcePath,
 		dataSourceInterval: 1,
 		listenAddr:         getenv("LISTEN_ADDR", ":5000"),
 
@@ -72,7 +78,7 @@ func loadConfig() config {
 		maxCompetitions:      25,
 		idleGrace:            30 * time.Second,
 
-		catalogURL:      os.Getenv("CATALOG_URL"),
+		catalogURL:      os.Getenv("MATCH_INFO_BASE_URL"),
 		catalogTTL:      24 * time.Hour,
 		venueCountry:    getenv("VENUE_COUNTRY_CODE", "NED"),
 		venueDiscipline: getenv("VENUE_DISCIPLINE", "SpeedSkating.LongTrack"),
@@ -101,11 +107,11 @@ func loadConfig() config {
 			slog.Warn("Ignoring invalid IDLE_GRACE_SECONDS", "value", v)
 		}
 	}
-	if v := os.Getenv("DATA_SOURCE_INTERVAL"); v != "" {
+	if v := os.Getenv("LIVE_RESULTS_INTERVAL"); v != "" {
 		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
 			cfg.dataSourceInterval = f
 		} else {
-			slog.Warn("Ignoring invalid DATA_SOURCE_INTERVAL", "value", v)
+			slog.Warn("Ignoring invalid LIVE_RESULTS_INTERVAL", "value", v)
 		}
 	}
 	return cfg
@@ -129,7 +135,7 @@ func getenv(key, fallback string) string {
 
 // userAgent is the User-Agent sent on outbound fetches: the USER_AGENT setting when given,
 // otherwise the most recent inbound User-Agent, mirrored onto outbound
-// DATA_SOURCE_URL fetches — some upstream data sources apply UA-based bot
+// live results fetches — some upstream data sources apply UA-based bot
 // filtering and reject the default Go identifier.
 type userAgent struct {
 	mu    sync.RWMutex

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -41,12 +40,8 @@ func newManager(ctx context.Context, cfg config, ua *userAgent) *manager {
 	return &manager{cfg: cfg, ua: ua, client: &http.Client{}, ctx: ctx, rooms: map[string]*room{}}
 }
 
-// upstreamURL builds the data source URL for one competition: `{id}` in
-// DATA_SOURCE_URL is substituted, otherwise a competitionId query parameter is added.
+// upstreamURL builds the live results URL for one competition by adding a competitionId query parameter.
 func (c config) upstreamURL(id string) (string, error) {
-	if strings.Contains(c.dataSourceURL, "{id}") {
-		return strings.ReplaceAll(c.dataSourceURL, "{id}", url.PathEscape(id)), nil
-	}
 	u, err := url.Parse(c.dataSourceURL)
 	if err != nil {
 		return "", err

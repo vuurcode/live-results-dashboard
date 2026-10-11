@@ -3,7 +3,7 @@ Dashboard app with three components: frontend, backend, mockserver.
 When updating or adding there specs, make sure to prefix (or update the prefix) with `[ ]` to mark it TODO. After processing, mark completed items with `[x]`.
 
 Each component:
-- [x] Runs in a container via `compose.yml` and `Containerfile`
+- [x] Runs in a container via `compose.dev.yml` / `compose.prod.yml` and `Containerfile`
 - [x] No host package installs
 - [x] Basic code formatting tools
 - [x] No HTTPS between containers
@@ -13,15 +13,15 @@ Each component:
 - [x] Prod image: base image pinned by digest; build runs `go mod download && go mod verify` with `-mod=readonly`; static binary on `scratch`
 - [x] WebSocket for frontend on port `5000`: `/ws?competitionId=<id>`; `competitionId` is restricted to `[A-Za-z0-9_-]{1,64}` (invalid or missing without a default → HTTP 400)
 - [x] One room per competition: the first client starts exactly one fetch loop for it, all later clients of the same competition share that loop, cache and broadcasts (no extra upstream requests); a room stops polling and frees its state `IDLE_GRACE_SECONDS` (default 30) after its last client leaves
-- [x] Upstream URL per competition: `{id}` in `DATA_SOURCE_URL` is substituted, otherwise `competitionId=<id>` is added as a query parameter
+- [x] Upstream URL per competition: `LIVE_RESULTS_BASE_URL` + `/Competition`, with `competitionId=<id>` added as a query parameter
 - [x] `DEFAULT_COMPETITION_ID` is used when a client sends no id (unset = id required); at most `MAX_COMPETITIONS` (default 25) distinct competitions are followed at once, further ones → HTTP 503
 - [x] Mirror `src` into container
-- [x] Periodically fetches `DATA_SOURCE_URL` and pushes updates via WebSocket
-- [x] Fetch interval via `DATA_SOURCE_INTERVAL` env var (default `1`)
+- [x] Periodically fetches the live results API and pushes updates via WebSocket
+- [x] Fetch interval via `LIVE_RESULTS_INTERVAL` env var (default `1`)
 - [x] In-memory cache between intervals (last broadcast state per distance and race)
 - [x] On WS connect: send `status` message with `competition_id`, `data_source_url` and `data_source_interval`; replay latest processed state — sends `event_name`, one `distance_meta` per distance, then **all** `competitor_update` entries including those with no `total_time` (full start list); the no-time suppression rule applies only to live diff broadcasts, not the initial replay; each replayed `competitor_update` includes the full `lap_times` array with all laps completed so far — this ensures timed-distance competitors' lap history is fully restored on reconnect/refresh
 - [x] Log when new data is received and when updates are sent; log each competitor_update sent (start number, name, laps, total time, formatted total time)
-- [x] Mirror the most recently seen inbound `User-Agent` header (from any HTTP or WebSocket-handshake request) onto outbound `DATA_SOURCE_URL` fetches — some upstream data sources apply UA-based bot filtering and reject httpx's default identifier; the shared value is guarded by a lock; the default Go identifier is sent when no client has connected yet
+- [x] Mirror the most recently seen inbound `User-Agent` header (from any HTTP or WebSocket-handshake request) onto outbound live results fetches — some upstream data sources apply UA-based bot filtering and reject httpx's default identifier; the shared value is guarded by a lock; the default Go identifier is sent when no client has connected yet
 
 ### Data processing (backend)
 - [x] Parse raw source data on each fetch; diff against previous parsed state
