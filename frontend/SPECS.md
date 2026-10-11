@@ -1,82 +1,42 @@
 # Specifications
 Dashboard app with three components: frontend, backend, mockserver.
-When updating or adding there specs, make sure to prefix (or update the prefix) with `[ ]` to mark it TODO. After processing, mark completed items with `[x]`.
+Mark a new or changed spec `[ ]` (TODO); once it is built and verified, mark it `[x]`.
+Each spec is verified by a test: **data** specs by unit tests (`*.spec.ts`, `*_test.go`), **UI** specs by Playwright e2e specs (`frontend/e2e`). Specs without a test are checked by hand.
 
-Each component:
-- [x] Runs in a container via `compose.yml` and `Containerfile`
-- [x] No host package installs
-- [x] Basic code formatting tools
-- [x] No HTTPS between containers
+All components:
+- [x] Run in a container via `compose.yml` and `Containerfile`; no host package installs; formatting tools; no HTTPS between containers
 
 ## Frontend
-- [x] Node 24 LTS + Angular + CoreUI
-- [x] Dev server on port `4200`; prod server on port `8888` (maps to `80` in container)
-- [x] WebSocket to backend port `5000`; the competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it the backend's default competition is used
-- [x] nginx config in separate folder
-- [x] Reconnect every 5s on lost connection, show error
-- [x] Frontend must not hardcode backend URL. Pass backend URL as environment variable into the frontend container, similar to backend. Frontend reads this value at runtime and uses it for API/WebSocket connections. Container, compose, and code updated accordingly.
 
-### Data layer
-- [x] Apply `distance_meta` and `competitor_update` messages to local state; `distance_meta` stores the authoritative `raceIds` list per heat group so that competitor cards can be resolved correctly on reconnect/refresh even before all competitor updates have been applied
-- [x] Incoming updates are queued; each render cycle is completed before starting the next
-- [x] Max render cycle duration configurable (`RENDER_INTERVAL_MS`, default `250ms`)
-- [x] Group threshold (seconds) is a local GUI setting (default `2.0s`), persisted in localStorage; frontend computes standings groups dynamically using this value; recomputes on every update and on threshold change
-- [x] `is_final_lap` is computed in the frontend: a competitor is on their final lap when `laps_remaining === 1`; recomputed on every competitor update
-- [x] `position` is computed in the frontend after every update: competitors are sorted laps descending then total time ascending (numeric seconds); competitors with no time sort last; `position_change` (`up` / `down` / `null`) is derived by comparing the new position against the previous position for each competitor; both recomputed on every competitor update
-- [x] No other state is persisted; backend replays full state on every WebSocket connect; "Clear all data" reloads the page
-- [x] Reconnect every 5s on lost connection, show error
+### Features
+- [x] Node 24 LTS, Angular, CoreUI; dev server on `4200`, prod server (nginx, config in its own folder) on `8888`
+- [x] The backend URL is a runtime environment variable of the container, never hardcoded
+- [x] The match to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the match picker is offered
+- [x] Match picker lists today's matches as `<start> - <end> · <name> (<venue>)`; choosing one reloads the page on that match; the list is asked again every 5 minutes; with no matches the page says so
+- [x] Auto-connect on load; reconnect every 5s on a lost connection and show it; a refused competition is not retried; a silent connection and a match that is not live (with the data source's own message) are reported instead of loading forever
+- [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
+- [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
+- [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
+- [x] Accessible: no axe violations, keyboard selection of mass-start rows, contrast of badges, controls of at least 24px
 
-### Dashboard
-- [x] Auto-connect on page load; show pulsing placeholder animations while connecting
-- [x] "Clear all data" button: clears localStorage (threshold only) and reloads the page
-- [x] Group threshold input in top bar: numeric field (seconds, 0–10), updates grouping live, persisted in localStorage
-- [x] Max groups input in top bar: numeric field (default 4); `0` disables the group strip **and** the group separator lines in the standings entirely; competitors beyond the last group are collected into a synthetic "Tail of the race" group; persisted in localStorage
-- [x] Top bar has two collapsible setting groups (both collapsed by default, toggled by clicking their label button): **Display** (contains Follow) and **Mass Start** (contains all mass-start-specific settings, hidden entirely when no mass start distance present); each setting inside a group has a CSS hover popover anchored below it with a bold title and description
-- [x] **Follow** toggle: checkbox in Display settings (default off); persisted in localStorage
-- [x] **Lap times** toggle: checkbox in Mass Start settings (default on); when unchecked the lap-time badge strip (including placeholders) is hidden but the **lap counter badge remains visible and vertically aligned across all rows**; setting persisted in localStorage
-- [x] Hide the Mass Start settings group entirely when there is no mass start in any of the distances
+### Data (unit specs: `src/app/logic/*.spec.ts`, `src/app/components/dashboard/auto-follow.spec.ts`)
+- [x] `distance_meta` and `competitor_update` messages are applied to local state; `raceIds` per heat group restores the cards on reconnect; the backend replays everything on connect, nothing else is stored apart from the settings
+- [x] Updates are queued; a render cycle completes before the next (`RENDER_INTERVAL_MS`, default 250 ms)
+- [x] Mass start positions: laps descending, then total time ascending, no time last; `position_change` (`up`, `down`, `null`) comes from the previous position; `is_final_lap` is `laps_remaining === 1`
+- [x] Standings groups use the group threshold (default 2.0 s); the first group is "Head of the race" until anyone finishes, then "Group 1"; the rest "Group X", overflow "Tail of the race"; gaps are against the leader (time on the same lap, laps otherwise)
+- [x] Timed heats: consecutive heats merge into one row ("Heat X & Y") when the first uses only white/red and the next only yellow/blue lanes; lanes order white, red, yellow, blue
+- [x] Race codes: PR, TRC and the other records are purple, DQ red, DNF, FL and unknown orange; names are shown in full; DNS, DQ and WDR hide their placeholders; DNS and WDR are never live
+- [x] Times: lap times truncated (not rounded) to 1 decimal, totals to 3 (or 2 with thousandths off); leading zeros stripped; a result within the same hundredths as a personal best is told apart by the thousandths
+- [x] The live heat is the one whose lap times changed last (the later heat on a tie); the page follows by the same rule and never moves back to an earlier heat or distance
+- [x] The scroll target keeps the followed element a fixed fraction down the viewport, clamped to the page
 
-#### Rendering
-- [x] HTML page title: `<event name> | Live Results Dashboard`; updated reactively when event name changes
-- [x] Top bar: event `name` + connection status badge; dark/black background
-- [x] Event name in the top bar is truncated with ellipsis (`overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0`) to prevent it from wrapping to multiple rows
-- [x] Each distance in full-width accordion, sorted by `event_number` descending; accordion body height scales to fit content; expanded accordion header uses dark slate (`#2c3e50`)
-- [x] Completed ("Done") accordion items are rendered at a mild reduced opacity (suggested: opacity 0.85) unless they are currently expanded; timed-distance content must remain clearly readable (avoid heavy dimming); a timed distance is also considered Done when all its races are individually complete (finished or have an `invalid_reason`)
-- [x] Animate `is_live` badge; auto-expand live accordion on load (not on updates)
-- [x] Distance status badges rendered **before** the distance name in the accordion header: "Live" (red/animated) for the live distance; "Done" (black) for distances that are done (see Done definition above); no badge for upcoming/not-yet-live distances; timed distances also show a green **X/Y** progress badge (completed/total races, where completed = finished or has `invalid_reason`), and purple **PR N** / **TRC N** badges when at least one competitor has that remark — all shown after the distance name
-- [x] `start_number` badges: fixed min-width for 2 digits, centered
-- [x] Group strip updates are debounced: only rendered after no competitor changes for the group threshold duration
-
-##### Inside each accordion
-- [x] Mass start: top row of group cards; timed distance: one plain unstyled row per heat (no card, no border, no background — just a label and the competitor cards below it); inside each heat row, each competitor is rendered as a card (4 cards per row on wide viewports, 2 per row on medium, 1 per row on narrow); the card title contains the start-number badge + competitor name + optional remark/invalid_reason badges; the card body contains one row per expected lap distance (e.g. 200m, 600m, 1000m) showing the lap time when available or a static gray placeholder bar when pending
-- [x] Timed distance: consecutive heats are merged onto one row when the first heat uses only white/red lanes (yellow and blue slots empty) and the immediately following heat uses only yellow/blue lanes (white and red slots empty); the merged row is labelled **"Heat X & Y"** and shows all four lane slots combined; heats that don't meet this pattern are rendered separately as before
-- [x] Group cards: first group titled **"Head of the race"** while no one has finished; once anyone finishes the first group reverts to **"Group 1"**; overflow/tail group titled **"Tail of the race"**; intermediate groups titled "Group X"; card header shows only the group title; finished competitors are removed from group cards immediately
-- [x] Tail of the race group card: when any competitor in the tail group is 1 or more laps behind the leader (first group), show a gap badge (same style as other group gap badges) indicating the lap deficit (e.g. `+X lap(s)`) right-aligned in the card header
-- [x] "Leader" badge (green): shown **right-aligned in the leader's row** in the group strip card; hidden once anyone has finished; also shown inline after the leader's name in the standings row list (same condition)
-- [x] Gap badge (`+Xs` / `+X lap(s)`): shown **right-aligned in the first (top) competitor row** of each non-head group card; for the head group the right slot shows "Leader" (green) instead; if the top competitor is on their final lap and no gap badge applies, "Final lap" (blue) is shown instead
-- [x] Between groups: gap badge shown top-right in the card header; shows `+Xs` time diff when the group is on the same lap count as the leader (first group), or `+X lap(s)` when the group is at least one lap behind the leader — lap count is always compared against the first group, not the group immediately ahead
-- [x] Group strip shown immediately on initial load (no debounce delay on first render); subsequent updates still debounced by group threshold
-- [x] Sync highlight/animate updates between strip and standings list
-- [x] Animate position changes in both columns
-- [x] Group separator lines in standings list use the same naming: "Head of the race" / "Group X" / "Tail of the race"; first group reverts to "Group 1" once anyone finishes (mirrors card behaviour)
-
-##### Competitor list row
-- [x] All competitors; mass start: single list (black badges); timed distance: per-heat rows, per-competitor cards
-- [x] Timed distance competitor card: not clickable/selectable; card title (left to right) = lane-color badge + competitor name + optional **remark** badge + optional **`invalidReason`** badge (when `invalid_reason` is non-null) + right-aligned group: optional **purple `- X.XXX`** or **orange `+ X.XXX`** PR diff badge (once final lap done; purple = faster, orange = slower/equal; diff truncated to 3 decimals, formatted as lap time with dimmed decimal; no prefix) + **gray `PR: <time>`** badge (same style as split-time badges, time formatted as lap time); no "Finished" badge or watermark; remark/invalid_reason cards show a diagonal watermark (word-wrapped, centered, 1rem) and colored border — `invalid_reason` takes priority for the watermark text; watermark displays the full label name (e.g. "Personal Best", "Did not finish") not the raw code; color rules: **PR**, **TRC** = purple border + purple watermark + purple badge; **DQ** = red border + red watermark + red badge (the card is not faded: card-wide opacity broke text contrast); **DNF**, **FL** and unknown values = orange border + orange watermark + orange badge with dark text (not faded, same reason) (applies to both `remark` and `invalid_reason`); badges have a native tooltip on hover showing the full label name; known codes: PR = Personal Best, FL = Fall, DQ = Disqualified, DNS = Did not start, DNF = Did not finish, WDR = Withdrawn, TRC = Track Record; all cards in a heat row are equal height (`align-items: stretch`); card body = one row per expected lap distance (e.g. 200m, 600m, 1000m); each row: gray split-time badge (laps after the first, truncated to 1 decimal) then cumulative total time (3 decimals, truncated); `·` when pending; competitor cards in fixed lane-color columns **white → red → yellow → blue**; absent lanes use empty placeholder cards
-- [x] PR card color and watermark are driven exclusively by the source API's `remark` field (value `"PR"`); the frontend does **not** derive PR status from time comparison — `personal_record` drives only the PR header badges (gray PR time badge + purple/orange diff badge shown once the final lap is done); a competitor may therefore have `personal_record` set and a time faster than it without the PR watermark/card color if the source API did not set `remark: "PR"` for that race (e.g. the same competitor's second race in a session that also beats their pre-event PR); this is by design — the source API is treated as authoritative for the remark field
-- [x] Timed distance heat rows: a **single active-row indicator** (2px blue `box-shadow` ring, `border-radius: 0.375rem`) is applied to the `.timed-heat-row` that contains the most recently updated competitor, measured globally across all timed distances; only one row can be active at a time; updated on every data change via the `activeHeatKey: { distanceId, label }` property (set by a `sortedDistances$` subscription that scans all timed heat groups for the highest `lastUpdated` timestamp)
-- [x] Mockserver and backend send lap times truncated to 3 decimal places; the frontend receives up to 3 decimals but displays lap-time badges truncated to 1 decimal (not rounded); leading zeros are still stripped and the decimal part is shown smaller and muted
-- [x] Group cards: group leader right-side slot shows **"Final lap"** label (blue) when `is_final_lap` is true (frontend-computed), nothing otherwise; subsequent competitors show their gap to the **group leader**: time diff (`+Xs`) when both have a `total_time` and are on the same lap; lap diff (`+X lap(s)`) when the competitor is on a different lap count than the group leader or has no `total_time`
-- [x] Top bar layout (left to right): event name → connection status badge → (ms-auto) **Display** collapsible group → **Mass Start** collapsible group (hidden when no mass start)
-- [x] Mass-start competitor rows have a **three-column** flex layout: **[left]** `flex: 0 1 auto` — rank + start number + name (up to 18rem) + status badges; **[centre]** `flex: 1 1 0` — scrollable lap-time badge strip with a fixed left offset and the lap counter as plain text (`X/total`) appended **after** the badges inside the strip — lap counter is always visible regardless of the Lap times toggle; **[right]** `flex: 0 0 auto` — gap / total time; badge colors: **green** = within threshold, **orange** = slower, **purple** = faster; lap times truncated to 1 decimal; only latest badge full opacity; new badge pops with spring overshoot; spacing between consecutive lap-time badges is reduced to a single whitespace (no larger gap)
-- [x] "Final lap" (blue) badge: rendered immediately to the right of the lap counter inside the centre column (i.e. between the lap counter and the right column that shows gap/total time); finished competitor rows are slightly opaque; mass-start finished state shown as a subtle muted green **"Finished"** label in the right column before the total time — no badge, no full-row watermark
-- [x] All competitors show either their `gap_to_above` (time diff or lap diff) **or** their `formatted_total_time` — never both; group leaders and finished competitors show `formatted_total_time`; non-leader unfinished competitors show `gap_to_above` instead; rendered before the laps badge
-- [x] Rank prefix: "1ˢᵗ" style with raised superscript, light gray
-- [x] Laps badge: **mass start only** — "X/total" with total in small gray; fixed min-width for "XX/XX" (5 chars + padding), centered, monospace, rendered inline after the time/gap field; **timed distance**: no laps badge, no "Finished" badge, no finished watermark — finished state is not visually annotated beyond the text dimming that applies to all finished rows; pending lap slots show a static (non-animated) gray placeholder bar
-- [x] Mass start: when a competitor has no total time yet, display a pending symbol (e.g. `·` or `—`) instead of a time string; never show a "No Time" text label anywhere in the UI
-- [x] Time: decimals in small gray
-- [x] Animate row background to light yellow on update for 1s **only when the competitor received an actual backend update**; no highlight on restore or group recompute
-- [x] On each competitor update: (1) recompute positions and resort `processedRaces` immediately; (2) flash-highlight the updated row at its new sorted position for 1s; (3) show the finishing line below that row for the same 1s; the deferred sort is removed — sorting always happens before the highlight, never after
-- [x] Finishing line: rendered as an **inline DOM element** in the list flow, below the competitor currently at `finishingLineAfter`; styled as a solid 3px bright orange line with a small "Lap completed" label; `finishingLineAfter` is set to the id of the most recently updated competitor after the list has been resorted; it **persists** at that position until a new competitor update moves it; never shown in more than one place at a time
-- [x] Group separator lines with group name; styled as a thin 1px gray line; small top margin above each group divider; a gray transparent count badge (competitor count) and an orange gap badge (`+Xs` / `+X lap(s)`, same value as the group card header gap) are rendered inline after the group name on the separator line; head group shows no gap badge
-- [x] Click to select competitor (mass start only); reflected in both strip and standings; click again/elsewhere to deselect; timed distance cards are not clickable
+### UI (e2e specs: `frontend/e2e`)
+- [x] Page title `<event name> | Live Results Dashboard`; the event name is the page heading, replaced visually by the match picker; top bar dark, pinned with the open distance title below it; the title shrinks while pinned
+- [x] Distances in a full-width accordion by `event_number` descending; the live one opens on load; done ones are slightly dimmed; badges before the name: Live (animated), Done, X/Y progress, PR N / TRC N after it
+- [x] Mass start: group cards in a strip pinned below the title, and one standings list with rank, start number, name, gap or total time, lap badges coloured by the lap diff rules, laps counter and Final lap badge; rows can be selected; a lap times toggle hides only the badges
+- [x] Timed distance: one plain row per heat with cards in lane columns: four per row from 1280px, two from 768px, one below; lane sets without a racer are hidden on narrow screens; the cards of a row, and their titles, are equally tall
+- [x] Card title: name with category / club small below it; remark and invalid badges and the personal best on a line below, merged to the right of the name while racing; a card without codes keeps its title height
+- [x] Card body: lap badges with their distance above, total time at the right (on its own line when it does not fit), grey placeholders for laps to come (hidden but keeping their room for DNS, DQ, WDR)
+- [x] Watermarks, centred in the title: NEW PERSONAL BEST with its difference, `+ diff` in orange when slower than the personal best, the record or code name; a card without a time centres it on the whole card at four lanes
+- [x] The live heat has a thick red border all around and a Live badge on its racers; the page never scrolls sideways; long and unbreakable names stay inside their cards; large screens scale the root font size
+- [x] Narrow screens: match picker and a cogwheel button share one row; wide screens: a wider picker and the label on the settings button
