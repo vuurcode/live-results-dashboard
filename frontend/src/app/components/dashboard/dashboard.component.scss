@@ -149,7 +149,7 @@
   background-color: rgba(255,255,255,0.1);
   border-color: rgba(255,255,255,0.25);
   color: #fff;
-  option { color: #212529; }
+  option { color: #212529; padding: 0.35rem 0.75rem; } // side padding is honoured by Chromium and Firefox popups
 }
 @media (max-width: 767.98px) {
   .topbar-competitions { flex: 1 1 0; min-width: 0; }
