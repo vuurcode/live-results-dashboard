@@ -427,6 +427,10 @@ func TestUpstreamURL(t *testing.T) {
 		{"http://h/api/data", "http://h/api/data?competitionId=abc"},
 		{"http://h/api/data?x=1", "http://h/api/data?competitionId=abc&x=1"},
 		{"http://h/c/{id}/results", "http://h/c/abc/results"},
+		{"http://h", "http://h/?competitionId=abc"},
+		{"http://h/", "http://h/?competitionId=abc"},
+		{"http://h:8080?x=1", "http://h:8080/?competitionId=abc&x=1"},
+		{"http://h/api/data/", "http://h/api/data/?competitionId=abc"},
 	}
 	for _, c := range cases {
 		got, err := config{dataSourceURL: c.base}.upstreamURL("abc")

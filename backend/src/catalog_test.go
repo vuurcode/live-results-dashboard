@@ -150,6 +150,11 @@ func TestOriginOfAndZones(t *testing.T) {
 	if got := originOf("https://example.test/api/data?x=1"); got != "https://example.test" {
 		t.Errorf("originOf = %q", got)
 	}
+	for _, in := range []string{"https://example.test", "https://example.test/", "https://example.test:8443/x/"} {
+		if got := originOf(in); !strings.HasPrefix(in, got) || strings.Count(got, "/") != 2 {
+			t.Errorf("originOf(%q) = %q", in, got)
+		}
+	}
 	if got := originOf("https://example.test/Competition/{id}"); got != "https://example.test" {
 		t.Errorf("originOf with {id} = %q", got)
 	}
@@ -161,5 +166,20 @@ func TestOriginOfAndZones(t *testing.T) {
 	}
 	if got := loadZone("Nowhere Standard Time"); got != time.UTC {
 		t.Errorf("unknown zone = %v", got)
+	}
+}
+
+func TestCatalogBaseWithAndWithoutTrailingSlash(t *testing.T) {
+	for _, suffix := range []string{"", "/"} {
+		e := newCatalogEnv(t, comp("m", "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-24T19:00:00Z"))
+		cfg := config{catalogURL: e.cat.base.String() + suffix, catalogTTL: time.Hour, venueCountry: "NED", venueDiscipline: "SpeedSkating.LongTrack"}
+		cat, err := newCatalog(cfg, &userAgent{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		cat.now = func() time.Time { return e.now }
+		if list, err := cat.today(context.Background()); err != nil || len(list) != 1 {
+			t.Errorf("catalog URL suffix %q: %v, %v", suffix, ids(list), err)
+		}
 	}
 }

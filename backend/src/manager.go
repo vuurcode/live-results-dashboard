@@ -51,6 +51,9 @@ func (c config) upstreamURL(id string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if u.Path == "" {
+		u.Path = "/" // `https://host` and `https://host/` are the same request; send the path explicitly
+	}
 	q := u.Query()
 	q.Set("competitionId", id)
 	u.RawQuery = q.Encode()

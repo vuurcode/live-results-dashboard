@@ -12,7 +12,7 @@ Developed with assistance from [Claude Code](https://claude.com/claude-code).
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `DATA_SOURCE_URL` | `http://localhost:8080/api/data` | Live data source; `{id}` is replaced by the competition id, otherwise `competitionId=` is added |
+| `DATA_SOURCE_URL` | `http://localhost:8080/api/data` | Live data source. `{id}` in it is replaced by the competition id, otherwise `competitionId=<id>` is added as a query parameter. A trailing `/` is optional for a bare host (`https://host` and `https://host/` are the same); other paths are used exactly as given. Must not be set to an empty value |
 | `CATALOG_URL` | origin of `DATA_SOURCE_URL` | Base URL serving `/api/venues` and `/api/competitions` |
 | `VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
