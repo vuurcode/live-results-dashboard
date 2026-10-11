@@ -22,6 +22,7 @@ export interface BackendStatus {
 }
 
 /** Close code the backend uses to refuse a connection that names no valid competition. */
+const LOST_ERROR_GRACE_MS = 3000;
 const CLOSE_NO_COMPETITION = 1008;
 const RENDER_INTERVAL_MS = 250;
 const DEFAULT_GROUP_THRESHOLD = 2.0;
@@ -149,9 +150,9 @@ export class DataService {
   private _loadShowLapTimes(): boolean {
     try {
       const v = localStorage.getItem(STORAGE_KEY_SHOW_LAP_TIMES);
-      if (v !== null) return v !== 'false';
+      if (v !== null) return v === 'true';
     } catch { /* noop */ }
-    return true;
+    return false;
   }
 
   /** Compact display of long-track cards: lap time badges on one wrapping row until the final time is known. On by default. */
@@ -253,12 +254,15 @@ export class DataService {
   private queue: BackendMessage[] = [];
   private renderLoopRunning = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private lostErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
   private noCompetition = false;
   private ngZone = inject(NgZone);
   private ts = inject(TranslateService);
 
   constructor() {
+    // A page restored from the back/forward cache comes back with a dead socket and stale results; load it afresh.
+    window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
     this.connect();
   }
 
@@ -285,6 +289,7 @@ export class DataService {
 
   disconnect() {
     this._cancelReconnect();
+    this._cancelLostError();
     this.socket$?.complete();
     this.socket$ = null;
     this._status.next({ status: 'Disconnected', url: '', interval: null });
@@ -296,6 +301,7 @@ export class DataService {
   }
 
   private _enqueue(msg: BackendMessage) {
+    this._cancelLostError();
     this.queue.push(msg);
     if (!this.renderLoopRunning) {
       this.renderLoopRunning = true;
@@ -517,6 +523,22 @@ export class DataService {
     }, 5000);
   }
 
+  /** A dropped connection is usually back within moments, so the banner only appears if it stays down. */
+  private _scheduleLostError() {
+    if (this.lostErrorTimer) return;
+    this.lostErrorTimer = setTimeout(() => {
+      this.lostErrorTimer = null;
+      this.addError('Connection to backend lost. Reconnecting in 5s…');
+    }, LOST_ERROR_GRACE_MS);
+  }
+
+  private _cancelLostError() {
+    if (this.lostErrorTimer) {
+      clearTimeout(this.lostErrorTimer);
+      this.lostErrorTimer = null;
+    }
+  }
+
   private _cancelReconnect() {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -535,7 +557,7 @@ export class DataService {
   private _handleError(err: unknown) {
     if (this._stopForNoCompetition()) return;
     console.error('WebSocket error:', err);
-    this.addError('Connection to backend lost. Reconnecting in 5s…');
+    this._scheduleLostError();
     this.socket$ = null;
     this._status.next({ status: 'Error', url: '', interval: null });
     this._scheduleReconnect();
@@ -547,7 +569,7 @@ export class DataService {
       this._status.value.status === 'Connected' ||
       this._status.value.status === 'Connecting...'
     ) {
-      this.addError('Connection to backend lost. Reconnecting in 5s…');
+      this._scheduleLostError();
     }
     this.socket$ = null;
     this._status.next({ status: 'Disconnected', url: '', interval: null });

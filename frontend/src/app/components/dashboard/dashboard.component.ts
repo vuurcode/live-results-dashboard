@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
 import { FeedStatus, TodayMatch, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
-import { Observable, combineLatest, defer, from, map, startWith, Subscription, timer } from 'rxjs';
+import { Observable, combineLatest, concat, defer, from, map, of, startWith, Subscription, switchMap, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
@@ -69,7 +69,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeHeatKey: { distanceId: string; label: string } | null = null;
 
   private currentFollowKey: string | null = null;
+  /** Index of the heat being followed in the live distance; auto-follow only moves forward from it. */
+  private followHeatIndex = -1;
   private followScrollSub: Subscription | null = null;
+  private scrolledToLiveOnLoad = false;
   private activeHeatSub: Subscription | null = null;
   private resetSub: Subscription | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -79,6 +82,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Matches happening today, for the match picker in the top bar. */
   readonly todayMatches$: Observable<TodayMatch[]> = defer(() => from(this.dataService.todayMatches()));
+
+  /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
+  selectedLabelLength(matches: TodayMatch[]): number {
+    const m = matches.find(x => x.id === this.dataService.competitionId);
+    return m ? `${m.venue.name} · ${m.name}`.length : 20;
+  }
 
   /** Open another match; the page reads its competitionId on load. */
   onMatchChange(event: Event): void {
@@ -201,7 +210,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.errors$ = this.dataService.errors$;
     this.emptyNotice$ = combineLatest([
       this.dataService.feed$,
-      this.dataService.status$,
+      this.dataService.status$.pipe(
+        // a dropped connection is usually back within moments, so the disconnected notice waits a little
+        switchMap(status => status.status === 'Error' || status.status === 'Disconnected'
+          ? concat(of({ ...status, status: 'Connecting...' as const }), timer(DISCONNECT_GRACE_MS).pipe(map(() => status)))
+          : of(status)),
+      ),
       timer(10_000).pipe(map(() => true), startWith(false)), // a connection that stays silent is reported, not shown as loading forever
     ]).pipe(
       map(([feed, status, waitedLong]) => emptyNotice(feed, status.status, waitedLong)),
@@ -245,17 +259,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.initialLiveId = null;
       this.liveEventNumber = null;
       this.currentFollowKey = null;
+      this.followHeatIndex = -1;
       this.cdr.markForCheck();
     });
     this.followScrollSub = this.sortedDistances$.subscribe(distances => {
-      if (!this.dataService.follow) return;
       const live = distances.find(d => d.isLive);
       if (!live) return;
+      if (!this.dataService.follow) {
+        // without auto-follow the page still lands on the live distance once, when it first shows up
+        if (!this.scrolledToLiveOnLoad) {
+          this.scrolledToLiveOnLoad = true;
+          requestAnimationFrame(() => this._scrollTo(document.querySelector(`[data-distance-header="${live.id}"]`) as HTMLElement | null, this.HEADER_ANCHOR));
+        }
+        return;
+      }
       // When the live distance changes, expand its accordion and scroll to it
       if (live.id !== this.initialLiveId) {
         this.initialLiveId = live.id;
         this.liveEventNumber = live.eventNumber;
         this.currentFollowKey = null;
+        this.followHeatIndex = -1;
         this.cdr.markForCheck();
         requestAnimationFrame(() => {
           const el = document.querySelector(`[data-distance-header="${live.id}"]`) as HTMLElement | null;
@@ -378,6 +401,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const checked = (event.target as HTMLInputElement).checked;
     this.dataService.setFollow(checked);
     this.currentFollowKey = null;
+    this.followHeatIndex = -1;
   }
 
 /** True when a timed race counts as complete: all laps done OR has an invalid_reason. */
@@ -412,10 +436,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (!distance.isMassStart) {
       const heatGroups = this.mergedHeatGroups(distance);
-      const currentIdx = heatGroups.findIndex(g =>
-        g.races.some(r => r != null && isRecentUpdate(r.lastUpdated))
-      );
-      if (currentIdx === -1) return;
+      const currentIdx = heatGroups.reduce(
+        (last, g, i) => (g.races.some(r => r != null && isRecentUpdate(r.lastUpdated)) ? i : last), -1);
+      // an update in an earlier heat (e.g. a manual time correction) must not pull the page back
+      if (currentIdx === -1 || currentIdx < this.followHeatIndex) return;
+      this.followHeatIndex = currentIdx;
       const current = heatGroups[currentIdx];
       key = `${distance.id}:${current.label}`;
       selector = `[data-distance-id="${distance.id}"][data-heat-label="${current.label}"]`;
@@ -449,6 +474,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
 }
+
+const DISCONNECT_GRACE_MS = 3000;
 
 interface EmptyNotice {
   titleKey: TranslationKey;

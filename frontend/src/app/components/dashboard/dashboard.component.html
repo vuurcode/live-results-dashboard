@@ -16,7 +16,7 @@
     @if (matches.length > 0) {
       <div class="topbar-matches d-flex align-items-center gap-2" [class.topbar-matches-title]="picked || noMatch">
         <label class="small text-nowrap mb-0 setting-label" [class.visually-hidden]="picked || noMatch" for="matchSelect">{{ 'todayMatchesLabel' | translate }}</label>
-        <select id="matchSelect" class="form-select form-select-sm topbar-match-select" [attr.aria-describedby]="noMatch ? 'matchHint' : null" (change)="onMatchChange($event)">
+        <select id="matchSelect" class="form-select form-select-sm topbar-match-select" [style.--match-label-length]="selectedLabelLength(matches)" [attr.aria-describedby]="noMatch ? 'matchHint' : null" (change)="onMatchChange($event)">
           @if (!picked) {
             <option value="" selected disabled>{{ 'noMatchOption' | translate }}</option>
           }
@@ -188,7 +188,7 @@
     </div>
   </header>
   <!-- ===== ERRORS ===== -->
-  <div class="px-4 pt-2">
+  <div class="px-2 pt-2">
     @for (error of errors$ | async; track $index; let i = $index) {
       <c-alert color="danger" [dismissible]="true" (visibleChange)="!$event && dataService.dismissError(i)">
         {{ error }}
@@ -196,7 +196,7 @@
     }
   </div>
   <!-- ===== MAIN CONTENT ===== -->
-  <main class="flex-grow-1 px-4 pb-4">
+  <main class="flex-grow-1 px-2 pb-4">
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {

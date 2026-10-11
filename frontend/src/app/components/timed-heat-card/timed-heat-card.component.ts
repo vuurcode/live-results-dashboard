@@ -20,7 +20,7 @@ const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
 })
 export class TimedHeatCardComponent {
   @Input({ required: true }) label!: string;
-  @Input({ required: true }) races!: (CompetitorUpdate | null)[];
+  private rawRaces: (CompetitorUpdate | null)[] = [];
   @Input() maxLanes = 0;
   @Input() laneColors: (string | null)[] = [];
   @Input() lapSchedule: number[] = [];
@@ -32,6 +32,29 @@ export class TimedHeatCardComponent {
   /** Always show thousandths; otherwise hundredths, with thousandths only where a PB needs them. */
   @Input() showThousandths = false;
   @Input() lapVarianceThreshold = 0;
+
+  private cappedFor: { raw: (CompetitorUpdate | null)[]; schedule: number[] } | null = null;
+  private capped: (CompetitorUpdate | null)[] = [];
+
+  /**
+   * The races with their laps limited to the distance's lap schedule. The data source sometimes reports a lap
+   * beyond the finish; it has no distance and would count towards the total, so it is dropped.
+   */
+  @Input({ required: true })
+  set races(value: (CompetitorUpdate | null)[]) {
+    this.rawRaces = value;
+  }
+  get races(): (CompetitorUpdate | null)[] {
+    if (this.cappedFor?.raw !== this.rawRaces || this.cappedFor.schedule !== this.lapSchedule) {
+      const max = this.lapSchedule.length;
+      this.capped = max === 0 ? this.rawRaces : this.rawRaces.map(r =>
+        r && r.lap_times && r.lap_times.length > max
+          ? { ...r, lap_times: r.lap_times.slice(0, max), laps_count: Math.min(r.laps_count, max) }
+          : r);
+      this.cappedFor = { raw: this.rawRaces, schedule: this.lapSchedule };
+    }
+    return this.capped;
+  }
 
   public ts = inject(TranslateService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -63,9 +86,14 @@ export class TimedHeatCardComponent {
     }
   }
 
-  /** True when the lap badges fill at least a whole row: the total time then gets a line of its own. */
+  /** True when the lap badges (the laps still to come included) fill at least a whole row: the total time then gets a line of its own. */
   totalOnOwnLine(race: CompetitorUpdate): boolean {
-    return this.columns > 0 && (race.lap_times?.length ?? 0) >= this.columns;
+    return this.columns > 0 && Math.max(race.lap_times?.length ?? 0, this.lapSchedule.length) >= this.columns;
+  }
+
+  /** Same rule as `totalOnOwnLine`, for the placeholder shown before the first lap: the laps still to come. */
+  ghostTotalOnOwnLine(): boolean {
+    return this.columns > 0 && this.lapSchedule.length >= this.columns;
   }
 
   isRecentUpdate = isRecentUpdate;
@@ -84,6 +112,7 @@ export class TimedHeatCardComponent {
     DNS: 'remarkDidNotStart',
     DNF: 'remarkDidNotFinish',
     WDR: 'remarkWithdrawn',
+    MT:  'remarkManualTime',
     TR:  'remarkNewTrackRecord',
     TRC: 'remarkTrackRecordCourse',
   };
@@ -205,6 +234,11 @@ export class TimedHeatCardComponent {
   compactLapColor(race: CompetitorUpdate, i: number): string {
     if (this.colorLaps && i === 1 && this.firstLapPartial()) return 'lap-badge-normal'; // nothing to compare with
     return this.colorLaps ? lapBadgeColor(race.lap_times, i, this.lapVarianceThreshold) : '';
+  }
+
+  /** Laps that have nothing fair to differ from, shown light grey while the diff colours are on: the first lap, and the second when the first is partial. */
+  noDeltaLap(i: number): boolean {
+    return this.colorLaps && (i === 0 || (i === 1 && this.firstLapPartial()));
   }
 
   /** True when the first lap is shorter than a full 400m lap (a start from the middle of the track): lap 2 has no fair comparison. */

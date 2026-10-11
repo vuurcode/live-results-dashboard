@@ -21,41 +21,42 @@
           [class.timed-card-trc]="timedCardColor(race) === 'trc'"
           [class.timed-card-red]="timedCardColor(race) === 'red'"
           [class.timed-card-orange]="timedCardColor(race) === 'orange'"
-          [attr.data-watermark]="timedWatermarkText(race)"
         >
-        @if (timedCardColor(race) === 'pr') {
-          @let prCmp = distanceMeters ? timedPrComparison(race, distanceMeters) : null;
-          <div class="timed-watermark timed-watermark-pr" aria-hidden="true">
-            <div class="timed-watermark-text">{{ ts.t('remarkNewPb') }}</div>
-            @if (prCmp) {
-              <div>{{ prCmp.faster ? '-' : '+' }} {{ splitFormattedTime(truncateLapTime(prCmp.diff, decimals(race)))[0] }}<small class="timed-watermark-decimal">{{ splitFormattedTime(truncateLapTime(prCmp.diff, decimals(race)))[1] }}</small></div>
-            }
-          </div>
-        }
-        <!-- Card title: the full name, with the status and PB badges on a line below -->
-        <div class="timed-comp-header">
-          <span class="timed-comp-name">{{ race.name }}</span>
-          <!-- category / club code, small below the name; the line keeps its height when there is none -->
-          <span class="timed-comp-meta">{{ metaLine(race) }}</span>
-          <!-- Badges on their own line; the row keeps its height when there are none -->
-          <div class="timed-comp-badges">
-            @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
-              <c-badge [ngClass]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
-            }
-            @if (race.invalid_reason) {
-              <c-badge [ngClass]="invalidBadgeClass(race.invalid_reason)" [title]="timedLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
-            }
-            @if (race.personal_record) {
-              <div class="ms-auto d-flex align-items-end gap-1">
-                @if (distanceMeters) {
-                  @let prComp = timedPrComparison(race, distanceMeters);
-                  @if (prComp && !prComp.faster) { <!-- a new PB shows its diff in the watermark -->
-                    <c-badge color="warning" class="timed-pr-diff-badge">+ {{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[1] }}</small></c-badge>
+        <!-- Card title: the full name, with the status and PB badges on a line below; the watermark sits at its bottom -->
+        <div class="timed-comp-title" [attr.data-watermark]="timedWatermarkText(race)">
+          @if (timedCardColor(race) === 'pr') {
+            @let prCmp = distanceMeters ? timedPrComparison(race, distanceMeters) : null;
+            <div class="timed-watermark timed-watermark-pr" aria-hidden="true">
+              <div class="timed-watermark-text">{{ ts.t('remarkNewPb') }}</div>
+              @if (prCmp) {
+                <div>{{ prCmp.faster ? '-' : '+' }} {{ splitFormattedTime(truncateLapTime(prCmp.diff, decimals(race)))[0] }}<small class="timed-watermark-decimal">{{ splitFormattedTime(truncateLapTime(prCmp.diff, decimals(race)))[1] }}</small></div>
+              }
+            </div>
+          }
+          <div class="timed-comp-header">
+            <span class="timed-comp-name">{{ race.name }}@if (active) { <c-badge color="danger" class="glowing-badge timed-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
+            <!-- category / club code, small below the name; the line keeps its height when there is none -->
+            <span class="timed-comp-meta">{{ metaLine(race) }}</span>
+            <!-- Badges on their own line; the row keeps its height when there are none -->
+            <div class="timed-comp-badges">
+              @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
+                <c-badge [ngClass]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
+              }
+              @if (race.invalid_reason) {
+                <c-badge [ngClass]="invalidBadgeClass(race.invalid_reason)" [title]="timedLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
+              }
+              @if (race.personal_record) {
+                <div class="ms-auto d-flex align-items-end gap-1">
+                  @if (distanceMeters) {
+                    @let prComp = timedPrComparison(race, distanceMeters);
+                    @if (prComp && !prComp.faster) { <!-- a new PB shows its diff in the watermark -->
+                      <c-badge color="warning" class="timed-pr-diff-badge">+ {{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(prComp.diff, decimals(race)))[1] }}</small></c-badge>
+                    }
                   }
-                }
-                <span class="timed-pb-current"><span class="timed-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="timed-split-badge" [class.timed-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>
-              </div>
-            }
+                  <span class="timed-pb-current"><span class="timed-pb-current-label">{{ ts.t(isPbImproved(race) ? 'pbPreviousLabel' : 'pbCurrentLabel') }}</span><c-badge class="timed-split-badge" [class.timed-pb-beaten]="isPbImproved(race)" [attr.title]="isPbImproved(race) ? ts.t('pbImprovedTitle') : null">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(race.personal_record, decimals(race)))[1] }}</small></c-badge></span>
+                </div>
+              }
+            </div>
           </div>
         </div>
         <!-- Card body: the lap times as badges on one row (wrapping for many laps), each with its distance above, and the total time so far -->
@@ -63,10 +64,33 @@
           @for (lap of race.lap_times; track $index; let last = $last) {
             <span class="timed-compact-lap">
               <span class="compact-dist">{{ lapSchedule[$index] }}m</span>
-              <c-badge class="timed-split-badge timed-compact-badge {{ compactLapColor(race, $index) }}" [attr.title]="compactBadgeTitle(race, $index)" [class.timed-compact-partial]="$first && colorLaps" [class.timed-compact-latest]="last && !compactDone(race)" [class.timed-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
+              <c-badge class="timed-split-badge timed-compact-badge {{ compactLapColor(race, $index) }}" [attr.title]="compactBadgeTitle(race, $index)" [class.timed-compact-partial]="noDeltaLap($index)" [class.timed-compact-latest]="last && !compactDone(race)" [class.timed-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
             </span>
           } @empty {
-            <span class="timed-static-placeholder"></span>
+            @if (!race.invalid_reason && lapSchedule.length > 0) {
+              <!-- Not started: the laps to come as empty light grey badges, so the card keeps its final shape -->
+              @for (distance of lapSchedule; track $index) {
+                <span class="timed-compact-lap" aria-hidden="true">
+                  <span class="compact-dist">{{ distance }}m</span>
+                  <c-badge class="timed-split-badge timed-ghost-badge">&nbsp;</c-badge>
+                </span>
+              }
+              <span class="timed-compact-final timed-ghost-final" [class.timed-compact-own-line]="ghostTotalOnOwnLine()" aria-hidden="true">
+                <span class="compact-reached">{{ ts.t('finishLabel') }} ({{ lapSchedule[lapSchedule.length - 1] }}m)</span>
+                <c-badge class="timed-split-badge timed-ghost-badge timed-ghost-total">&nbsp;</c-badge>
+              </span>
+            } @else {
+              <span class="timed-static-placeholder"></span>
+            }
+          }
+          @if (race.lap_times.length > 0 && !race.invalid_reason && !compactDone(race)) {
+            <!-- Under way: the laps still to come as empty light grey badges -->
+            @for (distance of lapSchedule.slice(race.lap_times.length); track $index) {
+              <span class="timed-compact-lap" aria-hidden="true">
+                <span class="compact-dist">{{ distance }}m</span>
+                <c-badge class="timed-split-badge timed-ghost-badge">&nbsp;</c-badge>
+              </span>
+            }
           }
           @let totalTime = compactTotalTime(race);
           @if (totalTime) {

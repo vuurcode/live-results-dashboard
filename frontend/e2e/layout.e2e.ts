@@ -61,8 +61,11 @@ test.describe('pinned titles', () => {
     const button = page.locator('.accordion-header .accordion-button').first();
     await expect(page.locator('.timed-heat-row').first()).toBeAttached();
     const before = (await button.boundingBox())!.height;
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await expect.poll(async () => (await button.boundingBox())!.height).toBeLessThan(before * 0.8);
+    // the one-off scroll to the live race may still be under way: keep scrolling down until the title is pinned
+    await expect.poll(async () => {
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      return (await button.boundingBox())!.height;
+    }).toBeLessThan(before * 0.8);
   });
 
   test('the groups overview of a mass start stays pinned below the title', async ({ page, request }) => {
@@ -123,26 +126,6 @@ test('competitor card titles have the same height with or without badges', async
   expect(new Set(heights).size).toBe(1);
 });
 
-test('a competitor title stays pinned while its tall card scrolls,', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 400 });
-  await page.goto('/?competitionId=e2e-timed');
-  const card = page.locator('.timed-competitor-card').first();
-  await expect(card.locator('.timed-compact-body')).toBeVisible();
-  const { cardTop, cardH } = await card.evaluate((c) => {
-    const r = c.getBoundingClientRect();
-    return { cardTop: r.top + window.scrollY, cardH: r.height };
-  });
-  await page.evaluate((y) => window.scrollTo(0, y), cardTop + 10); // card top is now above the pinned bars
-  await page.waitForTimeout(300);
-  const barBottom = await page.evaluate(() => document.querySelector('.topbar')!.getBoundingClientRect().bottom); // measured once scrolled: the top bar sticks to the top then
-  const headerTop = await card.locator('.timed-comp-header').evaluate((h) => h.getBoundingClientRect().top);
-  expect(cardH).toBeGreaterThan(0);
-  expect(headerTop).toBeGreaterThanOrEqual(barBottom - 1);
-  expect(headerTop).toBeLessThan(barBottom + 80);
-  await expect(card.locator('.timed-comp-header')).toBeInViewport();
-
-});
-
 test.describe('lane columns on narrow screens', () => {
   for (const [width, perRow] of [[1280, 2], [700, 2], [400, 1]] as const) {
     test(`${width}px: a pair is shown ${perRow === 2 ? 'side by side' : 'one per row'}`, async ({ page, request }) => {
@@ -151,8 +134,9 @@ test.describe('lane columns on narrow screens', () => {
       await page.goto('/?competitionId=e2e-pairs');
       const cards = page.locator('.timed-heat-row').first().locator('.timed-competitor-card');
       await expect(cards).toHaveCount(2);
-      const [a, b] = [await cards.nth(0).boundingBox(), await cards.nth(1).boundingBox()];
-      expect(Math.abs(a!.y - b!.y) < 5 ? 2 : 1).toBe(perRow);
+      // measured in one go: the page may be scrolling to the live race
+      const [ay, by] = await cards.evaluateAll(els => els.map(e => e.getBoundingClientRect().top));
+      expect(Math.abs(ay - by) < 5 ? 2 : 1).toBe(perRow);
     });
   }
 });

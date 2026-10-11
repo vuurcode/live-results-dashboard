@@ -40,3 +40,7 @@ html {
   border: 1px solid #dee2e6;
 }
 .skeleton-accordion-header { border-bottom: 1px solid #dee2e6; }
+
+// Shrinking a pinned distance title moves the content below it. With scroll anchoring the browser answers by scrolling,
+// which un-pins the title again right at the pinning boundary and makes the bars flicker.
+html { overflow-anchor: none; }

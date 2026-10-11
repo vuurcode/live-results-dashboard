@@ -122,6 +122,11 @@ test.describe('mass start', () => {
     await expect(page.locator('.timed-compact-badge[class*="lap-badge-"]')).toHaveCount(0);
     await toggle.check();
     await expect(page.locator('.timed-compact-badge.lap-badge-normal').first()).toBeVisible();
+    // 1000 m opens with a 200 m lap: that lap and the next have nothing fair to differ from (light grey), the third is coloured
+    const lapBadge = (n: number) => page.locator(`.timed-compact-lap:nth-child(${n}) .timed-compact-badge`).first();
+    await expect(lapBadge(2)).toHaveClass(/timed-compact-partial/);
+    await expect(lapBadge(3)).toBeVisible({ timeout: 30000 });
+    await expect(lapBadge(3)).not.toHaveClass(/timed-compact-partial/);
     // the Lap delta threshold is configurable here too, and only while the colours are on
     const threshold = page.getByLabel('Lap time diff threshold');
     await expect(threshold).toBeVisible();

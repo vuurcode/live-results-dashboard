@@ -85,6 +85,7 @@ export interface Translations {
   remarkDidNotStart: string;
   remarkDidNotFinish: string;
   remarkWithdrawn: string;
+  remarkManualTime: string;
   remarkNewTrackRecord: string;
   remarkTrackRecordCourse: string;
   // Mass start lap counter (HTML, contains underline span)
@@ -106,7 +107,7 @@ export const en: Translations = {
   thousandthsPopoverBody: 'Long track: show times in hundredths, as is usual in skating. Thousandths appear automatically when they are needed to settle a personal best, i.e. when the new time and the previous best have the same hundredths. Switch on to always show thousandths.',
   compactColorsLabel: 'Lap time diff colours',
   compactColorsPopoverTitle: 'Lap time diff colours',
-  compactColorsPopoverBody: 'Colour the compact lap badges by how each lap compares to the previous one, like mass start, using the <i>Lap time diff threshold</i>. <br><br><span class="popover-badge popover-badge-green">green</span> \u2192 Within threshold <br><span class="popover-badge popover-badge-orange">orange</span> \u2192 Slower <br><span class="popover-badge popover-badge-purple">purple</span> \u2192 Faster',
+  compactColorsPopoverBody: 'Colour the compact lap badges by how each lap compares to the previous one, like mass start, using the <i>Lap time diff threshold</i>. <br><br><span class="popover-badge popover-badge-green">green</span> \u2192 Within threshold <br><span class="popover-badge popover-badge-orange">orange</span> \u2192 Slower <br><span class="popover-badge popover-badge-purple">purple</span> \u2192 Faster <br><span class="popover-badge popover-badge-light">light grey</span> \u2192 No difference shown: the first lap, and the second when the first is a partial lap (e.g. on a 5000 m)',
   feedNotLiveTitle: 'This match is not live yet',
   feedNotLiveBody: 'Results show up here as soon as the timing starts. This page updates by itself.',
   feedSourceMessage: 'Message from the results source:',
@@ -128,7 +129,7 @@ export const en: Translations = {
   tooltipTotalTime: 'Total time',
   followLabel: 'Auto-follow on updates',
   followPopoverTitle: 'Auto-follow on updates',
-  followPopoverBody: 'Automatically scroll to keep the live distance in view as results come in.',
+  followPopoverBody: 'Have this page automatically scroll to keep the live distance in view as results come in. Disable this to scroll yourself.',
   maxGapLabel: 'Max seconds gap between groups',
   maxGapPopoverTitle: 'Max seconds gap between groups',
   maxGapPopoverBody:
@@ -171,6 +172,7 @@ export const en: Translations = {
   remarkDidNotStart: 'Did not start',
   remarkDidNotFinish: 'Did not finish',
   remarkWithdrawn: 'Withdrawn',
+  remarkManualTime: 'Manual Time',
   remarkNewTrackRecord: 'Track Record',
   remarkTrackRecordCourse: 'Track Record Course',
   moreLapAfterRound: '{n} more lap <span style="text-decoration:underline">after</span> this round',
@@ -191,7 +193,7 @@ export const nl: Translations = {
   thousandthsPopoverBody: 'Langebaan: toon tijden in honderdsten, zoals gebruikelijk bij schaatsen. Duizendsten verschijnen vanzelf als ze nodig zijn om een persoonlijk record te beslissen, dus als de nieuwe tijd en het vorige record dezelfde honderdsten hebben. Zet aan om altijd duizendsten te tonen.',
   compactColorsLabel: 'Kleur rondetijdverschil',
   compactColorsPopoverTitle: 'Kleur rondetijdverschil',
-  compactColorsPopoverBody: 'Kleur de compacte rondebadges naar het verschil met de vorige ronde, zoals bij massastart, met de drempel <i>rondetijdverschil</i>. <br><br><span class="popover-badge popover-badge-green">groen</span> \u2192 Binnen drempel <br><span class="popover-badge popover-badge-orange">oranje</span> \u2192 Langzamer <br><span class="popover-badge popover-badge-purple">paars</span> \u2192 Sneller',
+  compactColorsPopoverBody: 'Kleur de compacte rondebadges naar het verschil met de vorige ronde, zoals bij massastart, met de drempel <i>rondetijdverschil</i>. <br><br><span class="popover-badge popover-badge-green">groen</span> \u2192 Binnen drempel <br><span class="popover-badge popover-badge-orange">oranje</span> \u2192 Langzamer <br><span class="popover-badge popover-badge-purple">paars</span> \u2192 Sneller <br><span class="popover-badge popover-badge-light">lichtgrijs</span> \u2192 Geen verschil getoond: de eerste ronde, en de tweede als de eerste een deel van een ronde is (bijv. op de 5000 m)',
   feedNotLiveTitle: 'Deze wedstrijd is nog niet live',
   feedNotLiveBody: 'Resultaten verschijnen hier zodra de tijdwaarneming start. Deze pagina ververst vanzelf.',
   feedSourceMessage: 'Bericht van de resultatenbron:',
@@ -213,7 +215,7 @@ export const nl: Translations = {
   tooltipTotalTime: 'Totaaltijd',
   followLabel: 'Volg automatisch bij updates',
   followPopoverTitle: 'Volg automatisch bij updates',
-  followPopoverBody: 'Scroll automatisch mee om de live afstand in beeld te houden terwijl resultaten binnenkomen.',
+  followPopoverBody: 'Laat deze pagina automatisch meescrollen om de live afstand in beeld te houden terwijl resultaten binnenkomen. Zet dit uit om zelf te scrollen.',
   maxGapLabel: 'Max. seconden verschil tussen groepen',
   maxGapPopoverTitle: 'Max. seconden verschil tussen groepen',
   maxGapPopoverBody:
@@ -256,6 +258,7 @@ export const nl: Translations = {
   remarkDidNotStart: 'Niet gestart',
   remarkDidNotFinish: 'Niet gefinisht',
   remarkWithdrawn: 'Teruggetrokken',
+  remarkManualTime: 'Handmatige tijd',
   remarkNewTrackRecord: 'Baanrecord',
   remarkTrackRecordCourse: 'Baanrecord parcours',
   moreLapAfterRound: 'nog {n} ronde <span style="text-decoration:underline">na</span> deze ronde',
