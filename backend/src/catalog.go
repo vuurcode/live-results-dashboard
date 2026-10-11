@@ -85,7 +85,7 @@ var windowsZones = map[string]string{
 	"Pacific Standard Time":          "America/Los_Angeles",
 }
 
-func loadZone(name string) *time.Location {
+func loadZone(competition, name string) *time.Location {
 	if iana, ok := windowsZones[name]; ok {
 		name = iana
 	} else if name == "undefined" || strings.HasPrefix(name, "W. Europe") {
@@ -96,7 +96,7 @@ func loadZone(name string) *time.Location {
 	if loc, err := time.LoadLocation(name); err == nil && name != "" {
 		return loc
 	}
-	slog.Warn("Unknown time zone, using UTC", "zone", name)
+	slog.Warn("Unknown time zone, using UTC", "competition", competition, "zone", name)
 	return time.UTC
 }
 
@@ -225,7 +225,7 @@ func (c *catalog) loadMatches(ctx context.Context) error {
 		}
 		m := &match{
 			ID: r.ID, Code: r.Code, Name: r.Name, AllowToSendLive: r.AllowToSendLive, Venue: v,
-			Start: r.Starts.UTC().Format(time.RFC3339), zone: loadZone(r.TimeZone), from: r.Starts, to: r.Ends,
+			Start: r.Starts.UTC().Format(time.RFC3339), zone: loadZone(r.ID, r.TimeZone), from: r.Starts, to: r.Ends,
 		}
 		if r.Extra != nil {
 			m.Extra = *r.Extra

@@ -51,10 +51,11 @@ type store struct {
 	comps     map[string]compEntry
 	distOrder []string
 	raceOrder []string
+	log       *slog.Logger // carries the competition the store belongs to
 }
 
-func newStore() *store {
-	s := &store{}
+func newStore(log *slog.Logger) *store {
+	s := &store{log: log}
 	s.clear()
 	return s
 }
@@ -88,7 +89,7 @@ reset:
 	for _, d := range curr.distances {
 		for _, c := range d.competitors {
 			if prev, ok := s.comps[c.ID]; ok && c.LapsCount < prev.comp.LapsCount {
-				slog.Warn("Reset detected, clearing cache", "name", c.Name, "from", prev.comp.LapsCount, "to", c.LapsCount)
+				s.log.Warn("Reset detected, clearing cache", "name", c.Name, "from", prev.comp.LapsCount, "to", c.LapsCount)
 				res.reset = true
 				break reset
 			}

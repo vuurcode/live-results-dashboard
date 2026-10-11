@@ -158,18 +158,18 @@ func TestOriginOfAndZones(t *testing.T) {
 	if got := originOf("https://example.test/Competition/{id}"); got != "https://example.test" {
 		t.Errorf("originOf with {id} = %q", got)
 	}
-	if got := loadZone("W. Europe Standard Time").String(); got != "Europe/Amsterdam" {
+	if got := loadZone("test", "W. Europe Standard Time").String(); got != "Europe/Amsterdam" {
 		t.Errorf("zone = %q", got)
 	}
 	for _, name := range []string{"undefined", "W. Europe Daylight Time"} {
-		if got := loadZone(name).String(); got != "Europe/Amsterdam" {
+		if got := loadZone("test", name).String(); got != "Europe/Amsterdam" {
 			t.Errorf("%q -> %q, want Europe/Amsterdam", name, got)
 		}
 	}
-	if got := loadZone("Europe/Berlin").String(); got != "Europe/Berlin" {
+	if got := loadZone("test", "Europe/Berlin").String(); got != "Europe/Berlin" {
 		t.Errorf("iana zone = %q", got)
 	}
-	if got := loadZone("Nowhere Standard Time"); got != time.UTC {
+	if got := loadZone("test", "Nowhere Standard Time"); got != time.UTC {
 		t.Errorf("unknown zone = %v", got)
 	}
 }

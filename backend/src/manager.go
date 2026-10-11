@@ -143,7 +143,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	// Any origin is accepted: the frontend reaches us through a proxy.
 	conn, err := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}})
 	if err != nil {
-		slog.Warn("WebSocket accept failed", "err", err)
+		r.log.Warn("WebSocket accept failed", "err", err)
 		return
 	}
 	defer func() { _ = conn.CloseNow() }()

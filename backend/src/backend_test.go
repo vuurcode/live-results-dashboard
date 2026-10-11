@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -125,7 +126,7 @@ func types(msgs [][]byte) string {
 }
 
 func TestStoreDiff(t *testing.T) {
-	s := newStore()
+	s := newStore(slog.Default())
 
 	res := s.update(snapshot(0, false))
 	if got := types(res.messages); got != "event_name,distance_meta,competitor_update,competitor_update" {
@@ -157,7 +158,7 @@ func TestStoreDiff(t *testing.T) {
 }
 
 func TestSuppressNoTimeUpdates(t *testing.T) {
-	s := newStore()
+	s := newStore(slog.Default())
 	s.update(snapshot(0, false))
 	changed := snapshot(0, false)
 	changed.distances[0].competitors[0].Heat = 9 // changes, but still has no time

@@ -33,10 +33,11 @@ type room struct {
 }
 
 func newRoom(id, url string, cfg config, cancel func()) *room {
+	log := slog.With("competition", id)
 	return &room{
 		id: id, url: url, cfg: cfg, cancel: cancel,
-		log:     slog.With("competition", id),
-		st:      newStore(),
+		log:     log,
+		st:      newStore(log),
 		clients: map[*client]struct{}{},
 	}
 }
