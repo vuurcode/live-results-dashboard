@@ -188,3 +188,41 @@ func TestCatalogBaseWithAndWithoutTrailingSlash(t *testing.T) {
 		}
 	}
 }
+
+func TestTodayFollowsLocalMidnightWithoutRefetching(t *testing.T) {
+	e := newCatalogEnv(t,
+		comp("today", "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-24T19:00:00Z"),
+		comp("tomorrow", "DEV", "SpeedSkating.LongTrack", "2026-10-25T10:00:00Z", "2026-10-25T12:00:00Z"),
+	)
+	e.cat.ttl = 48 * time.Hour // the cached list is what has to move on by itself
+	list := func() string {
+		got, err := e.cat.today(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Join(ids(got), ",")
+	}
+	if got := list(); got != "today" {
+		t.Fatalf("before midnight = %q", got)
+	}
+	e.now = time.Date(2026, 10, 24, 21, 59, 0, 0, time.UTC) // 23:59 in Amsterdam
+	if got := list(); got != "today" {
+		t.Fatalf("just before local midnight = %q", got)
+	}
+	e.now = time.Date(2026, 10, 24, 22, 1, 0, 0, time.UTC) // 00:01 on the 25th in Amsterdam, although still the 24th in UTC
+	if got := list(); got != "tomorrow" {
+		t.Fatalf("just after local midnight = %q, want tomorrow only", got)
+	}
+	if e.compHits.Load() != 1 {
+		t.Fatalf("the list changed by itself, without refetching: hits = %d", e.compHits.Load())
+	}
+}
+
+func TestTodayWithoutMatchesIsAnEmptyList(t *testing.T) {
+	e := newCatalogEnv(t, comp("old", "DEV", "SpeedSkating.LongTrack", "2026-10-20T10:00:00Z", "2026-10-20T12:00:00Z"))
+	rec := httptest.NewRecorder()
+	e.cat.serveToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/matches/today", nil))
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
+		t.Fatalf("status %d body %q, want 200 and []", rec.Code, rec.Body.String())
+	}
+}
