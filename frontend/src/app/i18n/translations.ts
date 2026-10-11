@@ -86,6 +86,15 @@ export interface Translations {
   remarkDidNotFinish: string;
   remarkWithdrawn: string;
   remarkManualTime: string;
+  genderWomen: string;
+  genderMen: string;
+  categoryPupils: string;
+  categoryJuniors: string;
+  categoryNeoSeniors: string;
+  categorySeniors: string;
+  categoryMasters: string;
+  remarkWorldRecord: string;
+  remarkNationalRecord: string;
   remarkNewTrackRecord: string;
   remarkTrackRecordCourse: string;
   // Mass start lap counter (HTML, contains underline span)
@@ -173,6 +182,15 @@ export const en: Translations = {
   remarkDidNotFinish: 'Did not finish',
   remarkWithdrawn: 'Withdrawn',
   remarkManualTime: 'Manual Time',
+  genderWomen: 'Women',
+  genderMen: 'Men',
+  categoryPupils: 'Pupils',
+  categoryJuniors: 'Juniors',
+  categoryNeoSeniors: 'Neo-seniors',
+  categorySeniors: 'Seniors',
+  categoryMasters: 'Masters',
+  remarkWorldRecord: 'World Record',
+  remarkNationalRecord: 'National Record',
   remarkNewTrackRecord: 'Track Record',
   remarkTrackRecordCourse: 'Track Record Course',
   moreLapAfterRound: '{n} more lap <span style="text-decoration:underline">after</span> this round',
@@ -259,6 +277,15 @@ export const nl: Translations = {
   remarkDidNotFinish: 'Niet gefinisht',
   remarkWithdrawn: 'Teruggetrokken',
   remarkManualTime: 'Handmatige tijd',
+  genderWomen: 'Dames',
+  genderMen: 'Heren',
+  categoryPupils: 'Pupillen',
+  categoryJuniors: 'Junioren',
+  categoryNeoSeniors: 'Neo-senioren',
+  categorySeniors: 'Senioren',
+  categoryMasters: 'Masters',
+  remarkWorldRecord: 'Wereldrecord',
+  remarkNationalRecord: 'Nationaal record',
   remarkNewTrackRecord: 'Baanrecord',
   remarkTrackRecordCourse: 'Baanrecord parcours',
   moreLapAfterRound: 'nog {n} ronde <span style="text-decoration:underline">na</span> deze ronde',

@@ -21,6 +21,7 @@
           [class.timed-card-trc]="timedCardColor(race) === 'trc'"
           [class.timed-card-red]="timedCardColor(race) === 'red'"
           [class.timed-card-orange]="timedCardColor(race) === 'orange'"
+          [class.timed-card-no-time]="watermarkCentered(race)"
         >
         <!-- Card title: the full name, with the status and PB badges on a line below; the watermark sits at its bottom -->
         <div class="timed-comp-title" [attr.data-watermark]="timedWatermarkText(race)">
@@ -67,8 +68,8 @@
               <c-badge class="timed-split-badge timed-compact-badge {{ compactLapColor(race, $index) }}" [attr.title]="compactBadgeTitle(race, $index)" [class.timed-compact-partial]="noDeltaLap($index)" [class.timed-compact-latest]="last && !compactDone(race)" [class.timed-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
             </span>
           } @empty {
-            @if (!race.invalid_reason && lapSchedule.length > 0) {
-              <!-- Not started: the laps to come as empty light grey badges, so the card keeps its final shape -->
+            @if (lapSchedule.length > 0) {
+              <!-- No laps: the laps to come as empty light grey badges, so the card keeps its final shape -->
               @for (distance of lapSchedule; track $index) {
                 <span class="timed-compact-lap" aria-hidden="true">
                   <span class="compact-dist">{{ distance }}m</span>

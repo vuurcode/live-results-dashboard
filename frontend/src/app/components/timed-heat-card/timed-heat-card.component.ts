@@ -4,6 +4,8 @@ import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../models/data.models';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
+import { NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
+import { categoryName } from '../../logic/category.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
 import { isTimedFinished, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
@@ -86,14 +88,17 @@ export class TimedHeatCardComponent {
     }
   }
 
-  /** True when the lap badges (the laps still to come included) fill at least a whole row: the total time then gets a line of its own. */
+  /** Columns the total time takes at the end of a row. */
+  private readonly TOTAL_COLUMNS = 3;
+
+  /** True when the lap badges (the laps still to come included) leave no room for the total on their row: it then gets a line of its own. */
   totalOnOwnLine(race: CompetitorUpdate): boolean {
-    return this.columns > 0 && Math.max(race.lap_times?.length ?? 0, this.lapSchedule.length) >= this.columns;
+    return this.ghostTotalOnOwnLine(Math.max(race.lap_times?.length ?? 0, this.lapSchedule.length));
   }
 
-  /** Same rule as `totalOnOwnLine`, for the placeholder shown before the first lap: the laps still to come. */
-  ghostTotalOnOwnLine(): boolean {
-    return this.columns > 0 && this.lapSchedule.length >= this.columns;
+  /** The same rule for a number of laps; also used for the placeholder of a card without laps. */
+  ghostTotalOnOwnLine(laps = this.lapSchedule.length): boolean {
+    return this.columns > 0 && laps > this.columns - this.TOTAL_COLUMNS;
   }
 
   isRecentUpdate = isRecentUpdate;
@@ -106,15 +111,17 @@ export class TimedHeatCardComponent {
   isTimedFinished = isTimedFinished;
 
   private readonly REMARK_KEY_MAP: Record<string, TranslationKey> = {
-    PR:  'remarkNewPb',
-    FL:  'remarkFall',
-    DQ:  'remarkDisqualified',
-    DNS: 'remarkDidNotStart',
-    DNF: 'remarkDidNotFinish',
-    WDR: 'remarkWithdrawn',
-    MT:  'remarkManualTime',
-    TR:  'remarkNewTrackRecord',
-    TRC: 'remarkTrackRecordCourse',
+    [RaceCode.PersonalRecord]: 'remarkNewPb',
+    [RaceCode.Fall]: 'remarkFall',
+    [RaceCode.Disqualified]: 'remarkDisqualified',
+    [RaceCode.DidNotStart]: 'remarkDidNotStart',
+    [RaceCode.DidNotFinish]: 'remarkDidNotFinish',
+    [RaceCode.Withdrawn]: 'remarkWithdrawn',
+    [RaceCode.ManualTime]: 'remarkManualTime',
+    [RaceCode.WorldRecord]: 'remarkWorldRecord',
+    [RaceCode.NationalRecord]: 'remarkNationalRecord',
+    [RaceCode.TrackRecord]: 'remarkNewTrackRecord',
+    [RaceCode.TrackRecordCourse]: 'remarkTrackRecordCourse',
   };
 
   /**
@@ -129,6 +136,17 @@ export class TimedHeatCardComponent {
       total += parseSeconds(race.lap_times[i]);
     }
     return formatDurationSeconds(total);
+  }
+
+  /** The category as a name with the gender in front, in the viewer's language, followed by its code: "Women Juniors A1 (DA1)". */
+  private categoryLabel(code: string | null): string {
+    const name = categoryName(code, {
+      women: this.ts.t('genderWomen'), men: this.ts.t('genderMen'),
+      pupils: this.ts.t('categoryPupils'), juniors: this.ts.t('categoryJuniors'), neoSeniors: this.ts.t('categoryNeoSeniors'),
+      seniors: this.ts.t('categorySeniors'), masters: this.ts.t('categoryMasters'),
+    });
+    const trimmed = code?.trim() ?? '';
+    return name === trimmed ? name : `${name} (${trimmed})`;
   }
 
   /** Split a space-separated remark string into individual codes. */
@@ -147,20 +165,26 @@ export class TimedHeatCardComponent {
   /** Color variant for a timed card based on invalid_reason/remark values. */
   timedCardColor(race: CompetitorUpdate): 'pr' | 'trc' | 'red' | 'orange' | null {
     if (race.invalid_reason) {
-      return race.invalid_reason.toUpperCase() === 'DQ' ? 'red' : 'orange';
+      return race.invalid_reason.toUpperCase() === RaceCode.Disqualified ? 'red' : 'orange';
     }
     if (race.remark) {
       const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
-      if (parts.some(v => v === 'TR' || v === 'TRC')) return 'trc';
-      if (parts.some(v => v === 'PR')) return 'pr';
+      if (parts.some(v => RECORD_CODES.has(v))) return 'trc';
+      if (parts.some(v => v === RaceCode.PersonalRecord)) return 'pr';
       return 'orange';
     }
     return null;
   }
 
+  /** True when the watermark of this race goes in the middle of the card (no time to show), not in the corner of the title. */
+  watermarkCentered(race: CompetitorUpdate): boolean {
+    const codes = [race.invalid_reason, ...this.splitRemarks(race.remark)];
+    return codes.some(c => !!c && NO_TIME_CODES.has(c.toUpperCase()));
+  }
+
   /** Watermark text: invalid_reason takes priority over remark; resolved via label map.
    *  PR remarks are rendered as a DOM overlay instead (returns null).
-   *  TR/TRC get priority; TRC appends the category on a second line. */
+   *  Records (WR, NR, TR, TRC, in that order) get priority; TRC appends the category on a second line. */
   timedWatermarkText(race: CompetitorUpdate): string | null {
     if (race.invalid_reason) {
       return this.timedLabelTitle(race.invalid_reason) ?? race.invalid_reason;
@@ -168,18 +192,18 @@ export class TimedHeatCardComponent {
     if (!race.remark) return null;
     const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
     // PR watermark is rendered as a DOM overlay to support smaller decimal formatting
-    if (parts.every(v => v === 'PR')) return null;
-    // TR/TRC get dedicated watermark treatment
-    const trcCode = parts.find(v => v === 'TR' || v === 'TRC');
+    if (parts.every(v => v === RaceCode.PersonalRecord)) return null;
+    // records come first, the most significant one wins
+    const trcCode = RECORD_PRIORITY.find(v => parts.includes(v));
     if (trcCode) {
       const label = this.timedLabelTitle(trcCode) ?? trcCode;
-      if (trcCode === 'TRC' && race.category) {
-        return `${label}\n${race.category}`;
+      if (trcCode === RaceCode.TrackRecordCourse && race.category) {
+        return `${label}\n${this.categoryLabel(race.category)}`;
       }
       return label;
     }
     // Other non-PR remark
-    const firstNonPr = parts.find(v => v !== 'PR');
+    const firstNonPr = parts.find(v => v !== RaceCode.PersonalRecord);
     if (firstNonPr) {
       return this.timedLabelTitle(firstNonPr) ?? firstNonPr;
     }
@@ -211,7 +235,7 @@ export class TimedHeatCardComponent {
 
   /** Category and club code for under the name: "DA1 / IFX", or whichever of the two there is. */
   metaLine(race: CompetitorUpdate): string {
-    return [race.category, race.club_code].filter(Boolean).join(' / ');
+    return [this.categoryLabel(race.category), race.club_code].filter(Boolean).join(' / ');
   }
 
   /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no racer in this heat. */
@@ -258,18 +282,18 @@ export class TimedHeatCardComponent {
 
   /** Badge text: the upstream code `PR` is shown as the local term (PB in English, PR in Dutch); other codes are international. */
   remarkBadgeText(code: string): string {
-    return code === 'PR' ? this.ts.t('remarkShortPb') : code;
+    return code === RaceCode.PersonalRecord ? this.ts.t('remarkShortPb') : code;
   }
 
-  /** CSS class for the remark badge (PR/TR/TRC → purple, else orange). */
+  /** CSS class for the remark badge (PR and the records → purple, else orange). */
   remarkBadgeClass(remark: string): string {
     const v = remark.toUpperCase();
-    return (v === 'PR' || v === 'TR' || v === 'TRC') ? 'timed-badge-purple' : 'timed-badge-orange';
+    return (v === RaceCode.PersonalRecord || RECORD_CODES.has(v)) ? 'timed-badge-purple' : 'timed-badge-orange';
   }
 
   /** CSS class for the invalid_reason badge (DQ → red, else orange). */
   invalidBadgeClass(reason: string): string {
-    return reason.toUpperCase() === 'DQ' ? 'timed-badge-red' : 'timed-badge-orange';
+    return reason.toUpperCase() === RaceCode.Disqualified ? 'timed-badge-red' : 'timed-badge-orange';
   }
 
   /**

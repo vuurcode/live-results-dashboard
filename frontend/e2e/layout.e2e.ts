@@ -54,8 +54,8 @@ test.describe('pinned titles', () => {
     await expect(header).toBeInViewport();
   });
 
-  test('the pinned distance title shrinks while it is stuck', async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('follow', 'false')); // auto-follow would move the page on its own
+  test('the pinned distance title shrinks while it is stuck', async ({ page, request }) => {
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-timed' } }); // a replay that has run on would leave no live distance to unfold
     await page.setViewportSize({ width: 1280, height: 260 });
     await page.goto('/?competitionId=e2e-timed');
     const button = page.locator('.accordion-header .accordion-button').first();
@@ -185,7 +185,7 @@ test.describe('settings panel and tooltips', () => {
 
 test.describe('empty lane sets on narrow screens', () => {
   // heat 1 has only white/red, heat 2 has all four lanes
-  for (const [width, hidden] of [[1280, false], [700, true], [400, true]] as const) {
+  for (const [width, hidden] of [[1280, false], [1000, true], [700, true], [400, true]] as const) {
     test(`${width}px: the yellow/blue lanes of heat 1 are ${hidden ? 'hidden' : 'kept'}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-lanes');
@@ -195,7 +195,7 @@ test.describe('empty lane sets on narrow screens', () => {
       const visible = await heat1.locator('.timed-lane-col').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().width > 0).length);
       expect(visible).toBe(hidden ? 2 : 4);
       const bgs = await heat1.locator('.timed-heat-lane-bg:visible').count(); // the heat label's colour bars follow too
-      expect(bgs).toBe(width > 800 ? 4 : 0); // (the label itself is hidden on narrow screens)
+      expect(bgs).toBe(width >= 1280 ? 4 : 0); // (the label itself is hidden on narrow screens)
       // the full heat keeps all four lanes
       await expect(page.locator('.timed-heat-row').nth(1).locator('.timed-lane-col.lane-set-empty')).toHaveCount(0);
     });
@@ -233,7 +233,8 @@ test.describe('card side padding', () => {
           const c = card.getBoundingClientRect();
           const left = (sel: string) => { const e = card.querySelector(sel); return e ? e.getBoundingClientRect().left - c.left : null; };
           const right = (sel: string) => { const e = card.querySelector(sel); return e ? c.right - e.getBoundingClientRect().right : null; };
-          return { name: left('.timed-comp-name'), firstBadge: left('.timed-compact-lap'), total: right('.timed-compact-final'), pb: right('.timed-pb-current') };
+          const ownLine = !!card.querySelector('.timed-compact-final.timed-compact-own-line'); // a total on a row of its own is centred
+          return { name: left('.timed-comp-name'), firstBadge: left('.timed-compact-lap'), total: ownLine ? null : right('.timed-compact-final'), pb: right('.timed-pb-current') };
         }),
       );
       for (const e of edges) {

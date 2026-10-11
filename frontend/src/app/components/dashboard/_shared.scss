@@ -24,6 +24,15 @@
   83%  { border-color: #ff5722; }
   100% { border-color: #e040fb; }
 }
+@keyframes trcRainbowOutline {
+  0%   { outline-color: #e040fb; }
+  17%  { outline-color: #3f51b5; }
+  33%  { outline-color: #00bcd4; }
+  50%  { outline-color: #4caf50; }
+  67%  { outline-color: #ffeb3b; }
+  83%  { outline-color: #ff5722; }
+  100% { outline-color: #e040fb; }
+}
 @keyframes flashGreen {
   0%   { background-color: #d4edda; }
   100% { background-color: transparent; }
@@ -199,7 +208,10 @@
     cursor: default;
     pointer-events: none;
   }
-  .timed-comp-title { position: relative; } // the watermarks are placed against the title
+  // The watermarks are placed against the title: top right, and dead centre with four lanes in a row. A card without a time
+  // (fall, disqualified, ...) has it placed against the whole card instead, so in the four lane view it is centred on the card.
+  .timed-comp-title { position: relative; }
+  &.timed-card-no-time .timed-comp-title { @media (min-width: $four-lanes-min) { position: static; } }
   .timed-watermark {
     @include card-watermark(clamp(0.8rem, 4.5cqw, 1.4rem));
     &.timed-watermark-pr { color: rgba(111, 66, 193, 0.85); } // 4.7:1 on white (0.80 gave 4.2:1)
