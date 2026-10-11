@@ -224,8 +224,8 @@ func (f *fetcher) fetchOnce(ctx context.Context) error {
 }
 
 func (f *fetcher) loop(ctx context.Context) {
-	f.room.log.Info("Fetch loop started", "url", f.url, "interval", f.interval)
-	defer f.room.log.Info("Fetch loop stopped")
+	f.room.log.Debug("Fetch loop started", "url", f.url, "interval", f.interval)
+	defer f.room.log.Debug("Fetch loop stopped")
 	for {
 		if err := f.fetchOnce(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			f.room.log.Error("Error fetching data", "err", err)

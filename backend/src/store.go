@@ -71,6 +71,7 @@ type diffResult struct {
 	reset       bool
 	nameChanged bool
 	distUpdates int
+	newLaps     int // laps completed since the previous update, over all changed competitors
 	compUpdates []Competitor
 	messages    [][]byte // in broadcast order: reset, event_name, distance_meta..., competitor_update...
 }
@@ -132,6 +133,10 @@ reset:
 				continue
 			}
 			entry := compEntry{comp: c, data: data, msg: wrap("competitor_update", data)}
+			res.newLaps += c.LapsCount
+			if seen {
+				res.newLaps -= prev.comp.LapsCount
+			}
 			s.comps[c.ID] = entry
 			compMessages = append(compMessages, entry.msg)
 			res.compUpdates = append(res.compUpdates, c)

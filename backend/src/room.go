@@ -67,19 +67,12 @@ func (r *room) apply(curr *processedData) {
 	defer r.mu.Unlock()
 
 	res := r.st.update(curr)
-	if res.reset {
-		r.log.Info("Broadcasting reset signal")
-	}
-	for _, c := range res.compUpdates {
-		r.log.Info("competitor_update",
-			"start_number", c.StartNumber, "name", c.Name,
-			"laps", c.LapsCount, "total_time", c.TotalTime, "formatted", c.FormattedTotalTime)
-	}
 	if len(res.messages) == 0 {
 		return
 	}
 	r.broadcastLocked(res.messages)
-	r.log.Info("Broadcast", "distance_meta", res.distUpdates, "competitor_update", len(res.compUpdates))
+	// one summary line per update, however many competitors changed
+	r.log.Info("Update", "competitors", len(res.compUpdates), "new_laps", res.newLaps, "distances", res.distUpdates, "reset", res.reset)
 }
 
 func (r *room) broadcastLocked(msgs [][]byte) {
@@ -117,9 +110,6 @@ func (r *room) register() *client {
 		"data_source_url":      r.url,
 		"data_source_interval": r.cfg.dataSourceInterval,
 	}))
-	if len(replay) > 0 {
-		r.log.Info("Replaying latest state to new client", "messages", len(replay))
-	}
 	if r.feed != nil {
 		c.send <- wrap("feed_status", marshal(*r.feed))
 	}
@@ -127,7 +117,7 @@ func (r *room) register() *client {
 		c.send <- m
 	}
 	r.clients[c] = struct{}{}
-	r.log.Info("Client connected", "active", len(r.clients))
+	r.log.Info("Client connected", "active", len(r.clients), "replayed", len(replay))
 	return c
 }
 
