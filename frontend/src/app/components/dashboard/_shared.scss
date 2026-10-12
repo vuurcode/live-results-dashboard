@@ -232,7 +232,7 @@
     @include card-watermark(clamp(0.7rem, calc(3.5vw / var(--card-lanes, 1)), 1.2rem));
     content: attr(data-watermark);
     overflow-wrap: anywhere;
-    white-space: pre-line; // keeps the explicit line break (TRC + category) but wraps long labels inside the card
+    white-space: pre-line; // keeps the explicit line break (TRC + category name) but wraps long labels inside the card
   }
   // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
   &.timed-card-live { border-color: #dc3545; outline: 2px solid #dc3545; outline-offset: -3px; }

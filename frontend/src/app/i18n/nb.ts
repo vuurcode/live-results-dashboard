@@ -90,7 +90,7 @@ export const nb: Translations = {
   remarkWorldRecord: 'Verdensrekord',
   remarkNationalRecord: 'Nasjonal rekord',
   remarkNewTrackRecord: 'Banerekord',
-  remarkTrackRecordCourse: 'Banerekord (løype)',
+  remarkTrackRecordCourse: 'Banerekord',
   moreLapAfterRound: '{n} runde til <span style="text-decoration:underline">etter</span> denne runden',
   moreLapsAfterRound: '{n} runder til <span style="text-decoration:underline">etter</span> denne runden',
 };

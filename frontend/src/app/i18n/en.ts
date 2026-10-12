@@ -90,7 +90,7 @@ export const en: Translations = {
   remarkWorldRecord: 'World Record',
   remarkNationalRecord: 'National Record',
   remarkNewTrackRecord: 'Track Record',
-  remarkTrackRecordCourse: 'Track Record Course',
+  remarkTrackRecordCourse: 'Track Record',
   moreLapAfterRound: '{n} more lap <span style="text-decoration:underline">after</span> this round',
   moreLapsAfterRound: '{n} more laps <span style="text-decoration:underline">after</span> this round',
 };

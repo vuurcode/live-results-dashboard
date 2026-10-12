@@ -90,7 +90,7 @@ export const nl: Translations = {
   remarkWorldRecord: 'Wereldrecord',
   remarkNationalRecord: 'Nationaal record',
   remarkNewTrackRecord: 'Baanrecord',
-  remarkTrackRecordCourse: 'Baanrecord parcours',
+  remarkTrackRecordCourse: 'Baanrecord',
   moreLapAfterRound: 'nog {n} ronde <span style="text-decoration:underline">na</span> deze ronde',
   moreLapsAfterRound: 'nog {n} ronden <span style="text-decoration:underline">na</span> deze ronde',
 };

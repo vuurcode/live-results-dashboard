@@ -111,7 +111,7 @@ test.describe('record cards', () => {
       ['Competitor C', 'World Record'],
       ['Competitor D', 'National Record'],
       ['Competitor E', 'Track Record'],
-      ['Competitor F', 'Track Record Course\nWomen Juniors A1 (DA1)'],
+      ['Competitor F', 'Track Record\n(Women Juniors A1)'],
     ];
     for (const [name, watermark] of expected) {
       const card = page.locator('.timed-competitor-card', { hasText: name });

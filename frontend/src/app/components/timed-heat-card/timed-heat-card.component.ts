@@ -138,13 +138,18 @@ export class TimedHeatCardComponent {
     return formatDurationSeconds(total);
   }
 
-  /** The category as a name with the gender in front, in the viewer's language, followed by its code: "Women Juniors A1 (DA1)". */
-  private categoryLabel(code: string | null): string {
-    const name = categoryName(code, {
+  /** The category as a name with the gender in front, in the viewer's language: "Women Juniors A1". */
+  private categoryFullName(code: string | null): string {
+    return categoryName(code, {
       women: this.ts.t('genderWomen'), men: this.ts.t('genderMen'),
       pupils: this.ts.t('categoryPupils'), juniors: this.ts.t('categoryJuniors'), neoSeniors: this.ts.t('categoryNeoSeniors'),
       seniors: this.ts.t('categorySeniors'), masters: this.ts.t('categoryMasters'),
     });
+  }
+
+  /** The full category name followed by its code: "Women Juniors A1 (DA1)". */
+  private categoryLabel(code: string | null): string {
+    const name = this.categoryFullName(code);
     const trimmed = code?.trim() ?? '';
     return name === trimmed ? name : `${name} (${trimmed})`;
   }
@@ -200,7 +205,7 @@ export class TimedHeatCardComponent {
 
   /** Watermark text: invalid_reason takes priority over remark; resolved via label map.
    *  PR remarks are rendered as a DOM overlay instead (returns null).
-   *  Records (WR, NR, TR, TRC, in that order) get priority; TRC appends the category on a second line. */
+   *  Records (WR, NR, TR, TRC, in that order) get priority; TRC is a track record that names its category in full on a second line. */
   timedWatermarkText(race: CompetitorUpdate): string | null {
     if (race.invalid_reason) {
       return this.timedLabelTitle(race.invalid_reason) ?? race.invalid_reason;
@@ -214,7 +219,7 @@ export class TimedHeatCardComponent {
     if (recordCode) {
       const label = this.timedLabelTitle(recordCode) ?? recordCode;
       if (recordCode === RaceCode.TrackRecordCourse && race.category) {
-        return `${label}\n${this.categoryLabel(race.category)}`;
+        return `${label}\n(${this.categoryFullName(race.category)})`;
       }
       return label;
     }

@@ -90,7 +90,7 @@ export const sv: Translations = {
   remarkWorldRecord: 'Världsrekord',
   remarkNationalRecord: 'Nationellt rekord',
   remarkNewTrackRecord: 'Banrekord',
-  remarkTrackRecordCourse: 'Banrekord (sträcka)',
+  remarkTrackRecordCourse: 'Banrekord',
   moreLapAfterRound: '{n} varv till <span style="text-decoration:underline">efter</span> den här varvningen',
   moreLapsAfterRound: '{n} varv till <span style="text-decoration:underline">efter</span> den här varvningen',
 };

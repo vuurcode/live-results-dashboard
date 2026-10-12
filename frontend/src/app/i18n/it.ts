@@ -90,7 +90,7 @@ export const it: Translations = {
   remarkWorldRecord: 'Record mondiale',
   remarkNationalRecord: 'Record nazionale',
   remarkNewTrackRecord: 'Record della pista',
-  remarkTrackRecordCourse: 'Record della pista (percorso)',
+  remarkTrackRecordCourse: 'Record della pista',
   moreLapAfterRound: 'ancora {n} giro <span style="text-decoration:underline">dopo</span> questo giro',
   moreLapsAfterRound: 'ancora {n} giri <span style="text-decoration:underline">dopo</span> questo giro',
 };

@@ -90,7 +90,7 @@ export const fr: Translations = {
   remarkWorldRecord: 'Record du monde',
   remarkNationalRecord: 'Record national',
   remarkNewTrackRecord: 'Record de la piste',
-  remarkTrackRecordCourse: 'Record de la piste (parcours)',
+  remarkTrackRecordCourse: 'Record de la piste',
   moreLapAfterRound: 'encore {n} tour <span style="text-decoration:underline">après</span> ce tour',
   moreLapsAfterRound: 'encore {n} tours <span style="text-decoration:underline">après</span> ce tour',
 };
