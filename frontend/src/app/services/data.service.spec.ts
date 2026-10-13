@@ -40,6 +40,20 @@ describe('DataService message handling', () => {
     expect(await firstValueFrom(service.status$)).toMatchObject({ status: 'Connected', url: 'http://x', interval: 2 });
   });
 
+  it('remembers how far the stream got, to resume from after a reconnect', () => {
+    const track = (msg: BackendMessage) => (service as unknown as { _track(m: BackendMessage): void })._track(msg);
+    const point = () => (service as unknown as { resumePoint: unknown }).resumePoint;
+    expect(point()).toBeNull();
+    track({ type: 'status', data: { data_source_url: 'http://x', data_source_interval: 2, seq: 5, epoch: 'e1' } });
+    track({ type: 'event_name', data: { name: 'Cup' } }); // replay messages carry no number
+    expect(point()).toEqual({ epoch: 'e1', seq: 5 });
+    track({ seq: 6, type: 'event_name', data: { name: 'Cup' } });
+    track({ seq: 7, type: 'event_name', data: { name: 'Cup' } });
+    expect(point()).toEqual({ epoch: 'e1', seq: 7 });
+    track({ type: 'status', data: { data_source_url: 'http://x', data_source_interval: 2, seq: 2, epoch: 'e2' } }); // a room opened anew
+    expect(point()).toEqual({ epoch: 'e2', seq: 2 });
+  });
+
   it('shows a backend error in the status', async () => {
     apply({ type: 'error', data: 'boom' });
     expect(await firstValueFrom(service.status$)).toMatchObject({ status: 'Error', errorMessage: 'boom' });

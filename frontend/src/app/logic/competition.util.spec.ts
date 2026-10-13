@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { competitionIdFromSearch, withCompetitionId } from './competition.util';
+import { competitionIdFromSearch, withCompetitionId, withResume } from './competition.util';
 
 describe('competitionIdFromSearch', () => {
   it('reads a valid id', () => {
@@ -27,5 +27,17 @@ describe('withCompetitionId', () => {
 
   it('leaves the url alone without an id', () => {
     expect(withCompetitionId('wss://host/ws', null)).toBe('wss://host/ws');
+  });
+});
+
+describe('withResume', () => {
+  it('adds where the page left off', () => {
+    expect(withResume('ws://h/ws?competitionId=abc', { epoch: 'e1', seq: 42 })).toBe(
+      'ws://h/ws?competitionId=abc&epoch=e1&lastSeq=42',
+    );
+  });
+
+  it('leaves the url alone for a page that has seen nothing', () => {
+    expect(withResume('ws://h/ws', null)).toBe('ws://h/ws');
   });
 });

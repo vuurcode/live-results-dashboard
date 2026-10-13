@@ -14,3 +14,12 @@ export function withCompetitionId(wsUrl: string, id: string | null): string {
   url.searchParams.set('competitionId', id);
   return url.toString();
 }
+
+/** Adds where a reconnecting page left off (`epoch` and `lastSeq`), so the backend can send only what it missed. */
+export function withResume(wsUrl: string, from: { epoch: string; seq: number } | null): string {
+  if (!from) return wsUrl;
+  const url = new URL(wsUrl);
+  url.searchParams.set('epoch', from.epoch);
+  url.searchParams.set('lastSeq', String(from.seq));
+  return url.toString();
+}

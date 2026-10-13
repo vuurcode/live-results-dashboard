@@ -16,7 +16,7 @@ import {
 } from '../models/data.models';
 import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
 import { FeedStatus, TodayCompetition } from '../models/data.models';
-import { competitionIdFromSearch, withCompetitionId } from '../logic/competition.util';
+import { competitionIdFromSearch, withCompetitionId, withResume } from '../logic/competition.util';
 
 export interface BackendStatus {
   status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error' | 'No competition';
@@ -102,6 +102,9 @@ export class DataService {
   private pauseTimer: ReturnType<typeof setTimeout> | null = null;
   private lostErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Where this page stands in the room's stream (the status message's epoch, the last seq received), to resume from after a reconnect. */
+  private resumePoint: { epoch: string; seq: number } | null = null;
+
   private noCompetition = false;
   private ngZone = inject(NgZone);
   private ts = inject(TranslateService);
@@ -139,7 +142,7 @@ export class DataService {
     this._status.next({ status: 'Connecting...', url: '', interval: null });
     this.noCompetition = false;
     this.socket$ = webSocket<BackendMessage>({
-      url: this.BACKEND_URL,
+      url: withResume(this.BACKEND_URL, this.resumePoint),
       closeObserver: { next: (e: CloseEvent) => { this.noCompetition = e.code === CLOSE_NO_COMPETITION; } },
     });
     this.socketSub = this.socket$.subscribe({
@@ -202,10 +205,20 @@ export class DataService {
 
   private _enqueue(msg: BackendMessage) {
     this._cancelLostError();
+    this._track(msg);
     this.queue.push(msg);
     if (!this.renderLoopRunning) {
       this.renderLoopRunning = true;
       this.ngZone.runOutsideAngular(() => this._scheduleNextCycle());
+    }
+  }
+
+  private _track(msg: BackendMessage) {
+    if (msg.type === 'status') {
+      const { epoch, seq } = msg.data;
+      this.resumePoint = epoch !== undefined && seq !== undefined ? { epoch, seq } : null;
+    } else if (this.resumePoint && msg.seq !== undefined && msg.seq > this.resumePoint.seq) {
+      this.resumePoint.seq = msg.seq;
     }
   }
 
