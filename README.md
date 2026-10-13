@@ -20,6 +20,20 @@ Developed with assistance from [Claude Code](https://claude.com/claude-code).
 | `CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (venues are cached for the life of the process). Rooms of competitions that ended more than a day ago are closed within a minute |
 | `USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
 | `DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
+| `MAX_COMPETITIONS` | `25` | Competitions the backend follows at the same time |
+| `IDLE_GRACE_SECONDS` | `30` | Seconds a competition keeps being followed after its last viewer left |
+| `LISTEN_ADDR` | `:5000` | Address the backend listens on |
+
+In `compose.yml` (prod profile) the optional ones are passed through from the environment or a compose env file; empty means the default above. The ports are `FRONTEND_PORT` (default `8888`) for the published frontend.
+
+## Frontend configuration
+
+Set on the frontend container when it starts:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `BACKEND_URL` | empty | API address the browser uses. Empty: the same origin, which nginx proxies under `/api` and `/ws` |
+| `BACKEND_UPSTREAM` | `backend:5000` | `host:port` nginx proxies to |
 
 `GET /api/competitions/today` lists the competitions happening today (including ones that have not started), each with the `id` to pass as `?competitionId=`.
 

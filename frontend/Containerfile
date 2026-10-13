@@ -12,12 +12,15 @@ RUN npm run build
 # Stage 2: Serve
 FROM nginx:alpine-slim
 
-ENV BACKEND_URL=""
+# Runtime settings. BACKEND_URL is the API address the browser uses (empty: the same origin, proxied under /api and /ws);
+# BACKEND_UPSTREAM is where nginx reaches the backend (host:port).
+ENV BACKEND_URL="" \
+    BACKEND_UPSTREAM="backend:5000"
 
 COPY --from=build /app/dist/dashboard/browser /usr/share/nginx/html
-COPY config/nginx.conf /etc/nginx/conf.d/default.conf
+COPY config/nginx.conf.template /etc/nginx/default.conf.template
 COPY public/env-inject.js /usr/share/nginx/html/env-inject.js
 
 EXPOSE 80
 
-CMD ["/bin/sh", "-c", "envsubst '${BACKEND_URL}' < /usr/share/nginx/html/env-inject.js > /tmp/env-inject.js && mv /tmp/env-inject.js /usr/share/nginx/html/env-inject.js && exec nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "envsubst '${BACKEND_UPSTREAM}' < /etc/nginx/default.conf.template > /etc/nginx/conf.d/default.conf && envsubst '${BACKEND_URL}' < /usr/share/nginx/html/env-inject.js > /tmp/env-inject.js && mv /tmp/env-inject.js /usr/share/nginx/html/env-inject.js && exec nginx -g 'daemon off;'"]

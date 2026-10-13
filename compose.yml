@@ -53,6 +53,14 @@ services:
       LIVE_RESULTS_BASE_URL: ${LIVE_RESULTS_BASE_URL:-}
       MATCH_INFO_BASE_URL: ${MATCH_INFO_BASE_URL:-}
       LIVE_RESULTS_INTERVAL: ${LIVE_RESULTS_INTERVAL:-5}
+      # Optional; empty means the backend's own default
+      DEFAULT_COMPETITION_ID: ${DEFAULT_COMPETITION_ID:-}
+      MAX_COMPETITIONS: ${MAX_COMPETITIONS:-}
+      IDLE_GRACE_SECONDS: ${IDLE_GRACE_SECONDS:-}
+      CATALOG_TTL_SECONDS: ${CATALOG_TTL_SECONDS:-}
+      VENUE_COUNTRY_CODE: ${VENUE_COUNTRY_CODE:-}
+      VENUE_DISCIPLINE: ${VENUE_DISCIPLINE:-}
+      USER_AGENT: ${USER_AGENT:-}
     restart: unless-stopped
     networks:
       - dashboard-net
@@ -63,8 +71,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Containerfile
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:5000}
     ports:
-      - "8888:80"
+      - "${FRONTEND_PORT:-8888}:80"
     depends_on:
       - backend
     restart: unless-stopped
