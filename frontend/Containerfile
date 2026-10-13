@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Serve
-FROM nginx:alpine
+FROM nginx:alpine-slim
 
 ENV BACKEND_URL=""
 
