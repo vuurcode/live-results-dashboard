@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"strconv"
 	"testing"
 	"time"
 )
@@ -70,5 +71,21 @@ func TestRecoveredEntriesArePruned(t *testing.T) {
 	l.Acquire("trigger")
 	if l.Len() != 1 {
 		t.Fatalf("len = %d, want only trigger", l.Len())
+	}
+}
+
+func TestClientsBeyondTheTableShareALimit(t *testing.T) {
+	l, _ := newTest(60, 2, 5)
+	for i := range maxKeys {
+		l.entries[strconv.Itoa(i)] = &entry{tokens: 2, at: l.Now()}
+	}
+	l.lastPrune = l.Now()
+	for range 2 {
+		if _, _, ok := l.Acquire("new-1"); !ok {
+			t.Fatal("the shared entry has a burst of its own")
+		}
+	}
+	if _, _, ok := l.Acquire("new-2"); ok {
+		t.Fatal("a flood of new addresses must not get past the limit")
 	}
 }

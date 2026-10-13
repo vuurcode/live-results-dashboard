@@ -27,7 +27,7 @@ func clientKey(r *http.Request, header string) string {
 			return host
 		}
 	}
-	addr = addr.Unmap()
+	addr = addr.Unmap().WithZone("")
 	if addr.Is6() {
 		if p, err := addr.Prefix(64); err == nil {
 			return p.String()

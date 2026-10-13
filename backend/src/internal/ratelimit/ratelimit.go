@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	// maxKeys bounds the memory a flood of distinct clients can take; further clients are not tracked until entries expire.
+	// maxKeys bounds the memory a flood of distinct clients can take; further clients share one entry until others expire.
 	maxKeys = 100_000
+	// overflowKey is the shared entry of clients that do not fit in the table, so a flood cannot switch the limit off.
+	overflowKey = "\x00overflow"
 	// pruneEvery is how often entries that have fully recovered are dropped.
 	pruneEvery = time.Minute
 	// busyRetry is the advice given to a client that holds its maximum number of connections.
@@ -51,10 +53,13 @@ func (l *Limiter) Acquire(key string) (release func(), retryAfter time.Duration,
 	e, found := l.entries[key]
 	if !found {
 		if len(l.entries) >= maxKeys {
-			return func() {}, 0, true // untracked rather than refused: the table is full of other clients
+			key = overflowKey
+			e, found = l.entries[key]
 		}
-		e = &entry{tokens: l.burst, at: now}
-		l.entries[key] = e
+		if !found {
+			e = &entry{tokens: l.burst, at: now}
+			l.entries[key] = e
+		}
 	}
 	e.tokens = min(l.burst, e.tokens+now.Sub(e.at).Seconds()*l.perSecond)
 	e.at = now
