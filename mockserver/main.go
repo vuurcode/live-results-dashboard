@@ -1,4 +1,4 @@
-// Mock server for live-results-dashboard.
+// Mock server for live-results-experiment.
 //
 // DATA_SAMPLE_DIRECTORY is a base directory with one subdirectory per competition. A
 // competition's id is its subdirectory name. The first GET /Competition?competitionId=<id>
