@@ -154,7 +154,7 @@ func (r *Room) catchUpLocked(from *Resume) ([][]byte, bool) {
 	if missed > uint64(len(r.log)) {
 		return nil, false
 	}
-	return r.log[len(r.log)-int(missed):], true
+	return r.log[uint64(len(r.log))-missed:], true
 }
 
 // Register adds a client whose queue is pre-loaded with the status message followed by the latest state: a replay,

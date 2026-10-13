@@ -19,7 +19,7 @@ func TestClientKey(t *testing.T) {
 		{"ipv6 shares its /64", "[2001:db8:1:2:aaaa::1]:80", "", "", "2001:db8:1:2::/64"},
 		{"mapped ipv4", "[::ffff:192.0.2.1]:80", "", "", "192.0.2.1"},
 	} {
-		r := httptest.NewRequest(http.MethodGet, "/ws", nil)
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws", nil)
 		r.RemoteAddr = tc.remote
 		if tc.header != "" && tc.value != "" {
 			r.Header.Set(tc.header, tc.value)
