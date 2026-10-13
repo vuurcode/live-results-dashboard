@@ -26,7 +26,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -49,6 +48,8 @@ type config struct {
 	defaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	maxCompetitions      int           // distinct competitions followed at once
 	maxClientsPerRoom    int           // clients following one competition at once
+	maxClients           int           // clients following all competitions together
+	maxClients30Days     int           // client connections accepted in any 30 days (see manager.admitLocked)
 	idleGrace            time.Duration // how long an empty competition keeps polling before it is closed
 	pingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
@@ -74,65 +75,25 @@ func loadConfig() config {
 	}
 	cfg := config{
 		dataSourceURL:      strings.TrimRight(base, "/") + dataSourcePath,
-		dataSourceInterval: 1,
+		dataSourceInterval: number("LIVE_RESULTS_INTERVAL", positive),
 		listenAddr:         getenv("LISTEN_ADDR", ":5000"),
 
 		defaultCompetitionID: os.Getenv("DEFAULT_COMPETITION_ID"),
-		maxCompetitions:      25,
-		maxClientsPerRoom:    1000,
-		idleGrace:            30 * time.Second,
+		maxCompetitions:      int(number("MAX_COMPETITIONS", positive)),
+		maxClientsPerRoom:    int(number("MAX_CLIENTS_PER_ROOM", positive)),
+		maxClients:           int(number("MAX_CLIENTS", positive)),
+		maxClients30Days:     int(number("MAX_CLIENTS_30_DAYS", positive)),
+		idleGrace:            time.Duration(number("IDLE_GRACE_SECONDS", nonNegative) * float64(time.Second)),
 		pingInterval:         defaultPingInterval,
 
 		catalogURL:      os.Getenv("MATCH_INFO_BASE_URL"),
-		catalogTTL:      15 * time.Minute,
-		dataRetention:   12 * time.Hour,
+		catalogTTL:      time.Duration(number("CATALOG_TTL_SECONDS", positive) * float64(time.Second)),
+		dataRetention:   time.Duration(number("DATA_RETENTION_HOURS", nonNegative) * float64(time.Hour)),
 		venueCountry:    getenv("VENUE_COUNTRY_CODE", "NED"),
 		venueDiscipline: getenv("VENUE_DISCIPLINE", "SpeedSkating.LongTrack"),
 	}
 	if cfg.catalogURL == "" {
 		cfg.catalogURL = originOf(cfg.dataSourceURL)
-	}
-	if v := os.Getenv("CATALOG_TTL_SECONDS"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
-			cfg.catalogTTL = time.Duration(f * float64(time.Second))
-		} else {
-			slog.Warn("Ignoring invalid CATALOG_TTL_SECONDS", "value", v)
-		}
-	}
-	if v := os.Getenv("DATA_RETENTION_HOURS"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
-			cfg.dataRetention = time.Duration(f * float64(time.Hour))
-		} else {
-			slog.Warn("Ignoring invalid DATA_RETENTION_HOURS", "value", v)
-		}
-	}
-	if v := os.Getenv("MAX_COMPETITIONS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			cfg.maxCompetitions = n
-		} else {
-			slog.Warn("Ignoring invalid MAX_COMPETITIONS", "value", v)
-		}
-	}
-	if v := os.Getenv("MAX_CLIENTS_PER_ROOM"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			cfg.maxClientsPerRoom = n
-		} else {
-			slog.Warn("Ignoring invalid MAX_CLIENTS_PER_ROOM", "value", v)
-		}
-	}
-	if v := os.Getenv("IDLE_GRACE_SECONDS"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
-			cfg.idleGrace = time.Duration(f * float64(time.Second))
-		} else {
-			slog.Warn("Ignoring invalid IDLE_GRACE_SECONDS", "value", v)
-		}
-	}
-	if v := os.Getenv("LIVE_RESULTS_INTERVAL"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f > 0 {
-			cfg.dataSourceInterval = f
-		} else {
-			slog.Warn("Ignoring invalid LIVE_RESULTS_INTERVAL", "value", v)
-		}
 	}
 	return cfg
 }
@@ -279,6 +240,9 @@ func (f *fetcher) loop(ctx context.Context) {
 	}
 }
 
+// healthcheck answers an empty 200, for the hosting platform's health check.
+func healthcheck(http.ResponseWriter, *http.Request) {}
+
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	cfg := loadConfig()
@@ -291,6 +255,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", m.serveWS)
+	mux.HandleFunc("GET /healthcheck", healthcheck)
 	if cat, err := newCatalog(cfg, ua); err != nil {
 		slog.Error("Competition list disabled", "err", err)
 	} else {

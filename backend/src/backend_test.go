@@ -255,7 +255,7 @@ func newTestBackend(t *testing.T, mutate func(*config)) *testBackend {
 
 	cfg := config{
 		dataSourceURL: upstream.URL, dataSourceInterval: 3600, // one fetch per room: the test controls timing
-		maxCompetitions: 2, maxClientsPerRoom: 100, idleGrace: 50 * time.Millisecond, pingInterval: time.Hour,
+		maxCompetitions: 2, maxClientsPerRoom: 100, maxClients: 1000, maxClients30Days: 100000, idleGrace: 50 * time.Millisecond, pingInterval: time.Hour,
 	}
 	if mutate != nil {
 		mutate(&cfg)

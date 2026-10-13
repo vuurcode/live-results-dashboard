@@ -21,6 +21,8 @@ const defaultPingInterval = 25 * time.Second
 var (
 	errBadCompetitionID = errors.New("invalid or missing competitionId")
 	errTooManyRooms     = errors.New("too many competitions are being followed")
+	errQuotaReached     = errors.New("the connection allowance for this period is used up")
+	errServerFull       = errors.New("too many clients are connected")
 	errRoomFull         = errors.New("too many clients are following this competition")
 	errCompetitionEnded = errors.New("the competition is over")
 
@@ -40,12 +42,21 @@ type manager struct {
 	// ended says whether a competition is over for good; nil means no competition ever is.
 	ended func(id string) bool
 
+	now func() time.Time
+
 	mu    sync.Mutex
 	rooms map[string]*room
+
+	// Connections accepted per UTC day over the last quotaDays days, kept in memory only.
+	connsPerDay map[string]int
+	quotaFull   bool // whether the last connection was refused for the quota, so that is logged once per period
 }
 
+// quotaDays is the length of the rolling window that cfg.maxClients30Days applies to.
+const quotaDays = 30
+
 func newManager(ctx context.Context, cfg config, ua *userAgent) *manager {
-	return &manager{cfg: cfg, ua: ua, client: &http.Client{}, ctx: ctx, rooms: map[string]*room{}}
+	return &manager{cfg: cfg, ua: ua, client: &http.Client{}, ctx: ctx, now: time.Now, rooms: map[string]*room{}, connsPerDay: map[string]int{}}
 }
 
 // upstreamURL builds the live results URL for one competition by adding a competitionId query parameter.
@@ -79,6 +90,12 @@ func (m *manager) join(id string) (*room, *client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if !m.allowanceLeftLocked() { // before a room is opened for the client
+		return nil, nil, errQuotaReached
+	}
+	if m.clientTotalLocked() >= m.cfg.maxClients {
+		return nil, nil, errServerFull
+	}
 	r, ok := m.rooms[id]
 	if !ok {
 		if len(m.rooms) >= m.cfg.maxCompetitions {
@@ -101,7 +118,46 @@ func (m *manager) join(id string) (*room, *client, error) {
 		r.idleTime.Stop()
 		r.idleTime = nil
 	}
+	m.countConnectionLocked()
 	return r, r.register(), nil
+}
+
+// allowanceLeftLocked reports whether the rolling allowance of connections has room for one more. It keeps a
+// long-running instance within the bandwidth of its plan.
+func (m *manager) allowanceLeftLocked() bool {
+	now := m.now().UTC()
+	oldest := now.AddDate(0, 0, -(quotaDays - 1)).Format(time.DateOnly)
+	total := 0
+	for day, n := range m.connsPerDay {
+		if day < oldest {
+			delete(m.connsPerDay, day)
+			continue
+		}
+		total += n
+	}
+	if total >= m.cfg.maxClients30Days {
+		if !m.quotaFull {
+			slog.Warn("Connection allowance used up, refusing clients", "limit", m.cfg.maxClients30Days, "days", quotaDays)
+		}
+		m.quotaFull = true
+		return false
+	}
+	m.quotaFull = false
+	return true
+}
+
+// countConnectionLocked books an accepted connection against today.
+func (m *manager) countConnectionLocked() {
+	m.connsPerDay[m.now().UTC().Format(time.DateOnly)]++
+}
+
+// clientTotalLocked counts the clients of all rooms.
+func (m *manager) clientTotalLocked() int {
+	n := 0
+	for _, r := range m.rooms {
+		n += r.clientCount()
+	}
+	return n
 }
 
 // leave unregisters a client and, once the room is empty, schedules its teardown.
@@ -136,20 +192,20 @@ func (m *manager) closeEnded() {
 		if !m.ended(id) {
 			continue
 		}
-		m.closeLocked(id, r, errCompetitionEnded.Error())
+		m.closeLocked(id, r, websocket.StatusPolicyViolation, errCompetitionEnded.Error())
 		slog.Info("Competition closed (competition over)", "competition", id, "open", len(m.rooms))
 	}
 }
 
 // closeLocked removes a room, stops its polling loop and disconnects its clients with the given reason.
-func (m *manager) closeLocked(id string, r *room, reason string) {
+func (m *manager) closeLocked(id string, r *room, code websocket.StatusCode, reason string) {
 	delete(m.rooms, id)
 	if r.idleTime != nil {
 		r.idleTime.Stop()
 		r.idleTime = nil
 	}
 	r.cancel()
-	r.end(reason)
+	r.end(code, reason)
 }
 
 // closeAll closes every room, so that its clients get a close frame and their handlers return.
@@ -157,7 +213,7 @@ func (m *manager) closeAll() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for id, r := range m.rooms {
-		m.closeLocked(id, r, "the server is shutting down")
+		m.closeLocked(id, r, websocket.StatusGoingAway, "the server is shutting down")
 	}
 	m.client.CloseIdleConnections()
 }
@@ -194,7 +250,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	}
 	if err != nil {
 		code := http.StatusBadRequest
-		if errors.Is(err, errTooManyRooms) || errors.Is(err, errRoomFull) {
+		if errors.Is(err, errTooManyRooms) || errors.Is(err, errRoomFull) || errors.Is(err, errServerFull) || errors.Is(err, errQuotaReached) {
 			code = http.StatusServiceUnavailable
 		}
 		http.Error(w, err.Error(), code)
@@ -233,11 +289,11 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 			}
 		case msg, ok := <-c.send:
 			if !ok {
-				reason := r.closeReason()
-				if reason == "" {
-					reason = "client too slow"
+				info := r.closeInfo()
+				if info == nil {
+					info = &closeInfo{websocket.StatusTryAgainLater, "client too slow"}
 				}
-				_ = conn.Close(websocket.StatusPolicyViolation, reason)
+				_ = conn.Close(info.code, info.reason)
 				return
 			}
 			wctx, cancel := context.WithTimeout(ctx, writeTimeout)

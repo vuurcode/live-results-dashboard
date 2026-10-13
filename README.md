@@ -10,6 +10,8 @@ Developed with assistance from [Claude Code](https://claude.com/claude-code).
 
 ## Backend configuration
 
+The limits and timings (`LIVE_RESULTS_INTERVAL`, `CATALOG_TTL_SECONDS`, `MAX_COMPETITIONS`, `MAX_CLIENTS`, `MAX_CLIENTS_30_DAYS`, `MAX_CLIENTS_PER_ROOM`, `IDLE_GRACE_SECONDS`, `DATA_RETENTION_HOURS`) are defined in `backend/src/limits.conf` and baked into the image when it is built; the defaults below are the values in that file. Setting the variable at run time overrides the baked value.
+
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `LIVE_RESULTS_BASE_URL` | `http://localhost:8080` | Base URL (`https://host`) of the live results API, without the path; the backend requests `/Competition?competitionId=<id>`. A trailing `/` is optional. Must not be set to an empty value |
@@ -21,6 +23,8 @@ Developed with assistance from [Claude Code](https://claude.com/claude-code).
 | `USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
 | `DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
 | `MAX_COMPETITIONS` | `25` | Competitions the backend follows at the same time |
+| `MAX_CLIENTS` | `2000` | Viewers allowed at once over all competitions together; more are refused with 503. Sized for the memory and bandwidth of a small instance |
+| `MAX_CLIENTS_30_DAYS` | `50000` | Viewer connections accepted in any 30 days (a rolling window kept in memory, emptied by a restart); further ones are refused with 503. Sized for the outbound bandwidth of the hosting plan |
 | `MAX_CLIENTS_PER_ROOM` | `1000` | Viewers allowed on one competition at once; further connections are refused with 503 (the page retries with a growing wait) |
 | `IDLE_GRACE_SECONDS` | `30` | Seconds a competition keeps being followed after its last viewer left |
 | `DATA_RETENTION_HOURS` | `12` | Hours after a competition's start (after the start of its last day, for a multi-day competition) that its data is served; then its room is closed, its data dropped and the competition leaves the list. `0` keeps it until the day after it ends |

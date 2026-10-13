@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/coder/websocket"
 )
 
 const queueSlack = 512 // headroom above the replay size before a client counts as too slow
@@ -30,7 +32,7 @@ type room struct {
 	feed    *feedStatus // what the data source says about the competition; nil until the first answer
 	st      *store
 	clients map[*client]struct{}
-	closed  string // why the room disconnected its clients; empty while it is open
+	closed  *closeInfo // why the room disconnected its clients; nil while it is open
 }
 
 func newRoom(id, url string, cfg config, cancel func()) *room {
@@ -136,18 +138,25 @@ func (r *room) clientCount() int {
 	return len(r.clients)
 }
 
-// end disconnects every client, telling them why.
-func (r *room) end(reason string) {
+// closeInfo is the close frame sent to clients whose room ends.
+type closeInfo struct {
+	code   websocket.StatusCode
+	reason string
+}
+
+// end disconnects every client, telling them why. Pages treat StatusPolicyViolation as "nothing to follow here" and do
+// not come back, so it is only for a competition that is over; other endings let them reconnect.
+func (r *room) end(code websocket.StatusCode, reason string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.closed = reason
+	r.closed = &closeInfo{code, reason}
 	for c := range r.clients {
 		r.dropLocked(c)
 	}
 }
 
-// closeReason is the reason given to end, or "" if the room has not been ended.
-func (r *room) closeReason() string {
+// closeInfo is what end was given, or nil if the room has not been ended.
+func (r *room) closeInfo() *closeInfo {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.closed
