@@ -4,6 +4,7 @@ package wire
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 )
 
 // Wrap builds a `{"type":...,"data":...}` WebSocket message around pre-encoded data.
@@ -18,6 +19,15 @@ func Wrap(typ string, data []byte) []byte {
 	}
 	b.WriteByte('}')
 	return b.Bytes()
+}
+
+// Stamp returns msg, a message made by Wrap, with a sequence number as its first field.
+func Stamp(msg []byte, seq uint64) []byte {
+	out := make([]byte, 0, len(msg)+24)
+	out = append(out, `{"seq":`...)
+	out = strconv.AppendUint(out, seq, 10)
+	out = append(out, ',')
+	return append(out, msg[1:]...)
 }
 
 // Marshal encodes v as JSON without HTML escaping.

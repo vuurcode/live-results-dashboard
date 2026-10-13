@@ -114,15 +114,20 @@ export interface FeedStatus {
   message?: string;
 }
 
-/** Messages the backend sends over the WebSocket. */
-export type BackendMessage =
-  | { type: 'status'; data: { competition_id?: string; data_source_url: string; data_source_interval: number } }
+/**
+ * Messages the backend sends over the WebSocket. Live messages carry the room's sequence number `seq`, which counts up
+ * by one per message (from 0 again when the room is opened anew); the replay after `status` carries none, and
+ * `status.seq` is the number the replay stands for.
+ */
+export type BackendMessage = { seq?: number } & (
+  | { type: 'status'; data: { competition_id?: string; data_source_url: string; data_source_interval: number; seq?: number } }
   | { type: 'event_name'; data: { name: string } }
   | { type: 'error'; data: string }
   | { type: 'feed_status'; data: FeedStatus }
   | { type: 'reset' }
   | { type: 'distance_meta'; data: DistanceMeta }
-  | { type: 'competitor_update'; data: CompetitorUpdate };
+  | { type: 'competitor_update'; data: CompetitorUpdate }
+);
 
 /** One entry of the backend's `/api/competitions/today` list; `id` is the competitionId to follow. */
 export interface TodayCompetition {

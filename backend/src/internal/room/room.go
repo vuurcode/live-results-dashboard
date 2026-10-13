@@ -34,6 +34,7 @@ type Room struct {
 	IdleTime *time.Timer // set while the room is empty and waiting to be closed; guarded by the hub
 
 	mu      sync.Mutex
+	seq     uint64      // number of the last message broadcast; a client's replay is the state as of this number
 	feed    *feedStatus // what the data source says about the competition; nil until the first answer
 	st      *store.Store
 	clients map[*Client]struct{}
@@ -85,7 +86,16 @@ func (r *Room) Apply(curr *results.Processed) {
 	r.Log.Info("Update", "competitors", len(res.CompUpdates), "new_laps", res.NewLaps, "distances", res.DistUpdates, "reset", res.Reset)
 }
 
+// broadcastLocked numbers the messages and sends them to every client. Replays carry no number: the status message
+// tells a joining client which number its replay stands for, and the live messages that follow count on from it. The
+// numbers start again at 0 when the room is opened anew.
 func (r *Room) broadcastLocked(msgs [][]byte) {
+	stamped := make([][]byte, len(msgs))
+	for i, m := range msgs {
+		r.seq++
+		stamped[i] = wire.Stamp(m, r.seq)
+	}
+	msgs = stamped
 	for c := range r.clients {
 	send:
 		for _, m := range msgs {
@@ -119,6 +129,7 @@ func (r *Room) Register() *Client {
 		"competition_id":       r.ID,
 		"data_source_url":      r.url,
 		"data_source_interval": r.interval,
+		"seq":                  r.seq,
 	}))
 	if r.feed != nil {
 		c.Send <- wire.Wrap("feed_status", wire.Marshal(*r.feed))

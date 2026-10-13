@@ -32,4 +32,5 @@ All components:
 - [x] Per competitor: id, start number (string or number), name, heat, lane, lap count, total time, formatted time (leading zeros stripped, 3 decimals truncated), laps remaining, finished rank
 - [x] Times of races that must not show them (DNS, DQ, WDR) are not sent; setting a no-time status does not reset the cache
 - [x] Messages: `status` (`competition_id`, `data_source_url`, `data_source_interval`), `feed_status`, `event_name`, `distance_meta` (per distance, no groups), `competitor_update` (per changed competitor, with `lap_times`, `personal_record`, `invalid_reason`, `remark`, empty strings as `null`)
+- [x] Every live message carries the room's sequence number `seq`, up by one per message and starting again when the room is opened anew; `status.seq` is the number the replay stands for and the replay messages carry none
 - [x] Replay on connect: `status`, feed status, event name, one `distance_meta` per distance, then every `competitor_update` including those without a time; the suppression of no-time updates applies to live diffs only
