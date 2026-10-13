@@ -11,6 +11,7 @@ All components:
 ### Features
 - [x] Go with `github.com/coder/websocket`; versions pinned in `go.mod`, hashes in `go.sum`; prod image on `scratch` from a base pinned by digest, built with `go mod download && go mod verify` and `-mod=readonly`
 - [x] `/ws?competitionId=<id>` on port `5000`; ids competition `[A-Za-z0-9_-]{1,64}`; an invalid or missing id (no default) is refused with a close frame the page reads as "no competition"
+- [x] A room takes at most `MAX_CLIENTS_PER_ROOM` clients (default 1000); more are refused with 503
 - [x] One room per competition: the first client starts the one fetch loop, later clients share its cache and broadcasts; a room closes `IDLE_GRACE_SECONDS` (default 30) after its last client leaves, and when its competition ended more than a day ago or started more than `DATA_RETENTION_HOURS` (default 12, `0` off) ago, counted from the start of its last day for a multi-day competition (checked every minute, with its clients told)
 - [x] Upstream URL: `LIVE_RESULTS_BASE_URL` + `/Competition?competitionId=<id>`, polled every `LIVE_RESULTS_INTERVAL` seconds (default 1)
 - [x] `DEFAULT_COMPETITION_ID` for clients without an id; at most `MAX_COMPETITIONS` (default 25) rooms, further ones get 503

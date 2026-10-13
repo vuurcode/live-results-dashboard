@@ -48,6 +48,7 @@ type config struct {
 	listenAddr           string
 	defaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	maxCompetitions      int           // distinct competitions followed at once
+	maxClientsPerRoom    int           // clients following one competition at once
 	idleGrace            time.Duration // how long an empty competition keeps polling before it is closed
 	pingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
@@ -78,6 +79,7 @@ func loadConfig() config {
 
 		defaultCompetitionID: os.Getenv("DEFAULT_COMPETITION_ID"),
 		maxCompetitions:      25,
+		maxClientsPerRoom:    1000,
 		idleGrace:            30 * time.Second,
 		pingInterval:         defaultPingInterval,
 
@@ -109,6 +111,13 @@ func loadConfig() config {
 			cfg.maxCompetitions = n
 		} else {
 			slog.Warn("Ignoring invalid MAX_COMPETITIONS", "value", v)
+		}
+	}
+	if v := os.Getenv("MAX_CLIENTS_PER_ROOM"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.maxClientsPerRoom = n
+		} else {
+			slog.Warn("Ignoring invalid MAX_CLIENTS_PER_ROOM", "value", v)
 		}
 	}
 	if v := os.Getenv("IDLE_GRACE_SECONDS"); v != "" {

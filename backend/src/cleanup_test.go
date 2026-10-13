@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"runtime"
 	"testing"
 	"time"
@@ -58,4 +59,33 @@ func TestIdleRoomLeavesNothingRunning(t *testing.T) {
 	tb.m.client.CloseIdleConnections() // the upstream connections are kept alive for reuse, with a goroutine each
 	tb.srv.CloseClientConnections()
 	waitFor(t, "the goroutines to end", func() bool { return runtime.NumGoroutine() <= before+4 })
+}
+
+func TestRoomRefusesClientsBeyondItsLimit(t *testing.T) {
+	tb := newTestBackend(t, func(c *config) { c.maxClientsPerRoom = 2 })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var conns []*websocket.Conn
+	for range 2 {
+		conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.CloseNow()
+		conns = append(conns, conn)
+	}
+	if _, status, err := tb.dial(t, ctx, "?competitionId=A", nil); err == nil || status != http.StatusServiceUnavailable {
+		t.Fatalf("third client: status %d, err %v, want 503", status, err)
+	}
+	if _, _, err := tb.dial(t, ctx, "?competitionId=B", nil); err != nil {
+		t.Fatalf("another competition is not affected: %v", err)
+	}
+	_ = conns[0].Close(websocket.StatusNormalClosure, "")
+	waitFor(t, "a free place", func() bool { return tb.m.rooms["A"].clientCount() < 2 })
+	conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatalf("a place was freed: %v", err)
+	}
+	conn.CloseNow()
 }

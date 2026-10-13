@@ -21,6 +21,7 @@ const defaultPingInterval = 25 * time.Second
 var (
 	errBadCompetitionID = errors.New("invalid or missing competitionId")
 	errTooManyRooms     = errors.New("too many competitions are being followed")
+	errRoomFull         = errors.New("too many clients are following this competition")
 	errCompetitionEnded = errors.New("the competition is over")
 
 	// Ids end up in an outbound URL, so only a conservative charset is accepted.
@@ -92,6 +93,9 @@ func (m *manager) join(id string) (*room, *client, error) {
 		m.rooms[id] = r
 		go (&fetcher{url: upstream, room: r, ua: m.ua, client: m.client, interval: m.cfg.interval()}).loop(ctx)
 		slog.Info("Competition opened", "competition", id, "open", len(m.rooms))
+	}
+	if r.clientCount() >= m.cfg.maxClientsPerRoom {
+		return nil, nil, errRoomFull
 	}
 	if r.idleTime != nil {
 		r.idleTime.Stop()
@@ -190,7 +194,7 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	}
 	if err != nil {
 		code := http.StatusBadRequest
-		if errors.Is(err, errTooManyRooms) {
+		if errors.Is(err, errTooManyRooms) || errors.Is(err, errRoomFull) {
 			code = http.StatusServiceUnavailable
 		}
 		http.Error(w, err.Error(), code)

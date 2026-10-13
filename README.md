@@ -21,6 +21,7 @@ Developed with assistance from [Claude Code](https://claude.com/claude-code).
 | `USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
 | `DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
 | `MAX_COMPETITIONS` | `25` | Competitions the backend follows at the same time |
+| `MAX_CLIENTS_PER_ROOM` | `1000` | Viewers allowed on one competition at once; further connections are refused with 503 (the page retries with a growing wait) |
 | `IDLE_GRACE_SECONDS` | `30` | Seconds a competition keeps being followed after its last viewer left |
 | `DATA_RETENTION_HOURS` | `12` | Hours after a competition's start (after the start of its last day, for a multi-day competition) that its data is served; then its room is closed, its data dropped and the competition leaves the list. `0` keeps it until the day after it ends |
 | `LISTEN_ADDR` | `:5000` | Address the backend listens on |
