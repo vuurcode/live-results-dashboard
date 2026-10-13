@@ -30,7 +30,7 @@ type room struct {
 	feed    *feedStatus // what the data source says about the competition; nil until the first answer
 	st      *store
 	clients map[*client]struct{}
-	ended   bool // closed because the competition is over
+	closed  string // why the room disconnected its clients; empty while it is open
 }
 
 func newRoom(id, url string, cfg config, cancel func()) *room {
@@ -136,18 +136,19 @@ func (r *room) clientCount() int {
 	return len(r.clients)
 }
 
-// end disconnects every client because the competition is over.
-func (r *room) end() {
+// end disconnects every client, telling them why.
+func (r *room) end(reason string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.ended = true
+	r.closed = reason
 	for c := range r.clients {
 		r.dropLocked(c)
 	}
 }
 
-func (r *room) isEnded() bool {
+// closeReason is the reason given to end, or "" if the room has not been ended.
+func (r *room) closeReason() string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.ended
+	return r.closed
 }

@@ -53,6 +53,7 @@ type config struct {
 
 	catalogURL      string        // base URL serving /api/venues and /api/competitions
 	catalogTTL      time.Duration // how long the competitions list is cached; venues are cached forever
+	dataRetention   time.Duration // how long after its start a competition's data is served; 0 = until the day after it ends
 	venueCountry    string        // only venues in this country (ISO 3166 alpha-3, as the upstream uses)
 	venueDiscipline string        // only venues and competitions of this discipline
 }
@@ -82,6 +83,7 @@ func loadConfig() config {
 
 		catalogURL:      os.Getenv("MATCH_INFO_BASE_URL"),
 		catalogTTL:      15 * time.Minute,
+		dataRetention:   12 * time.Hour,
 		venueCountry:    getenv("VENUE_COUNTRY_CODE", "NED"),
 		venueDiscipline: getenv("VENUE_DISCIPLINE", "SpeedSkating.LongTrack"),
 	}
@@ -93,6 +95,13 @@ func loadConfig() config {
 			cfg.catalogTTL = time.Duration(f * float64(time.Second))
 		} else {
 			slog.Warn("Ignoring invalid CATALOG_TTL_SECONDS", "value", v)
+		}
+	}
+	if v := os.Getenv("DATA_RETENTION_HOURS"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			cfg.dataRetention = time.Duration(f * float64(time.Hour))
+		} else {
+			slog.Warn("Ignoring invalid DATA_RETENTION_HOURS", "value", v)
 		}
 	}
 	if v := os.Getenv("MAX_COMPETITIONS"); v != "" {
@@ -215,7 +224,7 @@ func (f *fetcher) fetchOnce(ctx context.Context) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP %d", resp.StatusCode)
+		return &statusError{code: resp.StatusCode, retryAfter: parseRetryAfter(resp.Header)}
 	}
 
 	var raw rawData
@@ -234,15 +243,29 @@ func (f *fetcher) fetchOnce(ctx context.Context) error {
 func (f *fetcher) loop(ctx context.Context) {
 	f.room.log.Debug("Fetch loop started", "url", f.url, "interval", f.interval)
 	defer f.room.log.Debug("Fetch loop stopped")
+	failures := 0
 	for {
-		if err := f.fetchOnce(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			f.room.log.Error("Error fetching data", "err", err)
+		var retryAfter time.Duration
+		if err := f.fetchOnce(ctx); err == nil {
+			failures = 0
+		} else if !errors.Is(err, context.Canceled) {
+			// a data source that keeps failing is asked less and less often, and its failures are not logged every time
+			if failures%logEveryFailures == 0 {
+				f.room.log.Error("Error fetching data", "err", err, "failures", failures+1)
+			}
+			failures++
+			var se *statusError
+			if errors.As(err, &se) {
+				retryAfter = se.retryAfter
+			}
 			f.room.setFeed("unavailable", "") // details stay in the log: they can name the data source
 		}
+		wait := time.NewTimer(fetchDelay(f.interval, failures, retryAfter, randomJitter()))
 		select {
 		case <-ctx.Done():
+			wait.Stop()
 			return
-		case <-time.After(f.interval):
+		case <-wait.C:
 		}
 	}
 }
@@ -272,8 +295,13 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	// On SIGTERM the websocket clients are closed first (Shutdown does not wait for hijacked connections), then
+	// in-flight requests are given a few seconds; main waits for all of it before returning.
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-ctx.Done()
+		m.closeAll()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
@@ -284,4 +312,5 @@ func main() {
 		slog.Error("Server failed", "err", err)
 		os.Exit(1)
 	}
+	<-shutdownDone
 }

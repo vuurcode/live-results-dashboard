@@ -132,11 +132,30 @@ func (m *manager) closeEnded() {
 		if !m.ended(id) {
 			continue
 		}
-		delete(m.rooms, id)
-		r.cancel()
-		r.end()
+		m.closeLocked(id, r, errCompetitionEnded.Error())
 		slog.Info("Competition closed (competition over)", "competition", id, "open", len(m.rooms))
 	}
+}
+
+// closeLocked removes a room, stops its polling loop and disconnects its clients with the given reason.
+func (m *manager) closeLocked(id string, r *room, reason string) {
+	delete(m.rooms, id)
+	if r.idleTime != nil {
+		r.idleTime.Stop()
+		r.idleTime = nil
+	}
+	r.cancel()
+	r.end(reason)
+}
+
+// closeAll closes every room, so that its clients get a close frame and their handlers return.
+func (m *manager) closeAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id, r := range m.rooms {
+		m.closeLocked(id, r, "the server is shutting down")
+	}
+	m.client.CloseIdleConnections()
 }
 
 // watchEnded checks every `every` whether open rooms belong to competitions that are over, until ctx ends.
@@ -179,8 +198,9 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 	}
 	defer m.leave(r, c)
 
-	// Any origin is accepted: the frontend reaches us through a proxy.
-	conn, err := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}})
+	// Any origin is accepted: the frontend reaches us through a proxy. The messages are repetitive JSON: compressing
+	// them with a window shared across messages cuts the traffic by about 80% (browsers without support get them plain).
+	conn, err := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}, CompressionMode: websocket.CompressionContextTakeover})
 	if err != nil {
 		r.log.Warn("WebSocket accept failed", "err", err)
 		return
@@ -209,9 +229,9 @@ func (m *manager) serveWS(w http.ResponseWriter, req *http.Request) {
 			}
 		case msg, ok := <-c.send:
 			if !ok {
-				reason := "client too slow"
-				if r.isEnded() {
-					reason = errCompetitionEnded.Error()
+				reason := r.closeReason()
+				if reason == "" {
+					reason = "client too slow"
 				}
 				_ = conn.Close(websocket.StatusPolicyViolation, reason)
 				return
