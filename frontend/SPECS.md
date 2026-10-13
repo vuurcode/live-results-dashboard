@@ -13,7 +13,7 @@ All components:
 - [x] The backend URL is a runtime environment variable of the container, never hardcoded
 - [x] The competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the competition picker is offered
 - [x] Competition picker lists today's competitions as `<start> - <end> · <name> (<venue>)`; choosing one reloads the page on that competition; the list is asked again every 5 minutes; with no competitions the page says so
-- [x] Auto-connect on load; reconnect every 5s on a lost connection and show it; a refused competition is not retried; a silent connection and a competition that is not live (with the data source's own message) are reported instead of loading forever
+- [x] Auto-connect on load; reconnect on a lost connection (waiting 1s, doubling to 30s, with jitter; not while the page is hidden) and show it; a refused competition is not retried; a silent connection and a competition that is not live (with the data source's own message) are reported instead of loading forever
 - [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
 - [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language

@@ -1,5 +1,6 @@
 import { Injectable, NgZone, inject } from '@angular/core';
 import { TranslateService } from './translate.service';
+import { randomJitter, reconnectDelay } from '../logic/backoff';
 import { SettingsService } from './settings.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { BehaviorSubject, Subject, merge } from 'rxjs';
@@ -93,6 +94,8 @@ export class DataService {
   private queue: BackendMessage[] = [];
   private renderLoopRunning = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Reconnect attempts since the last working connection; the wait between them grows with it. */
+  private reconnectAttempts = 0;
   private lostErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
   private noCompetition = false;
@@ -146,6 +149,7 @@ export class DataService {
   resume() {
     if (!this.competitionId || this.noCompetition) return;
     this._cancelReconnect();
+    this.reconnectAttempts = 0;
     this.socket$?.complete();
     this.socket$ = null;
     this.connect();
@@ -200,6 +204,7 @@ export class DataService {
     switch (msg.type) {
       case 'status':
         this._cancelReconnect();
+        this.reconnectAttempts = 0;
         this.clearErrors();
         this.ngZone.run(() => this._status.next({
           status: 'Connected',
@@ -386,8 +391,10 @@ export class DataService {
     if (this.reconnectTimer) return;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
+      // a hidden page does not keep trying; it reconnects as soon as it is visible again
+      if (document.visibilityState === 'hidden') return;
       this.connect();
-    }, 5000);
+    }, reconnectDelay(this.reconnectAttempts++, randomJitter()));
   }
 
   /** A dropped connection is usually back within moments, so the banner only appears if it stays down. */
@@ -395,7 +402,7 @@ export class DataService {
     if (this.lostErrorTimer) return;
     this.lostErrorTimer = setTimeout(() => {
       this.lostErrorTimer = null;
-      this.addError('Connection to backend lost. Reconnecting in 5s…');
+      this.addError('Connection to backend lost. Reconnecting…');
     }, LOST_ERROR_GRACE_MS);
   }
 
