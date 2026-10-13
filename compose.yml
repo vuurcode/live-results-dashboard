@@ -74,6 +74,8 @@ services:
     environment:
       BACKEND_URL: ${BACKEND_URL:-}
       BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:5000}
+      CSP_CONNECT_SRC: ${CSP_CONNECT_SRC:-'self'}
+      CSP_FRAME_ANCESTORS: ${CSP_FRAME_ANCESTORS:-'none'}
     ports:
       - "${FRONTEND_PORT:-8888}:80"
     depends_on:

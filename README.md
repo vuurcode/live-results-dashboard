@@ -34,6 +34,8 @@ Set on the frontend container when it starts:
 | --- | --- | --- |
 | `BACKEND_URL` | empty | API address the browser uses. Empty: the same origin, which nginx proxies under `/api` and `/ws` |
 | `BACKEND_UPSTREAM` | `backend:5000` | `host:port` nginx proxies to |
+| `CSP_CONNECT_SRC` | `'self'` | Origins the page may call, in the Content-Security-Policy. When `BACKEND_URL` points to another host, list it here, e.g. `'self' https://api.example.com wss://api.example.com` |
+| `CSP_FRAME_ANCESTORS` | `'none'` | Hosts that may embed the page in a frame, e.g. `https://example.com`; `'none'` allows nobody |
 
 `GET /api/competitions/today` lists the competitions happening today (including ones that have not started), each with the `id` to pass as `?competitionId=`.
 
