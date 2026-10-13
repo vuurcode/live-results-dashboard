@@ -58,8 +58,8 @@ func New(ctx context.Context, cfg config.Config, ua fetch.UserAgent) *Hub {
 }
 
 // Join returns the room for id (creating it and its polling loop if needed)
-// with a client already registered in it.
-func (m *Hub) Join(id string) (*room.Room, *room.Client, error) {
+// with a client already registered in it; from says where a reconnecting client left off, or is nil.
+func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, error) {
 	if id == "" {
 		id = m.cfg.DefaultCompetitionID
 	}
@@ -102,7 +102,7 @@ func (m *Hub) Join(id string) (*room.Room, *room.Client, error) {
 		r.IdleTime = nil
 	}
 	m.countConnectionLocked()
-	return r, r.Register(), nil
+	return r, r.Register(from), nil
 }
 
 // allowanceLeftLocked reports whether the rolling allowance of connections has room for one more. It keeps a

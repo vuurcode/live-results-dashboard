@@ -2,6 +2,7 @@ package room
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/vuurcode/live-results-experiment/backend/internal/results"
@@ -32,7 +33,7 @@ func TestLiveMessagesCountOnFromTheReplay(t *testing.T) {
 	r := New("A", "http://x", 1, func() {})
 	r.Apply(processed(0)) // event_name, distance_meta, competitor_update: seq 3
 
-	c := r.Register()
+	c := r.Register(nil)
 	typ, _, data := next(t, c)
 	var status struct{ Seq uint64 }
 	_ = json.Unmarshal(data, &status)
@@ -52,5 +53,116 @@ func TestLiveMessagesCountOnFromTheReplay(t *testing.T) {
 	r.SetFeed("not_live", "")
 	if typ, seq, _ := next(t, c); typ != "feed_status" || seq != 5 {
 		t.Fatalf("got %s seq %d, want feed_status 5", typ, seq)
+	}
+}
+
+// epochOf reads the room incarnation from a client's status message.
+func epochOf(t *testing.T, c *Client) string {
+	t.Helper()
+	_, _, data := next(t, c)
+	var status struct{ Epoch string }
+	_ = json.Unmarshal(data, &status)
+	return status.Epoch
+}
+
+func drain(c *Client) (types []string) {
+	for {
+		select {
+		case m := <-c.Send:
+			var v struct{ Type string }
+			_ = json.Unmarshal(m, &v)
+			types = append(types, v.Type)
+		default:
+			return
+		}
+	}
+}
+
+func TestReconnectingClientGetsOnlyWhatItMissed(t *testing.T) {
+	r := New("A", "http://x", 1, func() {})
+	r.Apply(processed(0)) // seq 1-3
+	epoch := epochOf(t, r.Register(nil))
+
+	r.Apply(processed(1))     // seq 4
+	r.SetFeed("not_live", "") // seq 5
+
+	c := r.Register(&Resume{Epoch: epoch, Seq: 3})
+	typ, _, data := next(t, c)
+	var status struct{ Seq uint64 }
+	_ = json.Unmarshal(data, &status)
+	if typ != "status" || status.Seq != 5 {
+		t.Fatalf("got %s with seq %d, want status with seq 5", typ, status.Seq)
+	}
+	typ, seq, _ := next(t, c)
+	if typ != "competitor_update" || seq != 4 {
+		t.Fatalf("got %s seq %d, want competitor_update 4", typ, seq)
+	}
+	typ, seq, _ = next(t, c)
+	if typ != "feed_status" || seq != 5 {
+		t.Fatalf("got %s seq %d, want feed_status 5", typ, seq)
+	}
+	if rest := drain(c); len(rest) != 1 || rest[0] != "feed_status" { // the current feed state, last
+		t.Fatalf("rest = %v", rest)
+	}
+
+	r.Apply(processed(2))
+	if typ, seq, _ := next(t, c); typ != "competitor_update" || seq != 6 {
+		t.Fatalf("live message after the catch-up: %s seq %d", typ, seq)
+	}
+}
+
+func TestUpToDateClientGetsNoReplay(t *testing.T) {
+	r := New("A", "http://x", 1, func() {})
+	r.Apply(processed(0))
+	epoch := epochOf(t, r.Register(nil))
+	c := r.Register(&Resume{Epoch: epoch, Seq: 3})
+	if got := drain(c); len(got) != 1 || got[0] != "status" {
+		t.Fatalf("got %v, want only status", got)
+	}
+}
+
+func TestClientThatCannotBeCaughtUpGetsTheReplay(t *testing.T) {
+	r := New("A", "http://x", 1, func() {})
+	r.Apply(processed(0))
+	epoch := epochOf(t, r.Register(nil))
+	r.Apply(processed(1))
+
+	full := "status,event_name,distance_meta,competitor_update"
+	for name, from := range map[string]*Resume{
+		"other incarnation": {Epoch: "other", Seq: 3},
+		"ahead of the room": {Epoch: epoch, Seq: 99},
+	} {
+		if got := strings.Join(drain(r.Register(from)), ","); got != full {
+			t.Errorf("%s: got %s, want %s", name, got, full)
+		}
+	}
+
+	r.log = r.log[2:] // the log starts after what the client needs
+	if got := strings.Join(drain(r.Register(&Resume{Epoch: epoch, Seq: 1})), ","); got != full {
+		t.Errorf("log too short: got %s, want %s", got, full)
+	}
+}
+
+func TestLogKeepsTheLatestMessages(t *testing.T) {
+	r := New("A", "http://x", 1, func() {})
+	for i := range maxLog + 10 {
+		r.Apply(processed(i + 1))
+	}
+	if len(r.log) != maxLog || r.log[len(r.log)-1].seq != r.seq {
+		t.Fatalf("log holds %d messages up to %d, room is at %d", len(r.log), r.log[len(r.log)-1].seq, r.seq)
+	}
+}
+
+func TestLogStartsAtAReset(t *testing.T) {
+	r := New("A", "http://x", 1, func() {})
+	r.Apply(processed(3))
+	epoch := epochOf(t, r.Register(nil))
+	r.Apply(processed(0)) // fewer laps than before: the source restarted
+
+	if got := strings.Join(drain(r.Register(&Resume{Epoch: epoch, Seq: 3})), ","); !strings.HasPrefix(got, "status,reset") {
+		t.Errorf("a client from before the reset got %s, want a catch-up that starts with the reset", got)
+	}
+	if got := strings.Join(drain(r.Register(&Resume{Epoch: epoch, Seq: 2})), ","); strings.Contains(got, "reset") {
+		t.Errorf("a client from before the reset's predecessor should get the replay, got %s", got)
 	}
 }

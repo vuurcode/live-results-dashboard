@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -624,5 +625,74 @@ func TestClientAddressIsLimited(t *testing.T) {
 	waitFor(t, "a place to free up", func() bool { return tb.m.Room("A").ClientCount() == 1 })
 	if _, status, err := tb.dial(t, ctx, "?competitionId=A", nil); err == nil || status != http.StatusServiceUnavailable {
 		t.Fatalf("status %d, err %v; want the connection allowance (503), not the address limit", status, err)
+	}
+}
+
+func TestReconnectWithLastSeqSkipsTheReplay(t *testing.T) {
+	tb := newTestBackend(t, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	first, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer first.CloseNow()
+	// follow the first client until it has everything the fetch produces, remembering the last number
+	var epoch string
+	var seq uint64
+	seen := map[string]bool{}
+	for !seen["competitor_update"] || !seen["feed_status"] {
+		_, b, err := first.Read(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v struct {
+			Type string
+			Seq  uint64
+			Data struct {
+				Seq   uint64
+				Epoch string
+			}
+		}
+		_ = json.Unmarshal(b, &v)
+		seen[v.Type] = true
+		if v.Type == "status" {
+			epoch, seq = v.Data.Epoch, v.Data.Seq
+		}
+		seq = max(seq, v.Seq)
+	}
+	if epoch == "" {
+		t.Fatal("status carries no epoch")
+	}
+
+	back, _, err := tb.dial(t, ctx, fmt.Sprintf("?competitionId=A&epoch=%s&lastSeq=%d", epoch, seq), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer back.CloseNow()
+	var types []string
+	for {
+		readCtx, stop := context.WithTimeout(ctx, 300*time.Millisecond)
+		_, b, err := back.Read(readCtx)
+		stop()
+		if err != nil {
+			break
+		}
+		var v struct{ Type string }
+		_ = json.Unmarshal(b, &v)
+		types = append(types, v.Type)
+	}
+	if strings.Join(types, ",") != "status,feed_status" {
+		t.Errorf("reconnect got %v, want status and feed_status only", types)
+	}
+
+	other, _, err := tb.dial(t, ctx, "?competitionId=A&epoch=nope&lastSeq=1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.CloseNow()
+	if types, _ := readUntilCompetitor(t, ctx, other); strings.Join(types, ",") != "status,feed_status,event_name,distance_meta,competitor_update" {
+		t.Errorf("unknown incarnation got %v, want the replay", types)
 	}
 }

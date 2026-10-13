@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -70,7 +71,7 @@ func (s *Server) ServeWS(w http.ResponseWriter, req *http.Request) {
 		}
 		defer release()
 	}
-	r, c, err := s.hub.Join(req.URL.Query().Get("competitionId"))
+	r, c, err := s.hub.Join(req.URL.Query().Get("competitionId"), resumeFrom(req.URL.Query()))
 	if errors.Is(err, hub.ErrBadCompetitionID) || errors.Is(err, hub.ErrCompetitionEnded) {
 		// A browser cannot read the status of a failed handshake and would retry forever, so the
 		// refusal is a close frame it can recognise.
@@ -89,6 +90,16 @@ func (s *Server) ServeWS(w http.ResponseWriter, req *http.Request) {
 	}
 	defer s.hub.Leave(r, c)
 	s.serve(w, req, r, c)
+}
+
+// resumeFrom reads where a reconnecting client left off (the epoch and lastSeq query parameters); nil when it says nothing usable.
+func resumeFrom(q url.Values) *room.Resume {
+	seq, err := strconv.ParseUint(q.Get("lastSeq"), 10, 64)
+	epoch := q.Get("epoch")
+	if err != nil || epoch == "" {
+		return nil
+	}
+	return &room.Resume{Epoch: epoch, Seq: seq}
 }
 
 func (s *Server) serve(w http.ResponseWriter, req *http.Request, r *room.Room, c *room.Client) {

@@ -5,11 +5,12 @@
 // each interval (one fetch loop per competition, however many clients follow
 // it), processes it (sorting, ranking, heat grouping), then pushes
 // per-competitor and per-distance update messages to that competition's clients.
-// Every live message carries a per-room sequence number "seq".
+// Every live message carries a per-room sequence number "seq". A client that reconnects passes the "epoch" of the
+// status message and the last "seq" it saw (epoch and lastSeq query parameters) and then receives only what it missed.
 //
 // WebSocket message types (backend → frontend):
 //
-//	status            — sent on connect: { competition_id, data_source_url, data_source_interval, seq }
+//	status            — sent on connect: { competition_id, data_source_url, data_source_interval, seq, epoch }
 //	feed_status       — { state, message }: whether the data source has the competition live
 //	event_name        — { name }
 //	reset             — the source restarted; the frontend should drop its state
