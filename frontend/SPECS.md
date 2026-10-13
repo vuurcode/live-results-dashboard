@@ -9,7 +9,7 @@ All components:
 ## Frontend
 
 ### Features
-- [x] Node 24 LTS, Angular, CoreUI; dev server on `4200`, prod server (nginx, config in its own folder) on `8888`
+- [x] Node 26, Angular, CoreUI; dev server on `4200`, prod server (nginx, config in its own folder) on `8888`
 - [x] The backend URL is a runtime environment variable of the container, never hardcoded
 - [x] The competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the competition picker is offered
 - [x] Competition picker lists today's competitions as `<start> - <end> · <name> (<venue>)`; choosing one reloads the page on that competition; the list is asked again every 5 minutes; with no competitions the page says so
