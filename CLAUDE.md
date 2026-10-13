@@ -9,7 +9,8 @@
 
 - While working, run only the tests that cover the change (a single e2e spec, a filtered run, the relevant unit tests). Lint and tsc are fine to run.
 - Never commit files you did not touch or expect: stage explicit paths (never `git add -A` or `.`), check `git diff --cached --stat` before every commit, and leave stray or user-added files (screenshots, scratch files) unstaged. Verify an unstage actually worked instead of silencing its errors.
-- Don't commit after each task. Commit only when asked; before committing, run the full suite once, then make all the separate commits in one go.
+- Don't commit after each task. Commit only when asked, and make all the separate commits in one go.
+- Don't run the full suite when committing. It runs in CI, and manually only when the user asks for it; if you think a full run is warranted, ask first.
 
 # Where directives go
 
