@@ -100,6 +100,19 @@ func loadZone(competition, name string) *time.Location {
 	return time.UTC
 }
 
+// expired reports whether the competition started longer than retention ago, so its data is no longer served. A
+// competition of several days counts from the start of its last day. A zero retention never expires.
+func (m *competition) expired(now time.Time, retention time.Duration) bool {
+	if retention <= 0 || m.from.IsZero() {
+		return false
+	}
+	begin := m.from
+	if lastDay := localDay(m.to, m.zone); lastDay.After(localDay(m.from, m.zone)) {
+		begin = time.Date(lastDay.Year(), lastDay.Month(), lastDay.Day(), 0, 0, 0, 0, m.zone)
+	}
+	return now.After(begin.Add(retention))
+}
+
 func (m *competition) active(now time.Time) bool {
 	return m.window(now) != windowPast
 }
@@ -144,6 +157,7 @@ type catalog struct {
 	country    string
 	discipline string
 	ttl        time.Duration
+	retention  time.Duration // see competition.expired
 	ua         *userAgent
 	client     *http.Client
 	now        func() time.Time
@@ -164,7 +178,7 @@ func newCatalog(cfg config, ua *userAgent) (*catalog, error) {
 		return nil, fmt.Errorf("invalid MATCH_INFO_BASE_URL %q", cfg.catalogURL)
 	}
 	return &catalog{
-		base: base, country: cfg.venueCountry, discipline: cfg.venueDiscipline, ttl: cfg.catalogTTL,
+		base: base, country: cfg.venueCountry, discipline: cfg.venueDiscipline, ttl: cfg.catalogTTL, retention: cfg.dataRetention,
 		ua: ua, client: &http.Client{}, now: time.Now,
 	}, nil
 }
@@ -287,13 +301,13 @@ func (c *catalog) reload(ctx context.Context) error {
 	return c.loadCompetitions(ctx)
 }
 
-// ended reports whether id is a competition that is over for good (more than a day after it ended). An id the catalog has
-// never seen is not ended: it may be a competition the list does not carry.
+// ended reports whether id is a competition that is over for good: it expired (see competition.expired) or ended more
+// than a day ago. An id the catalog has never seen is not ended: it may be a competition the list does not carry.
 func (c *catalog) ended(id string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	m, ok := c.known[id]
-	return ok && m.window(c.now()) == windowPast
+	return ok && (m.window(c.now()) == windowPast || m.expired(c.now(), c.retention))
 }
 
 // today lists the competitions whose local days include today, including those that have not started yet.
@@ -306,7 +320,7 @@ func (c *catalog) today(ctx context.Context) ([]*competition, error) {
 	now := c.now()
 	out := []*competition{}
 	for _, m := range c.competitions {
-		if m.window(now) == windowToday {
+		if m.window(now) == windowToday && !m.expired(now, c.retention) {
 			out = append(out, m)
 		}
 	}

@@ -245,3 +245,43 @@ func TestEndedCompetitionsAreKnownAfterTheyLeaveTheList(t *testing.T) {
 		t.Error("a competition two days after its end is over, without refetching")
 	}
 }
+
+func TestDataExpiresAfterTheRetentionSinceTheStart(t *testing.T) {
+	e := newCatalogEnv(t,
+		comp("day", "DEV", "SpeedSkating.LongTrack", "2026-10-24T08:00:00Z", "2026-10-24T17:00:00Z"),
+		comp("weekend", "DEV", "SpeedSkating.LongTrack", "2026-10-24T08:00:00Z", "2026-10-25T17:00:00Z"),
+	)
+	e.cat.retention = 12 * time.Hour
+	ids := func() string {
+		got, err := e.cat.today(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, m := range got {
+			out = append(out, m.ID)
+		}
+		return strings.Join(out, ",")
+	}
+	e.now = time.Date(2026, 10, 24, 19, 0, 0, 0, time.UTC) // 11h after the start
+	if e.cat.ended("day") || ids() != "day,weekend" {
+		t.Fatalf("before the retention: ended=%v list=%q", e.cat.ended("day"), ids())
+	}
+	e.now = time.Date(2026, 10, 24, 20, 1, 0, 0, time.UTC) // 12h after the start
+	if !e.cat.ended("day") || e.cat.ended("weekend") || ids() != "weekend" {
+		t.Fatalf("after the retention: day ended=%v weekend ended=%v list=%q", e.cat.ended("day"), e.cat.ended("weekend"), ids())
+	}
+	e.now = time.Date(2026, 10, 25, 10, 0, 0, 0, time.UTC) // 12h after the start of the last day (Amsterdam midnight)
+	if e.cat.ended("weekend") {
+		t.Fatal("a multi-day competition counts from the start of its last day")
+	}
+	e.now = time.Date(2026, 10, 25, 23, 0, 0, 0, time.UTC)
+	if !e.cat.ended("weekend") {
+		t.Fatal("a multi-day competition expires after its last day")
+	}
+	e.cat.retention = 0
+	e.now = time.Date(2026, 10, 24, 20, 1, 0, 0, time.UTC)
+	if e.cat.ended("day") {
+		t.Fatal("no retention keeps the competition until the day after it ends")
+	}
+}
