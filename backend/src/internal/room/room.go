@@ -2,9 +2,8 @@
 package room
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,7 +15,8 @@ import (
 const queueSlack = 512 // headroom above the replay size before a client counts as too slow
 
 // maxLog is how many of the latest live messages a room keeps for clients that reconnect: a whole competition has
-// a few hundred updates, so this covers it, and a longer one only loses the oldest.
+// a few hundred updates, so this covers it, and a longer one only loses the oldest. The log is cut back to this
+// once it has grown to twice as much, so that the copying is not done on every broadcast.
 const maxLog = 2000
 
 // Resume is where a reconnecting client left off: the room incarnation (Epoch from the status message) and the
@@ -24,11 +24,6 @@ const maxLog = 2000
 type Resume struct {
 	Epoch string
 	Seq   uint64
-}
-
-type logged struct {
-	seq uint64
-	msg []byte
 }
 
 // Client is one follower of a room; its messages arrive on Send, which is closed when the client is dropped.
@@ -53,7 +48,7 @@ type Room struct {
 
 	mu      sync.Mutex
 	epoch   string      // identifies this incarnation of the room; the numbers of a room opened anew mean something else
-	log     []logged    // the latest live messages, oldest first, for clients that reconnect
+	log     [][]byte    // the latest live messages, the last of them numbered seq, for clients that reconnect
 	seq     uint64      // number of the last message broadcast; a client's replay is the state as of this number
 	feed    *feedStatus // what the data source says about the competition; nil until the first answer
 	st      *store.Store
@@ -64,10 +59,8 @@ type Room struct {
 // New creates an empty room for a competition fetched from url every interval seconds. cancel stops the polling loop.
 func New(id, url string, interval float64, cancel func()) *Room {
 	log := slog.With("competition", id)
-	var b [8]byte
-	_, _ = rand.Read(b[:])
 	return &Room{
-		epoch: hex.EncodeToString(b[:]),
+		epoch: strconv.FormatInt(time.Now().UnixNano(), 36),
 		ID:    id, url: url, interval: interval, Cancel: cancel,
 		Log:     log,
 		st:      store.New(log),
@@ -105,7 +98,8 @@ func (r *Room) Apply(curr *results.Processed) {
 		return
 	}
 	if res.Reset { // what came before the reset is no use to a client that catches up
-		r.log = nil
+		clear(r.log)
+		r.log = r.log[:0]
 	}
 	r.broadcastLocked(res.Messages)
 	// one summary line per update, however many competitors changed
@@ -120,10 +114,12 @@ func (r *Room) broadcastLocked(msgs [][]byte) {
 	for i, m := range msgs {
 		r.seq++
 		stamped[i] = wire.Stamp(m, r.seq)
-		r.log = append(r.log, logged{r.seq, stamped[i]})
+		r.log = append(r.log, stamped[i])
 	}
-	if over := len(r.log) - maxLog; over > 0 {
-		r.log = append(r.log[:0], r.log[over:]...)
+	if len(r.log) > 2*maxLog {
+		n := copy(r.log, r.log[len(r.log)-maxLog:])
+		clear(r.log[n:])
+		r.log = r.log[:n]
 	}
 	msgs = stamped
 	for c := range r.clients {
@@ -153,19 +149,12 @@ func (r *Room) catchUpLocked(from *Resume) ([][]byte, bool) {
 	if from == nil || from.Epoch != r.epoch || from.Seq > r.seq {
 		return nil, false
 	}
-	if from.Seq == r.seq {
-		return nil, true
-	}
-	if len(r.log) == 0 || r.log[0].seq > from.Seq+1 {
+	// the log is contiguous and ends at seq, so what the client missed is its tail
+	missed := r.seq - from.Seq
+	if missed > uint64(len(r.log)) {
 		return nil, false
 	}
-	var msgs [][]byte
-	for _, l := range r.log {
-		if l.seq > from.Seq {
-			msgs = append(msgs, l.msg)
-		}
-	}
-	return msgs, true
+	return r.log[len(r.log)-int(missed):], true
 }
 
 // Register adds a client whose queue is pre-loaded with the status message followed by the latest state: a replay,
@@ -179,8 +168,13 @@ func (r *Room) Register(from *Resume) *Client {
 	if !caughtUp {
 		replay = r.st.Replay()
 	}
+	following := len(replay) // the messages after status that bring the client up to date, so it knows when it has them all
+	if r.feed != nil {
+		following++
+	}
 	c := &Client{Send: make(chan []byte, len(replay)+2+queueSlack)}
 	c.Send <- wire.Wrap("status", wire.Marshal(map[string]any{
+		"following":            following,
 		"competition_id":       r.ID,
 		"data_source_url":      r.url,
 		"data_source_interval": r.interval,

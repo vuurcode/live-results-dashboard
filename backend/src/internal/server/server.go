@@ -71,7 +71,8 @@ func (s *Server) ServeWS(w http.ResponseWriter, req *http.Request) {
 		}
 		defer release()
 	}
-	r, c, err := s.hub.Join(req.URL.Query().Get("competitionId"), resumeFrom(req.URL.Query()))
+	q := req.URL.Query()
+	r, c, err := s.hub.Join(q.Get("competitionId"), resumeFrom(q))
 	if errors.Is(err, hub.ErrBadCompetitionID) || errors.Is(err, hub.ErrCompetitionEnded) {
 		// A browser cannot read the status of a failed handshake and would retry forever, so the
 		// refusal is a close frame it can recognise.

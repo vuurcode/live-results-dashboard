@@ -88,8 +88,11 @@ func TestReconnectingClientGetsOnlyWhatItMissed(t *testing.T) {
 
 	c := r.Register(&Resume{Epoch: epoch, Seq: 3})
 	typ, _, data := next(t, c)
-	var status struct{ Seq uint64 }
+	var status struct{ Seq, Following uint64 }
 	_ = json.Unmarshal(data, &status)
+	if status.Following != 3 { // the missed competitor_update and feed_status, and the current feed_status
+		t.Fatalf("status announces %d messages, want 3", status.Following)
+	}
 	if typ != "status" || status.Seq != 5 {
 		t.Fatalf("got %s with seq %d, want status with seq 5", typ, status.Seq)
 	}
@@ -148,8 +151,11 @@ func TestLogKeepsTheLatestMessages(t *testing.T) {
 	for i := range maxLog + 10 {
 		r.Apply(processed(i + 1))
 	}
-	if len(r.log) != maxLog || r.log[len(r.log)-1].seq != r.seq {
-		t.Fatalf("log holds %d messages up to %d, room is at %d", len(r.log), r.log[len(r.log)-1].seq, r.seq)
+	for i := range 2 * maxLog { // far past the cap
+		r.Apply(processed(maxLog + 11 + i))
+	}
+	if len(r.log) < maxLog || len(r.log) > 2*maxLog {
+		t.Fatalf("log holds %d messages", len(r.log))
 	}
 }
 
