@@ -117,12 +117,12 @@ export interface FeedStatus {
 /**
  * Messages the backend sends over the WebSocket. Live messages carry the room's sequence number `seq`, which counts up
  * by one per message (from 0 again when the room is opened anew); the replay after `status` carries none, and
- * `status.seq` is the number the replay stands for. `status.epoch` names the incarnation of the room the numbers
- * belong to; a page that reconnects sends it with its last number, and when the backend still has what it missed, the
+ * `status.seq` is the number the replay stands for and `status.following` how many messages come after it to bring
+ * the page up to date. `status.epoch` names the incarnation of the room the numbers belong to; a page that reconnects sends it with its last number, and when the backend still has what it missed, the
  * replay is just those messages (with their own numbers).
  */
 export type BackendMessage = { seq?: number } & (
-  | { type: 'status'; data: { competition_id?: string; data_source_url: string; data_source_interval: number; seq?: number; epoch?: string } }
+  | { type: 'status'; data: { competition_id?: string; data_source_url: string; data_source_interval: number; seq?: number; epoch?: string; following?: number } }
   | { type: 'event_name'; data: { name: string } }
   | { type: 'error'; data: string }
   | { type: 'feed_status'; data: FeedStatus }

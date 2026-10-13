@@ -104,6 +104,8 @@ export class DataService {
 
   /** Where this page stands in the room's stream (the status message's epoch, the last seq received), to resume from after a reconnect. */
   private resumePoint: { epoch: string; seq: number } | null = null;
+  /** The status message of a connection whose replay is still arriving: `left` more messages to go. */
+  private awaiting: { epoch: string; seq: number; left: number } | null = null;
 
   private noCompetition = false;
   private ngZone = inject(NgZone);
@@ -213,12 +215,20 @@ export class DataService {
     }
   }
 
+  /** Follows how far the stream has got; the point to resume from only stands once everything the status announced has arrived. */
   private _track(msg: BackendMessage) {
     if (msg.type === 'status') {
-      const { epoch, seq } = msg.data;
-      this.resumePoint = epoch !== undefined && seq !== undefined ? { epoch, seq } : null;
+      const { epoch, seq, following } = msg.data;
+      this.resumePoint = null;
+      this.awaiting = epoch !== undefined && seq !== undefined ? { epoch, seq, left: following ?? 0 } : null;
+    } else if (this.awaiting) {
+      this.awaiting.left--;
     } else if (this.resumePoint && msg.seq !== undefined && msg.seq > this.resumePoint.seq) {
       this.resumePoint.seq = msg.seq;
+    }
+    if (this.awaiting && this.awaiting.left <= 0) {
+      this.resumePoint = { epoch: this.awaiting.epoch, seq: this.awaiting.seq };
+      this.awaiting = null;
     }
   }
 

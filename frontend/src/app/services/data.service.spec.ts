@@ -40,17 +40,22 @@ describe('DataService message handling', () => {
     expect(await firstValueFrom(service.status$)).toMatchObject({ status: 'Connected', url: 'http://x', interval: 2 });
   });
 
-  it('remembers how far the stream got, to resume from after a reconnect', () => {
+  it('remembers how far the stream got, but only once the replay has arrived', () => {
     const track = (msg: BackendMessage) => (service as unknown as { _track(m: BackendMessage): void })._track(msg);
     const point = () => (service as unknown as { resumePoint: unknown }).resumePoint;
+    const status = (seq: number, epoch: string, following: number): BackendMessage =>
+      ({ type: 'status', data: { data_source_url: 'http://x', data_source_interval: 2, seq, epoch, following } });
+    const name: BackendMessage = { type: 'event_name', data: { name: 'Cup' } };
     expect(point()).toBeNull();
-    track({ type: 'status', data: { data_source_url: 'http://x', data_source_interval: 2, seq: 5, epoch: 'e1' } });
-    track({ type: 'event_name', data: { name: 'Cup' } }); // replay messages carry no number
+    track(status(5, 'e1', 2));
+    track(name); // replay messages carry no number
+    expect(point()).toBeNull(); // a connection lost here must not resume
+    track(name);
     expect(point()).toEqual({ epoch: 'e1', seq: 5 });
-    track({ seq: 6, type: 'event_name', data: { name: 'Cup' } });
-    track({ seq: 7, type: 'event_name', data: { name: 'Cup' } });
+    track({ seq: 6, ...name });
+    track({ seq: 7, ...name });
     expect(point()).toEqual({ epoch: 'e1', seq: 7 });
-    track({ type: 'status', data: { data_source_url: 'http://x', data_source_interval: 2, seq: 2, epoch: 'e2' } }); // a room opened anew
+    track(status(2, 'e2', 0)); // a room opened anew, nothing to replay
     expect(point()).toEqual({ epoch: 'e2', seq: 2 });
   });
 
