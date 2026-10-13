@@ -6,7 +6,7 @@ import { Title } from '@angular/platform-browser';
 import { DataService } from '../../services/data.service';
 import { SettingsService } from '../../services/settings.service';
 import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
-import { Observable, combineLatest, concat, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
+import { Observable, combineLatest, concat, filter, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../../services/translate.service';
 import { TranslatePipe } from '../../pipes/translate.pipe';
 import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
@@ -89,7 +89,10 @@ export class DashboardComponent implements OnInit {
 
   /** Competitions happening today, for the competition picker in the top bar. */
   /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
-  readonly todayCompetitions$: Observable<TodayCompetition[]> = timer(0, 5 * 60_000).pipe(switchMap(() => from(this.dataService.todayCompetitions())));
+  readonly todayCompetitions$: Observable<TodayCompetition[]> = timer(0, 5 * 60_000).pipe(
+    filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
+    switchMap(() => from(this.dataService.todayCompetitions())),
+  );
 
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
   selectedLabelLength(competitions: TodayCompetition[]): number {

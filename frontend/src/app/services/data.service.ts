@@ -1,9 +1,10 @@
 import { Injectable, NgZone, inject } from '@angular/core';
 import { TranslateService } from './translate.service';
 import { randomJitter, reconnectDelay } from '../logic/backoff';
+import { HIDDEN_PAUSE_MS, needsReconnect } from '../logic/hidden';
 import { SettingsService } from './settings.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { BehaviorSubject, Subject, merge } from 'rxjs';
+import { BehaviorSubject, Subject, Subscription, merge } from 'rxjs';
 import { skip } from 'rxjs/operators';
 import {
   BackendMessage,
@@ -96,6 +97,9 @@ export class DataService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   /** Reconnect attempts since the last working connection; the wait between them grows with it. */
   private reconnectAttempts = 0;
+  private socketSub: Subscription | null = null;
+  private hiddenSince = 0;
+  private pauseTimer: ReturnType<typeof setTimeout> | null = null;
   private lostErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
   private noCompetition = false;
@@ -106,7 +110,7 @@ export class DataService {
   constructor() {
     // A page restored from the back/forward cache comes back with a dead socket and stale results; load it afresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.resume(); });
+    document.addEventListener('visibilitychange', () => this._onVisibilityChange());
     window.addEventListener('online', () => this.resume());
     // changing how mass starts group shows at once
     merge(this.settings.groupThreshold.changes$.pipe(skip(1)), this.settings.maxGroups.changes$.pipe(skip(1)))
@@ -138,11 +142,38 @@ export class DataService {
       url: this.BACKEND_URL,
       closeObserver: { next: (e: CloseEvent) => { this.noCompetition = e.code === CLOSE_NO_COMPETITION; } },
     });
-    this.socket$.subscribe({
+    this.socketSub = this.socket$.subscribe({
       next: (msg) => this._enqueue(msg),
       error: (err: unknown) => this._handleError(err),
       complete: () => this._handleDisconnect(),
     });
+  }
+
+  /**
+   * A hidden page stops listening after a while (the backend's bandwidth is limited) and comes back with a fresh replay;
+   * a brief switch to another tab changes nothing, unless the connection broke meanwhile.
+   */
+  private _onVisibilityChange() {
+    if (document.visibilityState === 'hidden') {
+      this.hiddenSince = Date.now();
+      if (!this.pauseTimer) this.pauseTimer = setTimeout(() => this._pause(), HIDDEN_PAUSE_MS);
+      return;
+    }
+    if (this.pauseTimer) {
+      clearTimeout(this.pauseTimer);
+      this.pauseTimer = null;
+    }
+    if (!this.socket$ || needsReconnect(Date.now() - this.hiddenSince)) this.resume();
+  }
+
+  /** Closes the connection without the reconnect and banner that a lost connection brings. */
+  private _pause() {
+    this.pauseTimer = null;
+    this._cancelReconnect();
+    this._cancelLostError();
+    this.socketSub?.unsubscribe(); // the last subscriber leaving closes the socket
+    this.socketSub = null;
+    this.socket$ = null;
   }
 
   /** A suspended phone leaves a socket that looks open but is dead; drop it and fetch the current results. */
