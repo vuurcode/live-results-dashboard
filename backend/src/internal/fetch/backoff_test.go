@@ -1,4 +1,4 @@
-package main
+package fetch
 
 import (
 	"net/http"
@@ -57,22 +57,5 @@ func TestParseRetryAfter(t *testing.T) {
 		if got := parseRetryAfter(h); got != want {
 			t.Errorf("Retry-After %q: got %v, want %v", header, got, want)
 		}
-	}
-}
-
-func TestFailingDataSourceIsAskedLessOften(t *testing.T) {
-	tb := newTestBackend(t, func(c *config) { c.dataSourceInterval = 0.05 })
-	tb.mu.Lock()
-	tb.status = http.StatusServiceUnavailable
-	tb.mu.Unlock()
-	conn, _, err := tb.dial(t, t.Context(), "?competitionId=slow", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = conn.CloseNow() }()
-	time.Sleep(2 * time.Second)
-	// at the plain 50 ms interval this would be about 40 requests; doubling gives 0, 50, 100, 200, 400, 800 ms: about 6
-	if hits := tb.hitCount("slow"); hits > 10 {
-		t.Fatalf("%d requests in 2s to a failing data source, expected it to back off", hits)
 	}
 }

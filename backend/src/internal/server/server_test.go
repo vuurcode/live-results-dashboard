@@ -1,11 +1,11 @@
-package main
+package server
 
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,215 +13,16 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"github.com/vuurcode/live-results-experiment/backend/internal/config"
+	"github.com/vuurcode/live-results-experiment/backend/internal/hub"
+	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
+	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
 )
-
-func TestFormatTime(t *testing.T) {
-	cases := map[string]string{
-		"":                "",
-		"00:00:05.123456": "5.123",
-		"00:01:05.5":      "1:05.5",
-		"0:00:00.000":     "0.000",
-		"01:02:03.004":    "1:2:03.004", // inner parts are not re-padded (same as the Python original)
-		"12.3456":         "12.345",
-		"007":             "7",
-	}
-	for in, want := range cases {
-		if got := formatTime(in); got != want {
-			t.Errorf("formatTime(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
-func TestParseSeconds(t *testing.T) {
-	cases := map[string]float64{"": 0, "5.5": 5.5, "1:05.5": 65.5, "1:01:05": 3665, "x": 0}
-	for in, want := range cases {
-		if got := parseSeconds(in); got != want {
-			t.Errorf("parseSeconds(%q) = %v, want %v", in, got, want)
-		}
-	}
-}
-
-func lap(total, lapTime string) rawLap { return rawLap{Time: total, LapTime: lapTime} }
-
-func race(id string, heat int, laps ...rawLap) rawRace {
-	return rawRace{ID: id, Heat: heat, Competitor: rawCompetitor{Name: "C" + id, StartNumber: flexString(id)}, Laps: laps}
-}
-
-func TestProcessMassStart(t *testing.T) {
-	raw := &rawData{Name: "Event", Distances: []rawDistance{{
-		ID: "d1", Name: "Elimination 3 laps", Races: []rawRace{
-			race("1", 1, lap("00:00:09.000", "00:00:09.000"), lap("00:00:19.000", "00:00:10.000"), lap("00:00:29.000", "00:00:10.000"), lap("00:00:39.000", "00:00:10.000")),
-			race("2", 1, lap("00:00:09.500", "00:00:09.500"), lap("00:00:19.500", "00:00:10.000")),
-			race("3", 1),
-		},
-	}}}
-	p := process(raw)
-	d := p.distances[0]
-	if !d.meta.IsMassStart || d.meta.TotalLaps == nil || *d.meta.TotalLaps != 3 || !d.meta.AnyFinished {
-		t.Fatalf("unexpected meta: %+v", d.meta)
-	}
-	if d.meta.HeatGroups == nil || len(d.meta.HeatGroups) != 0 {
-		t.Errorf("mass start heat_groups must be an empty list, got %#v", d.meta.HeatGroups)
-	}
-	ids := []string{d.competitors[0].ID, d.competitors[1].ID, d.competitors[2].ID}
-	if strings.Join(ids, ",") != "1,2,3" {
-		t.Errorf("order = %v, want 1,2,3 (laps desc, no-time last)", ids)
-	}
-	first := d.competitors[0]
-	if first.LapsCount != 3 || first.FinishedRank == nil || *first.FinishedRank != 1 || *first.LapsRemaining != 0 {
-		t.Errorf("leader wrong: %+v", first)
-	}
-	if first.Lane != "black" || first.TotalTime != "00:00:39.000" || first.FormattedTotalTime != "39.000" {
-		t.Errorf("leader time/lane wrong: %+v", first)
-	}
-	if rem := d.competitors[1].LapsRemaining; rem == nil || *rem != 2 || d.competitors[1].FinishedRank != nil {
-		t.Errorf("second place wrong: %+v", d.competitors[1])
-	}
-}
-
-func TestProcessTimedHeats(t *testing.T) {
-	a, b := race("1", 2, lap("00:00:20.000", "00:00:20.000")), race("2", 1)
-	a.Lane, a.InvalidReason, a.PersonalRecord = "white", "DQ", "00:00:19.123456"
-	raw := &rawData{Distances: []rawDistance{{ID: "d1", Name: "500 meter", EventNumber: 2, Races: []rawRace{a, b}}}}
-	d := process(raw).distances[0]
-	if d.meta.IsMassStart || d.meta.DistanceMeters == nil || *d.meta.DistanceMeters != 500 {
-		t.Fatalf("unexpected meta: %+v", d.meta)
-	}
-	if len(d.meta.HeatGroups) != 2 || d.meta.HeatGroups[0].Heat != 1 {
-		t.Errorf("heat groups not sorted by heat: %+v", d.meta.HeatGroups)
-	}
-	c := d.competitors[0]
-	if c.Lane != "white" || c.InvalidReason == nil || *c.InvalidReason != "DQ" || c.PersonalRecord == nil || *c.PersonalRecord != "19.123" {
-		t.Errorf("competitor wrong: %+v", c)
-	}
-	if d.competitors[1].Lane != "black" || d.competitors[1].Remark != nil {
-		t.Errorf("empty lane/remark handling wrong: %+v", d.competitors[1])
-	}
-}
-
-func TestTimesOfRacesThatMustNotShowThemAreNotSent(t *testing.T) {
-	for _, code := range []string{"DNS", "DQ", "WDR", "dq"} {
-		for _, inInvalid := range []bool{true, false} {
-			r := race("1", 1, lap("00:00:10.000", "00:00:10.000"), lap("00:00:20.000", "00:00:10.000"))
-			if inInvalid {
-				r.InvalidReason = code
-			} else {
-				r.Remark = "PR " + code
-			}
-			raw := &rawData{Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{r, race("2", 1)}}}}
-			c := process(raw).distances[0].competitors
-			for _, comp := range c {
-				if comp.ID == r.ID && (comp.LapsCount != 0 || len(comp.LapTimes) != 0 || comp.TotalTime != "" || comp.FormattedTotalTime != "") {
-					t.Errorf("%s (invalid reason: %v): times were sent: %+v", code, inInvalid, comp)
-				}
-			}
-		}
-	}
-	shown := race("1", 1, lap("00:00:10.000", "00:00:10.000"))
-	shown.Remark = "DNF"
-	if c := process(&rawData{Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{shown, race("2", 1)}}}}).distances[0].competitors[0]; c.LapsCount != 1 {
-		t.Errorf("a did-not-finish keeps its times: %+v", c)
-	}
-}
-
-func TestSettingNoTimeStatusDoesNotResetTheCache(t *testing.T) {
-	s := newStore(slog.Default())
-	s.update(snapshot(2, true))
-	r := race("1", 1, lap("00:00:10.000", "00:00:10.000"), lap("00:00:20.000", "00:00:10.000"))
-	r.Remark = "DQ"
-	res := s.update(process(&rawData{Name: "E", Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{r, race("2", 1)}}}}))
-	if res.reset {
-		t.Error("a race that stops showing its times is not a reset")
-	}
-	if len(res.compUpdates) != 1 || res.compUpdates[0].LapsCount != 0 {
-		t.Errorf("expected one update without laps, got %+v", res.compUpdates)
-	}
-}
-
-func TestStartNumberAcceptsNumbers(t *testing.T) {
-	var r rawRace
-	if err := json.Unmarshal([]byte(`{"competitor":{"startNumber":12}}`), &r); err != nil || r.Competitor.StartNumber != "12" {
-		t.Fatalf("got %q, err %v", r.Competitor.StartNumber, err)
-	}
-}
-
-func snapshot(laps int, withTime bool) *processedData {
-	r := race("1", 1)
-	if withTime {
-		for range laps {
-			r.Laps = append(r.Laps, lap("00:00:10.000", "00:00:10.000"))
-		}
-	}
-	return process(&rawData{Name: "E", Distances: []rawDistance{{ID: "d1", Name: "1000 meter", Races: []rawRace{r, race("2", 1)}}}})
-}
-
-func types(msgs [][]byte) string {
-	var out []string
-	for _, m := range msgs {
-		var v struct{ Type string }
-		_ = json.Unmarshal(m, &v)
-		out = append(out, v.Type)
-	}
-	return strings.Join(out, ",")
-}
-
-func TestStoreDiff(t *testing.T) {
-	s := newStore(slog.Default())
-
-	res := s.update(snapshot(0, false))
-	if got := types(res.messages); got != "event_name,distance_meta,competitor_update,competitor_update" {
-		t.Fatalf("first update = %s (start list must be sent even without times)", got)
-	}
-	if res := s.update(snapshot(0, false)); len(res.messages) != 0 {
-		t.Errorf("unchanged data produced %s", types(res.messages))
-	}
-
-	res = s.update(snapshot(1, true))
-	if got := types(res.messages); got != "competitor_update" {
-		t.Errorf("lap update = %s, want one competitor_update", got)
-	}
-
-	// Replay carries every competitor, with their latest state.
-	replay := s.replay()
-	if got := types(replay); got != "event_name,distance_meta,competitor_update,competitor_update" {
-		t.Errorf("replay = %s", got)
-	}
-	if !strings.Contains(string(replay[2]), `"laps_count":1`) {
-		t.Errorf("replay is stale: %s", replay[2])
-	}
-
-	// Laps going backwards means the source restarted.
-	res = s.update(snapshot(0, false))
-	if !res.reset || types(res.messages) != "reset,event_name,distance_meta,competitor_update,competitor_update" {
-		t.Errorf("reset update = %v %s", res.reset, types(res.messages))
-	}
-}
-
-func TestSuppressNoTimeUpdates(t *testing.T) {
-	s := newStore(slog.Default())
-	s.update(snapshot(0, false))
-	changed := snapshot(0, false)
-	changed.distances[0].competitors[0].Heat = 9 // changes, but still has no time
-	if res := s.update(changed); len(res.compUpdates) != 0 {
-		t.Errorf("no-time change was broadcast")
-	}
-	if got := len(s.replay()); got != 4 {
-		t.Errorf("suppressed competitor dropped from replay: %d messages", got)
-	}
-}
-
-func TestSanitizeUserAgent(t *testing.T) {
-	if got := sanitizeUserAgent("Mozilla/5.0\r\nX-Evil: 1\x00"); got != "Mozilla/5.0X-Evil: 1" {
-		t.Errorf("got %q", got)
-	}
-	if got := sanitizeUserAgent(strings.Repeat("a", 1000)); len(got) != maxUserAgentLength {
-		t.Errorf("length %d", len(got))
-	}
-}
 
 // testBackend runs a backend against a fake upstream that counts requests per competitionId.
 type testBackend struct {
-	m      *manager
+	m      *hub.Hub
 	srv    *httptest.Server
 	mu     sync.Mutex
 	hits   map[string]int
@@ -230,7 +31,7 @@ type testBackend struct {
 	status int    // when set, the upstream answers with this HTTP status
 }
 
-func newTestBackend(t *testing.T, mutate func(*config)) *testBackend {
+func newTestBackend(t *testing.T, mutate func(*config.Config)) *testBackend {
 	t.Helper()
 	tb := &testBackend{hits: map[string]int{}, agents: map[string]string{}}
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -253,20 +54,22 @@ func newTestBackend(t *testing.T, mutate func(*config)) *testBackend {
 	}))
 	t.Cleanup(upstream.Close)
 
-	cfg := config{
-		dataSourceURL: upstream.URL, dataSourceInterval: 3600, // one fetch per room: the test controls timing
-		maxCompetitions: 2, maxClientsPerRoom: 100, maxClients: 1000, maxClients30Days: 100000, idleGrace: 50 * time.Millisecond, pingInterval: time.Hour,
+	cfg := config.Config{
+		DataSourceURL: upstream.URL, DataSourceInterval: 3600, // one fetch per room: the test controls timing
+		MaxCompetitions: 2, MaxClientsPerRoom: 100, MaxClients: 1000, MaxClients30Days: 100000, IdleGrace: 50 * time.Millisecond, PingInterval: time.Hour,
 	}
 	if mutate != nil {
 		mutate(&cfg)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	ua := &userAgent{}
-	tb.m = newManager(ctx, cfg, ua)
-	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", tb.m.serveWS)
-	tb.srv = httptest.NewServer(ua.middleware(mux))
+	ua := useragent.New("")
+	tb.m = hub.New(ctx, cfg, ua)
+	opts := Options{PingInterval: cfg.PingInterval}
+	if cfg.MaxClientsPerIP > 0 {
+		opts.Limiter = ratelimit.New(cfg.ConnectsPerMinute, cfg.ConnectBurst, cfg.MaxClientsPerIP)
+	}
+	tb.srv = httptest.NewServer(New(tb.m, opts).Handler(ua, nil))
 	t.Cleanup(tb.srv.Close)
 	return tb
 }
@@ -354,7 +157,7 @@ func TestClientsShareOneFetchLoopPerCompetition(t *testing.T) {
 	if a, b := tb.hitCount("A"), tb.hitCount("B"); a != 1 || b != 1 {
 		t.Errorf("upstream hits A=%d B=%d, want exactly 1 each", a, b)
 	}
-	if got := tb.m.roomCount(); got != 2 {
+	if got := tb.m.RoomCount(); got != 2 {
 		t.Errorf("rooms = %d, want 2", got)
 	}
 	if tb.agents["A"] != "test-agent/1.0" {
@@ -387,7 +190,7 @@ func TestRoomClosesWhenLastClientLeaves(t *testing.T) {
 	}
 	readUntilCompetitor(t, ctx, conn)
 	conn.Close(websocket.StatusNormalClosure, "")
-	waitFor(t, "room to close after the grace period", func() bool { return tb.m.roomCount() == 0 })
+	waitFor(t, "room to close after the grace period", func() bool { return tb.m.RoomCount() == 0 })
 
 	// Rejoining starts a fresh room (and a fresh fetch).
 	conn2, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
@@ -402,7 +205,7 @@ func TestRoomClosesWhenLastClientLeaves(t *testing.T) {
 }
 
 func TestRejoinWithinGraceKeepsRoom(t *testing.T) {
-	tb := newTestBackend(t, func(c *config) { c.idleGrace = time.Hour })
+	tb := newTestBackend(t, func(c *config.Config) { c.IdleGrace = time.Hour })
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -410,8 +213,8 @@ func TestRejoinWithinGraceKeepsRoom(t *testing.T) {
 	readUntilCompetitor(t, ctx, conn)
 	conn.Close(websocket.StatusNormalClosure, "")
 	waitFor(t, "client to leave", func() bool {
-		r := tb.m.rooms["A"]
-		return r != nil && r.clientCount() == 0
+		r := tb.m.Room("A")
+		return r != nil && r.ClientCount() == 0
 	})
 	conn2, _, _ := tb.dial(t, ctx, "?competitionId=A", nil)
 	defer conn2.CloseNow()
@@ -422,7 +225,7 @@ func TestRejoinWithinGraceKeepsRoom(t *testing.T) {
 }
 
 func TestIdleClientIsPingedAndStaysConnected(t *testing.T) {
-	tb := newTestBackend(t, func(c *config) { c.pingInterval = 20 * time.Millisecond })
+	tb := newTestBackend(t, func(c *config.Config) { c.PingInterval = 20 * time.Millisecond })
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -467,7 +270,7 @@ func TestRejectedCompetitionIDs(t *testing.T) {
 		conn.CloseNow()
 	}
 
-	// maxCompetitions = 2: a third distinct competition is refused, existing ones still accept clients.
+	// MaxCompetitions = 2: a third distinct competition is refused, existing ones still accept clients.
 	for _, id := range []string{"A", "B"} {
 		c, _, err := tb.dial(t, ctx, "?competitionId="+id, nil)
 		if err != nil {
@@ -489,7 +292,7 @@ func TestRejectedCompetitionIDs(t *testing.T) {
 }
 
 func TestDefaultCompetitionID(t *testing.T) {
-	tb := newTestBackend(t, func(c *config) { c.defaultCompetitionID = "dflt" })
+	tb := newTestBackend(t, func(c *config.Config) { c.DefaultCompetitionID = "dflt" })
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	conn, _, err := tb.dial(t, ctx, "", nil)
@@ -502,38 +305,8 @@ func TestDefaultCompetitionID(t *testing.T) {
 	}
 }
 
-func TestUpstreamURL(t *testing.T) {
-	cases := []struct{ base, want string }{
-		{"http://h/api/data", "http://h/api/data?competitionId=abc"},
-		{"http://h/api/data?x=1", "http://h/api/data?competitionId=abc&x=1"},
-		{"http://h", "http://h/?competitionId=abc"},
-		{"http://h/", "http://h/?competitionId=abc"},
-		{"http://h:8080?x=1", "http://h:8080/?competitionId=abc&x=1"},
-		{"http://h/api/data/", "http://h/api/data/?competitionId=abc"},
-	}
-	for _, c := range cases {
-		got, err := config{dataSourceURL: c.base}.upstreamURL("abc")
-		if err != nil || got != c.want {
-			t.Errorf("%s -> %q (%v), want %q", c.base, got, err, c.want)
-		}
-	}
-}
-
-func TestUserAgentFixedOverridesMirroring(t *testing.T) {
-	mirror := &userAgent{}
-	mirror.set("Browser/1.0")
-	if got := mirror.get(); got != "Browser/1.0" {
-		t.Errorf("mirrored = %q", got)
-	}
-	fixed := &userAgent{fixed: sanitizeUserAgent("MyDashboard/1.0\r\n")}
-	fixed.set("Browser/1.0")
-	if got := fixed.get(); got != "MyDashboard/1.0" {
-		t.Errorf("fixed = %q, want MyDashboard/1.0", got)
-	}
-}
-
 // readFeedStatus reads messages until a feed_status arrives and returns it.
-func readFeedStatus(t *testing.T, ctx context.Context, conn *websocket.Conn) feedStatus {
+func readFeedStatus(t *testing.T, ctx context.Context, conn *websocket.Conn) FeedStatus {
 	t.Helper()
 	for {
 		_, b, err := conn.Read(ctx)
@@ -542,7 +315,7 @@ func readFeedStatus(t *testing.T, ctx context.Context, conn *websocket.Conn) fee
 		}
 		var v struct {
 			Type string
-			Data feedStatus
+			Data FeedStatus
 		}
 		_ = json.Unmarshal(b, &v)
 		if v.Type == "feed_status" {
@@ -600,22 +373,10 @@ func TestFeedStatusUnavailableHidesDetailsAndOkOnData(t *testing.T) {
 	}
 }
 
-func TestLiveResultsBaseURL(t *testing.T) {
-	for _, tc := range []struct{ base, want string }{
-		{"https://h.test", "https://h.test/Competition"},
-		{"https://h.test/", "https://h.test/Competition"},
-	} {
-		t.Setenv("LIVE_RESULTS_BASE_URL", tc.base)
-		if got := loadConfig().dataSourceURL; got != tc.want {
-			t.Errorf("base=%q: got %q, want %q", tc.base, got, tc.want)
-		}
-	}
-}
-
 func TestClosesRoomsOfEndedCompetitions(t *testing.T) {
 	tb := newTestBackend(t, nil)
 	var ended atomic.Bool
-	tb.m.ended = func(string) bool { return ended.Load() }
+	tb.m.Ended = func(string) bool { return ended.Load() }
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -625,15 +386,15 @@ func TestClosesRoomsOfEndedCompetitions(t *testing.T) {
 	}
 	defer conn.CloseNow()
 	readUntilCompetitor(t, ctx, conn)
-	tb.m.closeEnded()
-	if tb.m.roomCount() != 1 {
+	tb.m.CloseEnded()
+	if tb.m.RoomCount() != 1 {
 		t.Fatal("a competition that is not over keeps its room")
 	}
 
 	ended.Store(true)
-	tb.m.closeEnded()
-	if tb.m.roomCount() != 0 {
-		t.Fatalf("rooms = %d, want the room closed", tb.m.roomCount())
+	tb.m.CloseEnded()
+	if tb.m.RoomCount() != 0 {
+		t.Fatalf("rooms = %d, want the room closed", tb.m.RoomCount())
 	}
 	for { // the client is told, with the code the page reads as "no competition to follow"
 		if _, _, err := conn.Read(ctx); err != nil {
@@ -651,7 +412,217 @@ func TestClosesRoomsOfEndedCompetitions(t *testing.T) {
 			t.Fatalf("rejoin after the end: %v, want a policy violation", err)
 		}
 	}
-	if tb.m.roomCount() != 0 {
+	if tb.m.RoomCount() != 0 {
 		t.Fatal("an ended competition must not get a new room")
+	}
+}
+
+func TestCloseAllTellsClientsAndStopsRooms(t *testing.T) {
+	tb := newTestBackend(t, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.CloseNow()
+	readUntilCompetitor(t, ctx, conn)
+
+	tb.m.CloseAll()
+	if tb.m.RoomCount() != 0 {
+		t.Fatalf("rooms = %d, want none", tb.m.RoomCount())
+	}
+	for { // messages still queued come first
+		if _, _, err = conn.Read(ctx); err != nil {
+			break
+		}
+	}
+	if websocket.CloseStatus(err) != websocket.StatusGoingAway { // not a policy violation: the page must reconnect
+		t.Fatalf("closed with %v, want going away", err)
+	}
+}
+
+func TestIdleRoomLeavesNothingRunning(t *testing.T) {
+	tb := newTestBackend(t, func(c *config.Config) { c.DataSourceInterval = 0.02 })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	time.Sleep(50 * time.Millisecond) // let the server's own goroutines settle
+	before := runtime.NumGoroutine()
+
+	conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readUntilCompetitor(t, ctx, conn)
+	_ = conn.Close(websocket.StatusNormalClosure, "")
+
+	waitFor(t, "the idle room to close", func() bool { return tb.m.RoomCount() == 0 })
+	hits := tb.hitCount("A")
+	time.Sleep(150 * time.Millisecond)
+	if got := tb.hitCount("A"); got != hits {
+		t.Fatalf("closed room still polls: %d -> %d fetches", hits, got)
+	}
+	tb.m.CloseIdleConnections() // the upstream connections are kept alive for reuse, with a goroutine each
+	tb.srv.CloseClientConnections()
+	waitFor(t, "the goroutines to end", func() bool { return runtime.NumGoroutine() <= before+4 })
+}
+
+func TestRoomRefusesClientsBeyondItsLimit(t *testing.T) {
+	tb := newTestBackend(t, func(c *config.Config) { c.MaxClientsPerRoom = 2 })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var conns []*websocket.Conn
+	for range 2 {
+		conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.CloseNow()
+		conns = append(conns, conn)
+	}
+	if _, status, err := tb.dial(t, ctx, "?competitionId=A", nil); err == nil || status != http.StatusServiceUnavailable {
+		t.Fatalf("third client: status %d, err %v, want 503", status, err)
+	}
+	if _, _, err := tb.dial(t, ctx, "?competitionId=B", nil); err != nil {
+		t.Fatalf("another competition is not affected: %v", err)
+	}
+	_ = conns[0].Close(websocket.StatusNormalClosure, "")
+	waitFor(t, "a free place", func() bool { return tb.m.Room("A").ClientCount() < 2 })
+	conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatalf("a place was freed: %v", err)
+	}
+	conn.CloseNow()
+}
+
+func TestServerRefusesClientsBeyondItsTotal(t *testing.T) {
+	tb := newTestBackend(t, func(c *config.Config) { c.MaxClients = 2 })
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var conns []*websocket.Conn
+	for _, id := range []string{"A", "B"} {
+		conn, _, err := tb.dial(t, ctx, "?competitionId="+id, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.CloseNow()
+		conns = append(conns, conn)
+	}
+	for _, id := range []string{"A", "B"} { // existing rooms and new ones alike
+		if _, status, err := tb.dial(t, ctx, "?competitionId="+id, nil); err == nil || status != http.StatusServiceUnavailable {
+			t.Fatalf("client %s over the total: status %d, err %v, want 503", id, status, err)
+		}
+	}
+	_ = conns[0].Close(websocket.StatusNormalClosure, "")
+	waitFor(t, "a free place", func() bool { return tb.m.RoomCount() > 0 && tb.m.Room("A").ClientCount() == 0 })
+	conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatalf("a place was freed: %v", err)
+	}
+	conn.CloseNow()
+}
+
+func TestHealthcheckIsAnEmpty200(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthcheck", Healthcheck)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthcheck", nil))
+	if rec.Code != http.StatusOK || rec.Body.Len() != 0 {
+		t.Fatalf("status %d body %q, want an empty 200", rec.Code, rec.Body.String())
+	}
+}
+
+func TestFailingDataSourceIsAskedLessOften(t *testing.T) {
+	tb := newTestBackend(t, func(c *config.Config) { c.DataSourceInterval = 0.05 })
+	tb.mu.Lock()
+	tb.status = http.StatusServiceUnavailable
+	tb.mu.Unlock()
+	conn, _, err := tb.dial(t, t.Context(), "?competitionId=slow", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.CloseNow() }()
+	time.Sleep(2 * time.Second)
+	// at the plain 50 ms interval this would be about 40 requests; doubling gives 0, 50, 100, 200, 400, 800 ms: about 6
+	if hits := tb.hitCount("slow"); hits > 10 {
+		t.Fatalf("%d requests in 2s to a failing data source, expected it to back off", hits)
+	}
+}
+
+// FeedStatus mirrors the feed_status message.
+type FeedStatus struct {
+	State   string
+	Message string
+}
+
+func TestConnectionAllowanceRollsOverThirtyDays(t *testing.T) {
+	tb := newTestBackend(t, func(c *config.Config) { c.MaxClients30Days = 3 })
+	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
+	tb.m.Now = func() time.Time { return now }
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	connect := func(id string) error {
+		conn, _, err := tb.dial(t, ctx, "?competitionId="+id, nil)
+		if err == nil {
+			_ = conn.Close(websocket.StatusNormalClosure, "")
+		}
+		return err
+	}
+	for range 2 {
+		if err := connect("A"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now = now.AddDate(0, 0, 10)
+	if err := connect("A"); err != nil {
+		t.Fatalf("the third connection fits: %v", err)
+	}
+	if err := connect("A"); err == nil {
+		t.Fatal("a fourth connection within 30 days must be refused")
+	}
+	if err := connect("B"); err == nil {
+		t.Fatal("a refused client must not open a new room")
+	}
+	waitFor(t, "idle rooms to close", func() bool { return tb.m.RoomCount() == 0 })
+
+	now = now.AddDate(0, 0, 20) // day 30 after the first two connections: they fall out of the window
+	if err := connect("A"); err != nil {
+		t.Fatalf("after the window passed the first two: %v", err)
+	}
+}
+
+func TestClientAddressIsLimited(t *testing.T) {
+	tb := newTestBackend(t, func(c *config.Config) {
+		c.MaxClientsPerIP, c.ConnectsPerMinute, c.ConnectBurst = 2, 60, 10
+		c.MaxClients30Days = 2
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var open []*websocket.Conn
+	for range 2 {
+		conn, _, err := tb.dial(t, ctx, "?competitionId=A", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		open = append(open, conn)
+	}
+	_, status, err := tb.dial(t, ctx, "?competitionId=A", nil)
+	if err == nil || status != http.StatusTooManyRequests {
+		t.Fatalf("status %d, err %v; want 429 for a third open connection", status, err)
+	}
+
+	// the refusal did not use up the allowance of 2 connections, and a freed place can be used again
+	if got := tb.m.Room("A").ClientCount(); got != 2 {
+		t.Fatalf("clients = %d, want 2", got)
+	}
+	_ = open[0].Close(websocket.StatusNormalClosure, "")
+	waitFor(t, "a place to free up", func() bool { return tb.m.Room("A").ClientCount() == 1 })
+	if _, status, err := tb.dial(t, ctx, "?competitionId=A", nil); err == nil || status != http.StatusServiceUnavailable {
+		t.Fatalf("status %d, err %v; want the connection allowance (503), not the address limit", status, err)
 	}
 }

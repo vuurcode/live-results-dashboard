@@ -11,7 +11,7 @@ All components:
 ### Features
 - [x] Go with `github.com/coder/websocket`; versions pinned in `go.mod`, hashes in `go.sum`; prod image on `scratch` from a base pinned by digest, built with `go mod download && go mod verify` and `-mod=readonly`
 - [x] `/ws?competitionId=<id>` on port `5000`; ids competition `[A-Za-z0-9_-]{1,64}`; an invalid or missing id (no default) is refused with a close frame the page reads as "no competition"
-- [x] The limits and timings (`LIVE_RESULTS_INTERVAL`, `CATALOG_TTL_SECONDS`, `MAX_*`, `IDLE_GRACE_SECONDS`, `DATA_RETENTION_HOURS`) are defined in `src/limits.conf`, embedded in the binary at build; an environment variable of the same name overrides one; an invalid baked value stops the start
+- [x] The limits and timings (`LIVE_RESULTS_INTERVAL`, `CATALOG_TTL_SECONDS`, `MAX_*`, `IDLE_GRACE_SECONDS`, `DATA_RETENTION_HOURS`) are defined in `src/internal/config/limits.conf`, embedded in the binary at build; an environment variable of the same name overrides one; an invalid baked value stops the start
 - [x] At most `MAX_CLIENTS_30_DAYS` (default 50000) client connections are accepted in any rolling 30 days (UTC days, counted in memory, reset by a restart); more are refused with 503
 - [x] At most `MAX_CLIENTS` clients (default 2000) are served over all rooms together; more are refused with 503
 - [x] `GET /healthcheck`: an empty 200, for the hosting platform's health check
@@ -20,11 +20,12 @@ All components:
 - [x] Upstream URL: `LIVE_RESULTS_BASE_URL` + `/Competition?competitionId=<id>`, polled every `LIVE_RESULTS_INTERVAL` seconds (default 1)
 - [x] `DEFAULT_COMPETITION_ID` for clients without an id; at most `MAX_COMPETITIONS` (default 25) rooms, further ones get 503
 - [x] `GET /api/competitions/today`: the competitions whose local days include today (also before they start), for the configured venue country and discipline, without secrets; empty list when none; cached `CATALOG_TTL_SECONDS` (default 900), stale data kept when a refresh fails; a competition is kept the day after it ended and dropped after that, by the competition's own time zone, and dropped earlier once `DATA_RETENTION_HOURS` have passed since its start
+- [x] Per client address (`CLIENT_IP_HEADER` names the proxy header, else the connection; IPv6 by /64): at most `MAX_CLIENTS_PER_IP` connections at once and `CONNECTS_PER_MINUTE` attempts on average with a burst of `CONNECT_BURST`; further ones get 429 with `Retry-After`, before a room is opened or the 30-day allowance is used
 - [x] The most recent inbound `User-Agent` is mirrored on outbound fetches (the default Go one before any client connected), unless `USER_AGENT` is set
 - [x] Feed status (`ok`, `not_live`, `unavailable`) with the data source's own message is sent to clients when it changes
 - [x] Logs data received, updates sent, and rooms opening and closing
 
-### Data (unit specs: `src/*_test.go`)
+### Data (unit specs: `src/internal/*/*_test.go`)
 - [x] Each fetch is parsed and diffed against the previous state; only changes are broadcast
 - [x] Mass start: a distance with more than two races sharing one heat; the warm-up lap is dropped; total laps come from the title; positions and standings groups are not computed here
 - [x] Timed distance: the first lap counts; the distance comes from the title; races grouped by heat, then time; complete only once every competitor has every expected lap

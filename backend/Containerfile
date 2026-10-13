@@ -10,7 +10,7 @@ COPY src/go.mod src/go.sum ./
 RUN go mod download && go mod verify
 
 COPY src/ ./
-RUN go build -trimpath -ldflags="-s -w" -o /backend .
+RUN go build -trimpath -ldflags="-s -w" -o /backend ./cmd/server
 
 # Runtime stage: static binary only, plus CA certificates for HTTPS data sources
 FROM scratch

@@ -32,7 +32,7 @@ export default defineConfig({
       },
     },
     {
-      command: 'go run .',
+      command: 'go run ./cmd/server',
       cwd: path.join(repoRoot, 'backend/src'),
       port: BACKEND_PORT,
       reuseExistingServer: !ci,
@@ -42,6 +42,9 @@ export default defineConfig({
         LIVE_RESULTS_INTERVAL: '0.5',
         DEFAULT_COMPETITION_ID: 'e2e-timed',
         IDLE_GRACE_SECONDS: '0.5',
+        MAX_CLIENTS_PER_IP: '1000', // every test page connects from this one address
+        CONNECTS_PER_MINUTE: '100000',
+        CONNECT_BURST: '1000',
       },
     },
     {

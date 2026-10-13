@@ -1,4 +1,5 @@
-package main
+// Package catalog lists the venues and competitions of the venue country and discipline, and says which are over.
+package catalog
 
 import (
 	"context"
@@ -9,12 +10,28 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 	_ "time/tzdata" // the scratch container has no zoneinfo; competitions carry their own time zone
+
+	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 )
+
+const maxBodyBytes = 64 << 20
+
+// Ids end up in an outbound URL, so only a conservative charset is accepted.
+var idRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+// ValidID reports whether id may be used as a competition id.
+func ValidID(id string) bool { return idRe.MatchString(id) }
+
+// UserAgent supplies the User-Agent header for outbound requests; an empty string sends none.
+type UserAgent interface {
+	Get() string
+}
 
 // A venue is kept by code only; venue codes repeat across disciplines, so the
 // discipline filter is what makes the code unique.
@@ -150,15 +167,15 @@ func localDay(t time.Time, loc *time.Location) time.Time {
 	return time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
 }
 
-// catalog fetches venues once (kept forever) and competitions at most once per
+// Catalog fetches venues once (kept forever) and competitions at most once per
 // TTL, both lazily on first use. A failed refresh keeps serving the old data.
-type catalog struct {
+type Catalog struct {
 	base       *url.URL
 	country    string
 	discipline string
 	ttl        time.Duration
 	retention  time.Duration // see competition.expired
-	ua         *userAgent
+	ua         UserAgent
 	client     *http.Client
 	now        func() time.Time
 
@@ -172,18 +189,19 @@ type catalog struct {
 
 const retryAfterFailure = 30 * time.Second
 
-func newCatalog(cfg config, ua *userAgent) (*catalog, error) {
-	base, err := url.Parse(cfg.catalogURL)
+// New returns a catalog for the competitions list served at cfg.CatalogURL.
+func New(cfg config.Config, ua UserAgent) (*Catalog, error) {
+	base, err := url.Parse(cfg.CatalogURL)
 	if err != nil || base.Scheme == "" || base.Host == "" {
-		return nil, fmt.Errorf("invalid MATCH_INFO_BASE_URL %q", cfg.catalogURL)
+		return nil, fmt.Errorf("invalid MATCH_INFO_BASE_URL %q", cfg.CatalogURL)
 	}
-	return &catalog{
-		base: base, country: cfg.venueCountry, discipline: cfg.venueDiscipline, ttl: cfg.catalogTTL, retention: cfg.dataRetention,
+	return &Catalog{
+		base: base, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: cfg.CatalogTTL, retention: cfg.DataRetention,
 		ua: ua, client: &http.Client{}, now: time.Now,
 	}, nil
 }
 
-func (c *catalog) getJSON(ctx context.Context, path string, out any) error {
+func (c *Catalog) getJSON(ctx context.Context, path string, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	u := *c.base
@@ -192,7 +210,7 @@ func (c *catalog) getJSON(ctx context.Context, path string, out any) error {
 	if err != nil {
 		return err
 	}
-	if ua := c.ua.get(); ua != "" {
+	if ua := c.ua.Get(); ua != "" {
 		req.Header.Set("User-Agent", ua)
 	}
 	resp, err := c.client.Do(req)
@@ -209,7 +227,7 @@ func (c *catalog) getJSON(ctx context.Context, path string, out any) error {
 	return nil
 }
 
-func (c *catalog) loadVenues(ctx context.Context) error {
+func (c *Catalog) loadVenues(ctx context.Context) error {
 	var raw []rawVenue
 	if err := c.getJSON(ctx, "/api/venues", &raw); err != nil {
 		return err
@@ -225,7 +243,7 @@ func (c *catalog) loadVenues(ctx context.Context) error {
 	return nil
 }
 
-func (c *catalog) loadCompetitions(ctx context.Context) error {
+func (c *Catalog) loadCompetitions(ctx context.Context) error {
 	var raw []rawCompetition
 	if err := c.getJSON(ctx, "/api/competitions", &raw); err != nil {
 		return err
@@ -236,7 +254,7 @@ func (c *catalog) loadCompetitions(ctx context.Context) error {
 	for i := range raw {
 		r := &raw[i]
 		v, ok := c.venues[r.Venue.Code]
-		if !ok || r.Discipline != c.discipline || !competitionIDRe.MatchString(r.ID) {
+		if !ok || r.Discipline != c.discipline || !ValidID(r.ID) {
 			continue
 		}
 		m := &competition{
@@ -265,7 +283,7 @@ func (c *catalog) loadCompetitions(ctx context.Context) error {
 }
 
 // refresh brings the cache up to date if needed. Callers hold no lock.
-func (c *catalog) refresh(ctx context.Context) error {
+func (c *Catalog) refresh(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.now()
@@ -292,7 +310,7 @@ func (c *catalog) refresh(ctx context.Context) error {
 	return nil
 }
 
-func (c *catalog) reload(ctx context.Context) error {
+func (c *Catalog) reload(ctx context.Context) error {
 	if c.venues == nil {
 		if err := c.loadVenues(ctx); err != nil {
 			return err
@@ -303,7 +321,8 @@ func (c *catalog) reload(ctx context.Context) error {
 
 // ended reports whether id is a competition that is over for good: it expired (see competition.expired) or ended more
 // than a day ago. An id the catalog has never seen is not ended: it may be a competition the list does not carry.
-func (c *catalog) ended(id string) bool {
+// Ended reports whether a competition is over for good.
+func (c *Catalog) Ended(id string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	m, ok := c.known[id]
@@ -311,7 +330,7 @@ func (c *catalog) ended(id string) bool {
 }
 
 // today lists the competitions whose local days include today, including those that have not started yet.
-func (c *catalog) today(ctx context.Context) ([]*competition, error) {
+func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 	if err := c.refresh(ctx); err != nil {
 		return nil, err
 	}
@@ -327,8 +346,9 @@ func (c *catalog) today(ctx context.Context) ([]*competition, error) {
 	return out, nil
 }
 
-func (c *catalog) serveToday(w http.ResponseWriter, r *http.Request) {
-	list, err := c.today(r.Context())
+// ServeToday answers with the competitions of today.
+func (c *Catalog) ServeToday(w http.ResponseWriter, r *http.Request) {
+	list, err := c.Today(r.Context())
 	if err != nil {
 		http.Error(w, "competition list unavailable", http.StatusBadGateway)
 		return

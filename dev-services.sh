@@ -6,10 +6,10 @@
 
 trap 'kill $(jobs -p) 2>/dev/null' EXIT TERM INT
 
-# run_go <dir> <binary>: build and run a Go service, rebuilding and restarting it
+# run_go <dir> <binary> [package]: build and run a Go service, rebuilding and restarting it
 # whenever a source file in <dir> changes.
 run_go() {
-  local dir=$1 bin=/tmp/$2 pid='' last='' cur
+  local dir=$1 bin=/tmp/$2 pkg=${3:-.} pid='' last='' cur
   trap '[ -n "$pid" ] && kill $pid 2>/dev/null' EXIT TERM INT
   cd "$dir" || return
   while true; do
@@ -17,7 +17,7 @@ run_go() {
     if [ "$cur" != "$last" ]; then
       last=$cur
       if [ -n "$pid" ]; then kill $pid 2>/dev/null; wait $pid 2>/dev/null; pid=; fi
-      if go build -o "$bin" .; then
+      if go build -o "$bin" "$pkg"; then
         "$bin" &
         pid=$!
       else
@@ -32,7 +32,7 @@ run_go() {
 
 (
   until curl -fs -o /dev/null http://localhost:8080/api/matches; do sleep 1; done
-  run_go /app/backend/src backend
+  run_go /app/backend/src backend ./cmd/server
 ) &
 
 (

@@ -1,4 +1,6 @@
-package main
+// Package results turns the raw competition document of the live results API into the state the dashboard shows:
+// sorted, ranked and grouped per distance.
+package results
 
 import (
 	"encoding/json"
@@ -11,7 +13,8 @@ import (
 
 // ── raw source data ───────────────────────────────────────────────────────────
 
-type rawData struct {
+// RawData is the competition document as the data source serves it.
+type RawData struct {
 	Success      *bool         `json:"success"` // false when the competition is not live; absent in older payloads
 	ErrorMessage string        `json:"errorMessage"`
 	Name         string        `json:"name"`
@@ -111,14 +114,16 @@ type Competitor struct {
 	Remark             *string  `json:"remark"`
 }
 
-type processedDistance struct {
-	meta        DistanceMeta
-	competitors []Competitor // stable broadcast order: laps desc, time asc, no-time last
+// Distance is one processed distance with its competitors.
+type Distance struct {
+	Meta        DistanceMeta
+	Competitors []Competitor // stable broadcast order: laps desc, time asc, no-time last
 }
 
-type processedData struct {
-	name      string
-	distances []processedDistance
+// Processed is the processed state of one competition.
+type Processed struct {
+	Name      string
+	Distances []Distance
 }
 
 var (
@@ -149,8 +154,8 @@ func extractInt(re *regexp.Regexp, s string) *int {
 // did not start, disqualified, withdrawn. A did-not-finish keeps its times.
 var timeHidingCodes = map[string]bool{"DNS": true, "DQ": true, "WDR": true}
 
-// hidesTimes reports whether the invalid reason or remark (space separated codes) marks a race whose times must not be shown.
-func hidesTimes(invalidReason, remark string) bool {
+// HidesTimes reports whether the invalid reason or remark (space separated codes) marks a race whose times must not be shown.
+func HidesTimes(invalidReason, remark string) bool {
 	for _, code := range strings.Fields(invalidReason + " " + remark) {
 		if timeHidingCodes[strings.ToUpper(code)] {
 			return true
@@ -159,9 +164,9 @@ func hidesTimes(invalidReason, remark string) bool {
 	return false
 }
 
-// process turns raw source data into fully computed dashboard state.
-func process(raw *rawData) *processedData {
-	out := &processedData{name: raw.Name}
+// Process turns raw source data into fully computed dashboard state.
+func Process(raw *RawData) *Processed {
+	out := &Processed{Name: raw.Name}
 
 	for _, dist := range raw.Distances {
 		races := dist.Races
@@ -186,7 +191,7 @@ func process(raw *rawData) *processedData {
 		processed := make([]sortable, 0, len(races))
 		for _, race := range races {
 			laps := race.Laps
-			if hidesTimes(race.InvalidReason, race.Remark) {
+			if HidesTimes(race.InvalidReason, race.Remark) {
 				laps = nil // the laps are never sent, so the viewer cannot show them
 			}
 			if isMassStart && len(laps) > 0 {
@@ -293,8 +298,8 @@ func process(raw *rawData) *processedData {
 			}
 		}
 
-		out.distances = append(out.distances, processedDistance{
-			meta: DistanceMeta{
+		out.Distances = append(out.Distances, Distance{
+			Meta: DistanceMeta{
 				ID:             dist.ID,
 				Name:           dist.Name,
 				EventNumber:    dist.EventNumber,
@@ -305,7 +310,7 @@ func process(raw *rawData) *processedData {
 				AnyFinished:    anyFinished,
 				HeatGroups:     heatGroups,
 			},
-			competitors: comps,
+			Competitors: comps,
 		})
 	}
 	return out

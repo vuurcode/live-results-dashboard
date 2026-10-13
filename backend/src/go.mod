@@ -1,4 +1,4 @@
-module live-results-backend
+module github.com/vuurcode/live-results-experiment/backend
 
 go 1.27
 
