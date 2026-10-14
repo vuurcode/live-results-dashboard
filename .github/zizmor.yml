@@ -1,0 +1,5 @@
+rules:
+  dangerous-triggers:
+    ignore:
+      # Runs only after CI has passed on a push to main and builds that commit, never code from a pull request
+      - publish.yml

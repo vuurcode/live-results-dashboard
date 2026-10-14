@@ -13,6 +13,42 @@ linters:
     - nolintlint
     - sloglint
     - unconvert
+    - durationcheck
+    - errname
+    - fatcontext
+    - gocritic
+    - nilerr
+    - predeclared
+    - reassign
+    - revive
+    - thelper
+    - usestdlibvars
+    - whitespace
+  settings:
+    gocritic:
+      disabled-checks:
+        - exitAfterDefer # a failed listener exits with a status; the deferred cleanup only releases the signal handler
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-naming
   exclusions:
     rules:
       - path: _test\.go
