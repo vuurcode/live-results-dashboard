@@ -36,6 +36,7 @@ ADD --checksum=sha256:5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec58049b57eb
 ADD --checksum=sha256:b17f17a82e7a515c682a91edaf2ffdabb73f891981b6c1fd712115693a2f8b4c https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-aarch64.tar.xz /arch.tar.xz
 
 ARG TARGETARCH
+# hadolint ignore=DL3006 # a stage of this file chosen by architecture, not an image to tag
 FROM s6-${TARGETARCH} AS s6
 
 FROM nginx:alpine-slim
@@ -65,5 +66,5 @@ COPY src/frontend/public/env-inject.js /etc/nginx/env-inject.js.template
 COPY prod/rootfs/ /
 
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null "http://127.0.0.1:${FRONTEND_LISTEN_PORT}/healthcheck" || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD [ "sh", "-c", "wget -q -O /dev/null \"http://127.0.0.1:${FRONTEND_LISTEN_PORT}/healthcheck\" || exit 1" ]
 ENTRYPOINT ["/init"]
