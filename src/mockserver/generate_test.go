@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -185,5 +186,44 @@ func TestGeneratedMatchCountIsConfigurable(t *testing.T) {
 	t.Setenv("MOCKSERVER_DATA_GENERATED_MATCHES", "9")
 	if got := loadConfig().matches; got != maxGeneratedMatches {
 		t.Errorf("an out of range count is ignored: %d", got)
+	}
+}
+
+// clockMillis reads a feed time (hh:mm:ss.fffffff) as whole milliseconds.
+func clockMillis(t *testing.T, s string) int {
+	t.Helper()
+	var h, m, sec, ms int
+	if _, err := fmt.Sscanf(s, "%d:%d:%d.%03d", &h, &m, &sec, &ms); err != nil {
+		t.Fatalf("time %q: %v", s, err)
+	}
+	return ((h*60+m)*60+sec)*1000 + ms
+}
+
+func TestGeneratedFinishedRacesHaveEveryLapAddingUpToTheTotal(t *testing.T) {
+	for _, m := range generatedMatches(maxGeneratedMatches) {
+		for fi, f := range m.frames {
+			var doc genDoc
+			if err := json.Unmarshal(f, &doc); err != nil {
+				t.Fatal(err)
+			}
+			for di, d := range doc.Distances {
+				meters := m.distances[di].meters
+				for _, r := range d.Races {
+					if r.Status != 4 || r.InvalidReason != "" || r.Time == nil || *r.Time == "00:00:00" {
+						continue
+					}
+					if m.distances[di].massLaps == 0 && len(r.Laps) != len(segmentLengths(meters)) {
+						t.Fatalf("%s frame %d %s heat %d: %d laps for %dm", m.id, fi, d.Name, r.Heat, len(r.Laps), meters)
+					}
+					sum := 0
+					for _, l := range r.Laps {
+						sum += clockMillis(t, l.LapTime)
+					}
+					if total := clockMillis(t, *r.Time); sum != total || clockMillis(t, r.Laps[len(r.Laps)-1].Time) != total {
+						t.Fatalf("%s frame %d %s heat %d: lap times add up to %d ms, total %d ms", m.id, fi, d.Name, r.Heat, sum, total)
+					}
+				}
+			}
+		}
 	}
 }

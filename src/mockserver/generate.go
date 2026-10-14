@@ -209,7 +209,8 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 			zero := "00:00:00"
 			r.Time = &zero
 			for _, l := range segs {
-				r.segments = append(r.segments, float64(l)*pace*skill*(0.98+rng.Float64()*0.04))
+				// whole milliseconds, so that the lap times add up to the total exactly as the feed prints them
+				r.segments = append(r.segments, math.Round(float64(l)*pace*skill*(0.98+rng.Float64()*0.04)*1000)/1000)
 			}
 			dd.Races = append(dd.Races, r)
 		}
