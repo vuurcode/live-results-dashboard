@@ -16,4 +16,4 @@ nginx (port `8080`) is the only process reachable from outside. [s6-overlay](htt
 | `/healthcheck` | backend (proxied); use it as the platform's health check |
 | anything else | the Angular app (static files, unknown page routes fall back to `index.html`) |
 
-The backend listens on `127.0.0.1:5000` inside the container. The page and the API share one origin, so `BACKEND_URL` stays empty and no CORS or extra `connect-src` is needed. On App Platform set the HTTP port to `8080`, the health check path to `/healthcheck` and `CLIENT_IP_HEADER=Do-Connecting-Ip`, together with the [backend settings](backend-configuration.md) as environment variables.
+The backend listens on `127.0.0.1:5000` inside the container. The page and the API share one origin, so `FRONTEND_BACKEND_URL` stays empty and no CORS or extra `connect-src` is needed. On App Platform set the HTTP port to `8080`, the health check path to `/healthcheck` and `BACKEND_CLIENT_IP_HEADER=Do-Connecting-Ip`, together with the [backend settings](backend-configuration.md) as environment variables.

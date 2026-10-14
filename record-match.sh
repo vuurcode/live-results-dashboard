@@ -32,7 +32,7 @@ for tool in curl jq; do
   command -v "$tool" >/dev/null || { echo "$tool is required" >&2; exit 1; }
 done
 
-dir=${RECORD_DIRECTORY:-$(dirname "$0")/mockserver/data}/$id
+dir=${RECORD_DIRECTORY:-$(dirname "$0")/src/mockserver/data}/$id
 tmp=$(mktemp) || exit 1
 trap 'rm -f "$tmp"' EXIT
 trap 'exit 0' INT TERM

@@ -26,7 +26,7 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 # Chromium and its system libraries for the Playwright e2e tests; keep the version in step with
-# @playwright/test in frontend/package.json so the browser build matches.
+# @playwright/test in src/frontend/package.json so the browser build matches.
 ARG PLAYWRIGHT_VERSION="1.64.0"
 RUN npx --yes playwright@${PLAYWRIGHT_VERSION} install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/*

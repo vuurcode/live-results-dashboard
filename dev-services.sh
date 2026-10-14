@@ -28,15 +28,15 @@ run_go() {
   done
 }
 
-(DATA_SAMPLE_DIRECTORY=${DATA_SAMPLE_DIRECTORY:-data} run_go /app/mockserver mockserver) &
+(MOCKSERVER_DATA_SAMPLE_DIRECTORY=${MOCKSERVER_DATA_SAMPLE_DIRECTORY:-data} run_go /app/src/mockserver mockserver) &
 
 (
   until curl -fs -o /dev/null http://localhost:8080/api/matches; do sleep 1; done
-  run_go /app/backend/src backend ./cmd/server
+  run_go /app/src/backend/src backend ./cmd/server
 ) &
 
 (
-  cd /app/frontend || exit 1
+  cd /app/src/frontend || exit 1
   [ -x node_modules/.bin/ng ] || npm ci
   exec npm start -- --host 0.0.0.0 --poll 2000
 ) &

@@ -3,9 +3,11 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /frontend
+    directory: /src/frontend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
@@ -17,9 +19,11 @@ updates:
         patterns: ["*"]
         update-types: ["major"]
   - package-ecosystem: gomod
-    directory: /backend/src
+    directory: /src/backend/src
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
@@ -28,9 +32,11 @@ updates:
         patterns: ["*"]
         update-types: ["major"]
   - package-ecosystem: gomod
-    directory: /mockserver
+    directory: /src/mockserver
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
@@ -39,20 +45,11 @@ updates:
         patterns: ["*"]
         update-types: ["major"]
   - package-ecosystem: docker
-    directory: /backend
+    directory: /prod
     schedule:
       interval: weekly
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-    groups:
-      docker-backend-majors:
-        patterns: ["*"]
-        update-types: ["major"]
-  - package-ecosystem: docker
-    directory: /frontend
-    schedule:
-      interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
@@ -60,13 +57,15 @@ updates:
       - dependency-name: "node"
         versions: ["25.x", "27.x", "29.x", "31.x"]
     groups:
-      docker-frontend-majors:
+      docker-prod-majors:
         patterns: ["*"]
         update-types: ["major"]
   - package-ecosystem: docker
-    directory: /mockserver
+    directory: /src/mockserver
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
@@ -78,6 +77,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]

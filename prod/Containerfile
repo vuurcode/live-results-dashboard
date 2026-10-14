@@ -5,18 +5,18 @@
 # Frontend build
 FROM node:26 AS frontend
 WORKDIR /app
-COPY frontend/package*.json ./
+COPY src/frontend/package*.json ./
 RUN npm install
-COPY frontend/ ./
+COPY src/frontend/ ./
 RUN npm run build
 
 # Backend build: image pinned by digest; modules pinned in go.mod and verified against go.sum
 FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS backend
 WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
-COPY backend/src/go.mod backend/src/go.sum ./
+COPY src/backend/src/go.mod backend/src/go.sum ./
 RUN go mod download && go mod verify
-COPY backend/src/ ./
+COPY src/backend/src/ ./
 RUN go build -trimpath -ldflags="-s -w" -o /backend ./cmd/server
 
 # s6-overlay release archives, verified against the published checksums (one stage per architecture)
@@ -33,14 +33,14 @@ FROM s6-${TARGETARCH} AS s6
 
 FROM nginx:alpine-slim
 
-# Runtime settings. LISTEN_PORT is the port nginx listens on (DigitalOcean App Platform expects 8080). BACKEND_URL is the
-# API address the browser uses (empty: the same origin). CSP_CONNECT_SRC lists the origins the page may call;
-# CSP_FRAME_ANCESTORS the hosts that may embed it ('none': nobody). The backend's own settings are passed through as is.
-ENV LISTEN_PORT="8080" \
-    BACKEND_UPSTREAM="127.0.0.1:5000" \
-    BACKEND_URL="" \
-    CSP_CONNECT_SRC="'self'" \
-    CSP_FRAME_ANCESTORS="'none'" \
+# Runtime settings. FRONTEND_LISTEN_PORT is the port nginx listens on (DigitalOcean App Platform expects 8080). FRONTEND_BACKEND_URL is the
+# API address the browser uses (empty: the same origin). FRONTEND_CSP_CONNECT_SRC lists the origins the page may call;
+# FRONTEND_CSP_FRAME_ANCESTORS the hosts that may embed it ('none': nobody). The backend's own settings are passed through as is.
+ENV FRONTEND_LISTEN_PORT="8080" \
+    FRONTEND_BACKEND_UPSTREAM="127.0.0.1:5000" \
+    FRONTEND_BACKEND_URL="" \
+    FRONTEND_CSP_CONNECT_SRC="'self'" \
+    FRONTEND_CSP_FRAME_ANCESTORS="'none'" \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2
 
 RUN --mount=type=bind,from=s6,target=/s6 tar -C / -Jxpf /s6/noarch.tar.xz && tar -C / -Jxpf /s6/arch.tar.xz
@@ -48,11 +48,11 @@ RUN --mount=type=bind,from=s6,target=/s6 tar -C / -Jxpf /s6/noarch.tar.xz && tar
 COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=backend /backend /usr/local/bin/backend
 COPY --from=frontend /app/dist/dashboard/browser /usr/share/nginx/html
-COPY frontend/config/nginx.conf.template /etc/nginx/default.conf.template
-COPY frontend/config/security-headers.conf /etc/nginx/security-headers.conf.template
-COPY frontend/public/env-inject.js /etc/nginx/env-inject.js.template
+COPY src/frontend/config/nginx.conf.template /etc/nginx/default.conf.template
+COPY src/frontend/config/security-headers.conf /etc/nginx/security-headers.conf.template
+COPY src/frontend/public/env-inject.js /etc/nginx/env-inject.js.template
 COPY prod/rootfs/ /
 
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null "http://127.0.0.1:${LISTEN_PORT}/healthcheck" || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null "http://127.0.0.1:${FRONTEND_LISTEN_PORT}/healthcheck" || exit 1
 ENTRYPOINT ["/init"]

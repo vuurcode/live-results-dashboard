@@ -10,6 +10,6 @@
 | Checks | golangci-lint, ESLint, Prettier, hadolint, shellcheck |
 | Delivery | Docker/Podman containers, GitHub Actions, GitHub Container Registry, DigitalOcean App Platform |
 
-Versions are pinned in `go.mod`, `frontend/package.json` and the container files; Dependabot proposes major upgrades.
+Versions are pinned in `go.mod`, `src/frontend/package.json` and the container files; Dependabot proposes major upgrades.
 
 Developed with assistance from [Claude Code](https://claude.com/claude-code).

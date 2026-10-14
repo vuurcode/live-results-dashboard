@@ -19,15 +19,15 @@ services:
     environment:
       # The mockserver serves every competition under data/ (one folder per competition, replay starts on
       # first request). Which competition the frontend shows: open http://localhost:4200/?competitionId=<folder>
-      # or set the default for pages without it: COMPETITION_ID=2026-03-01 docker compose --profile dev up -d
-      DATA_SAMPLE_DIRECTORY: data
-      DATA_SAMPLE_INTERVAL: ${DATA_SAMPLE_INTERVAL:-3}
-      LIVE_RESULTS_BASE_URL: http://localhost:8080
-      LIVE_RESULTS_INTERVAL: 1
-      DEFAULT_COMPETITION_ID: ${COMPETITION_ID:-dummy}
+      # or set the default for pages without it: BACKEND_DEFAULT_COMPETITION_ID=2026-03-01 docker compose --profile dev up -d
+      MOCKSERVER_DATA_SAMPLE_DIRECTORY: data
+      MOCKSERVER_DATA_SAMPLE_INTERVAL: ${MOCKSERVER_DATA_SAMPLE_INTERVAL:-3}
+      BACKEND_LIVE_RESULTS_BASE_URL: http://localhost:8080
+      BACKEND_LIVE_RESULTS_INTERVAL: 1
+      BACKEND_DEFAULT_COMPETITION_ID: ${BACKEND_DEFAULT_COMPETITION_ID:-dummy}
     volumes:
       - .:/app
-      - /app/frontend/node_modules          # keep host node_modules out; installed in-container
+      - /app/src/frontend/node_modules          # keep host node_modules out; installed in-container
       # git hooks/config and Claude's deny rules stay read-only: a hook or
       # core.fsmonitor/hooksPath/sshCommand set from here would run on the host
       - ./.git/hooks:/app/.git/hooks:ro
@@ -38,7 +38,8 @@ services:
       - ./container-data/claude.json:/root/.claude.json
 
   # Production: frontend (nginx) and backend in one container, built without Claude or dev tooling:
-  #   LIVE_RESULTS_BASE_URL=https://<host> MATCH_INFO_BASE_URL=https://<host> docker compose --profile prod up -d --build
+  # Settings come from .env.prod (defaults, committed) and .env.prod.local (gitignored, wins over the defaults):
+  #   docker compose --profile prod up -d --build
   # http://localhost:8888 (nginx serves the page and proxies /api, /ws and /healthcheck to the backend inside)
   app:
     profiles: [prod]
@@ -46,31 +47,13 @@ services:
     build:
       context: .
       dockerfile: prod/Containerfile
-    environment:
-      LIVE_RESULTS_BASE_URL: ${LIVE_RESULTS_BASE_URL:-}
-      MATCH_INFO_BASE_URL: ${MATCH_INFO_BASE_URL:-}
-      LIVE_RESULTS_INTERVAL: ${LIVE_RESULTS_INTERVAL:-5}
-      # Optional; empty means the backend's own default
-      DEFAULT_COMPETITION_ID: ${DEFAULT_COMPETITION_ID:-}
-      MAX_COMPETITIONS: ${MAX_COMPETITIONS:-}
-      MAX_CLIENTS: ${MAX_CLIENTS:-}
-      MAX_CLIENTS_30_DAYS: ${MAX_CLIENTS_30_DAYS:-}
-      MAX_CLIENTS_PER_ROOM: ${MAX_CLIENTS_PER_ROOM:-}
-      MAX_CLIENTS_PER_IP: ${MAX_CLIENTS_PER_IP:-}
-      CONNECTS_PER_MINUTE: ${CONNECTS_PER_MINUTE:-}
-      CONNECT_BURST: ${CONNECT_BURST:-}
-      CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
-      IDLE_GRACE_SECONDS: ${IDLE_GRACE_SECONDS:-}
-      DATA_RETENTION_HOURS: ${DATA_RETENTION_HOURS:-}
-      CATALOG_TTL_SECONDS: ${CATALOG_TTL_SECONDS:-}
-      VENUE_COUNTRY_CODE: ${VENUE_COUNTRY_CODE:-}
-      VENUE_DISCIPLINE: ${VENUE_DISCIPLINE:-}
-      USER_AGENT: ${USER_AGENT:-}
-      BACKEND_URL: ${BACKEND_URL:-}
-      CSP_CONNECT_SRC: ${CSP_CONNECT_SRC:-'self'}
-      CSP_FRAME_ANCESTORS: ${CSP_FRAME_ANCESTORS:-'none'}
+    env_file:
+      - .env.prod
+      # Local settings (such as the real source URLs) in a gitignored file; optional
+      - path: .env.prod.local
+        required: false
     ports:
-      - "${APP_PORT:-8888}:8080"
+      - "${COMPOSE_APP_PORT:-8888}:8080"
     restart: unless-stopped
     networks:
       - dashboard-net

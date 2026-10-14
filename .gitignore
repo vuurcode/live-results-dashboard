@@ -2,7 +2,7 @@
 .agents/
 example.json
 /compose.override.yml
-/tunnel/
+/.env.prod.local
 /container-data/
-/mockserver/data/*
+/src/mockserver/data/*
 /session-export/

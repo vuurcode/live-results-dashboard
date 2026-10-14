@@ -19,7 +19,7 @@ template and CSS changes, so prefer fixing at the source over adding workarounds
    (e.g. `.bg-success` badges account for most contrast failures). Fix it once.
 3. **Check what tools can't see:** keyboard-only pass, zoom to 200%, and the checklist in
    `references/checklist.md` for the items that apply to what you changed.
-4. **Lock it in.** Add or extend a Playwright check in `frontend/e2e/` for the behaviour you fixed
+4. **Lock it in.** Add or extend a Playwright check in `src/frontend/e2e/` for the behaviour you fixed
    (e.g. a row is reachable with Tab and activates with Enter/Space), so it can't silently regress.
 5. Re-run the scan, lint, unit and e2e tests before reporting. Say what is still open — don't
    claim "accessible", claim what was checked.
