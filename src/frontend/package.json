@@ -10,6 +10,7 @@
     "format": "prettier --write \"src/**/*.{ts,html,scss}\"",
     "e2e": "playwright test",
     "perf": "playwright test -c playwright.perf.config.ts",
+    "perf:soak": "SOAK_MINUTES=${SOAK_MINUTES:-5} playwright test -c playwright.perf.config.ts e2e/soak.perf.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json"
   },

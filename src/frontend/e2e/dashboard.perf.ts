@@ -1,9 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { MOCK_URL } from './env';
+import { MOCK_URL, WEB_PORT } from './env';
 
 // Runtime cost of a live dashboard while a replay plays (updates every second, snake and count-up animations),
 // measured in the browser so the API delay is not part of it. The mockserver replays committed fixtures.
-const CPU_SLOWDOWN = 4; // a mid-range phone
+// Desktop with a CPU 4x slower than this machine, and a low-end phone: small touch screen, CPU 6x slower.
+const PROFILES = [
+  { name: 'desktop', cpuSlowdown: 4, viewport: { width: 1400, height: 1000 }, mobile: false },
+  { name: 'phone', cpuSlowdown: 6, viewport: { width: 390, height: 844 }, mobile: true },
+] as const;
 const MEASURE_MS = 15_000;
 const LONG_TASK_MS = 200;
 const MIN_FPS = 20;
@@ -14,8 +18,10 @@ const DEFAULT_MAX_SHIFT = 0.1;
 
 interface Sample { longTasks: number[]; layoutShift: number; frames: number; worstFrameMs: number }
 
-for (const competition of ['e2e-timed', 'e2e-lanes', 'e2e-mass']) {
-  test(`${competition}: stays smooth while the replay plays (${CPU_SLOWDOWN}x slower CPU)`, async ({ page, request }) => {
+for (const profile of PROFILES) for (const competition of ['e2e-timed', 'e2e-lanes', 'e2e-mass']) {
+  test(`${profile.name} ${competition}: stays smooth while the replay plays (${profile.cpuSlowdown}x slower CPU)`, async ({ browser, request }) => {
+    const context = await browser.newContext({ baseURL: `http://localhost:${WEB_PORT}`, viewport: profile.viewport, isMobile: profile.mobile, hasTouch: profile.mobile, deviceScaleFactor: profile.mobile ? 3 : 1 });
+    const page = await context.newPage();
     await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: competition } });
     await page.addInitScript(() => {
       const s = { longTasks: [] as number[], layoutShift: 0, frames: 0, worstFrameMs: 0 };
@@ -36,7 +42,7 @@ for (const competition of ['e2e-timed', 'e2e-lanes', 'e2e-mass']) {
     });
 
     const cdp = await page.context().newCDPSession(page);
-    await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_SLOWDOWN });
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: profile.cpuSlowdown });
     await cdp.send('Performance.enable');
     const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]));
 
@@ -60,7 +66,8 @@ for (const competition of ['e2e-timed', 'e2e-lanes', 'e2e-mass']) {
       styleRecalcsPerSec: +((after['RecalcStyleCount'] - before['RecalcStyleCount']) / seconds).toFixed(1),
       heapMB: +(after['JSHeapUsedSize'] / 1e6).toFixed(1),
     };
-    console.log(`${competition}`, report);
+    console.log(`${profile.name} ${competition}`, report);
+    await context.close();
 
     expect(report.worstTaskMs, 'no task blocks the main thread for long').toBeLessThan(LONG_TASK_MS * 2);
     expect(report.fps, 'frame rate while animating').toBeGreaterThan(MIN_FPS);
