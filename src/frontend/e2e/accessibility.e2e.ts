@@ -68,3 +68,22 @@ test('compact lap badge colours (green, orange, purple, and the latest one) have
   const { violations } = await new AxeBuilder({ page }).include('.timed-compact-badge').withTags(TAGS).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.html.slice(0, 80)} ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
 });
+
+test('a collapsed distance stands out from the page and keeps its contrast', async ({ page, request }) => {
+  await restartReplay(request, 'e2e-timed');
+  await page.goto('/?competitionId=e2e-timed');
+  const header = page.locator('.accordion-button').first();
+  await expect(header).toHaveAttribute('aria-expanded', 'true');
+  await header.click();
+  await expect(header).toHaveAttribute('aria-expanded', 'false');
+  await page.mouse.move(0, 0); // off the header, so the hover colour is not measured
+
+  const style = await header.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { bg: s.backgroundColor, color: s.color };
+  });
+  expect(style).toEqual({ bg: 'rgb(44, 62, 80)', color: 'rgb(255, 255, 255)' }); // the dark slate of an open distance, not the page white
+
+  const { violations } = await new AxeBuilder({ page }).include('.accordion-button').withTags(TAGS).analyze();
+  expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
+});

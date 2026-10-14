@@ -54,26 +54,19 @@
 // While (un)folding, the collapse wrapper clips without becoming a scroll container: as one, it would make
 // every card title count as pinned (hiding its badge line) until the animation ends.
 :host ::ng-deep .accordion-collapse.collapsing { overflow: clip; }
-// Done accordion items: reduced opacity when collapsed
-:host ::ng-deep c-accordion-item.accordion-done:has(.accordion-button.collapsed) {
-  opacity: 0.45;
-  transition: opacity 0.2s ease;
-}
-:host ::ng-deep c-accordion-item.accordion-done:has(.accordion-button:not(.collapsed)) {
-  opacity: 1;
-  transition: opacity 0.2s ease;
-}
-// Expanded (open) accordion button: dark slate
-:host ::ng-deep .accordion-button:not(.collapsed) {
+// Accordion button, open or closed: dark slate, with the chevron telling the state. Contrast: white on it is 11:1.
+// Done distances are marked by their badge, not by fading the bar (opacity would lower the text contrast).
+:host ::ng-deep .accordion-button {
   background-color: #2c3e50 !important;
   color: #fff !important;
   box-shadow: none !important;
-}
-:host ::ng-deep .accordion-button:not(.collapsed)::after {
-  filter: brightness(0) invert(1);
-}
-:host ::ng-deep .accordion-button:not(.collapsed) .text-muted {
-  color: #b4bcc4 !important; // 5.7:1 on the #2c3e50 expanded header (rgba white 0.5 gave 4.1:1)
+  &:hover { background-color: #34495e !important; }
+  &:focus-visible {
+    outline: 3px solid #fff; // 11:1 on the bar
+    outline-offset: -3px;
+  }
+  &::after { filter: brightness(0) invert(1); }
+  .text-muted { color: #b4bcc4 !important; } // 5.7:1 on the bar (rgba white 0.5 gave 4.1:1)
 }
 // ===== TOP BAR =====
 .topbar {
