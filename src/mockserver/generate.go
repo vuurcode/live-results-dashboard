@@ -28,7 +28,7 @@ var (
 	generatedCategories = []string{"DA1", "DB1", "DB2", "DN1", "DN2", "DSA", "HA1", "HA2", "HB1", "HB2", "HN1", "HN2", "HSA", "H40", "D40"}
 	generatedClubs      = []string{"CLF4", "SKS4", "FGI4", "SNO4", "SSK5", "IFX5", "FPD5", "IHK4", "BRU5", "NWD5", "PBR5", "WWO5", "GLC5"}
 	// Seconds per meter, so a skater's time scales with the distance.
-	generatedPace = map[int]float64{500: 0.080, 1000: 0.075, 1500: 0.078, 3000: 0.082}
+	generatedPace = map[int]float64{100: 0.100, 500: 0.080, 1000: 0.075, 1500: 0.078, 3000: 0.082, 5000: 0.086, 10000: 0.090}
 	// A mass start is skated faster than a time trial over the same meters.
 	massStartPace = 0.075
 )
@@ -66,12 +66,14 @@ const maxGeneratedMatches = 3
 func generatedMatches(count int) []*genMatch {
 	matches := []*genMatch{
 		{
-			id: "mock-match-1", name: "Mock Sprint Day", firstNames: 0,
+			id: "mock-match-1", name: "PROD DEMO Mock Sprint Day", firstNames: 0,
 			venue: genVenue{"MK1", "Mock Ice Rink One", "Mockville"},
 			distances: []genDistance{
-				{name: "500 meter - omloop 1", meters: 500, skaters: 8},
+				{name: "100 meter", meters: 100, skaters: 8},
+				{name: "500 meter", meters: 500, skaters: 8},
 				{name: "1000 meter", meters: 1000, skaters: 8, resetHeat: 2, flicker: true, retime: true},
-				{name: "500 meter - omloop 2", meters: 500, skaters: 8},
+				{name: "5000 meter", meters: 5000, skaters: 8},
+				{name: "10000 meter", meters: 10000, skaters: 8},
 			},
 		},
 		{
