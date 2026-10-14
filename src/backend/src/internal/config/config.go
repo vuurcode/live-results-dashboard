@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 )
 
 // DataSourcePath is where the live results API serves a competition; BACKEND_LIVE_RESULTS_BASE_URL supplies the part before it.
@@ -18,8 +20,8 @@ const DefaultPingInterval = 25 * time.Second
 
 // Config is everything the backend is configured with.
 type Config struct {
-	DataSourceURL        string  // may contain `{id}`; otherwise `competitionId=<id>` is added as a query parameter
-	DataSourceInterval   float64 // seconds between upstream fetches, per competition
+	Upstreams            []source.Upstream // the primary upstream, then the extra one if BACKEND_EXTRA_BASE_URL is set
+	DataSourceInterval   float64           // seconds between upstream fetches, per competition
 	ListenAddr           string
 	DefaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	MaxCompetitions      int           // distinct competitions followed at once
@@ -34,7 +36,6 @@ type Config struct {
 	IdleGrace            time.Duration // how long an empty competition keeps polling before it is closed
 	PingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
-	CatalogURL      string        // base URL serving /api/venues and /api/competitions
 	CatalogTTL      time.Duration // how long the competitions list is cached; venues are cached forever
 	DataRetention   time.Duration // how long after its start a competition's data is served; 0 = until the day after it ends
 	VenueCountry    string        // only venues in this country (ISO 3166 alpha-3, as the upstream uses)
@@ -57,7 +58,6 @@ func Load() Config {
 		base = "http://localhost:8080"
 	}
 	cfg := Config{
-		DataSourceURL:      strings.TrimRight(base, "/") + dataSourcePath,
 		DataSourceInterval: number("BACKEND_LIVE_RESULTS_INTERVAL", positive),
 		ListenAddr:         getenv("BACKEND_LISTEN_ADDR", ":5000"),
 
@@ -74,16 +74,27 @@ func Load() Config {
 		IdleGrace:            time.Duration(number("BACKEND_IDLE_GRACE_SECONDS", nonNegative) * float64(time.Second)),
 		PingInterval:         DefaultPingInterval,
 
-		CatalogURL:      os.Getenv("BACKEND_MATCH_INFO_BASE_URL"),
 		CatalogTTL:      time.Duration(number("BACKEND_CATALOG_TTL_SECONDS", positive) * float64(time.Second)),
 		DataRetention:   time.Duration(number("BACKEND_DATA_RETENTION_HOURS", nonNegative) * float64(time.Hour)),
 		VenueCountry:    getenv("BACKEND_VENUE_COUNTRY_CODE", "NED"),
 		VenueDiscipline: getenv("BACKEND_VENUE_DISCIPLINE", "SpeedSkating.LongTrack"),
 	}
-	if cfg.CatalogURL == "" {
-		cfg.CatalogURL = originOf(cfg.DataSourceURL)
+	primary := upstream(base, os.Getenv("BACKEND_MATCH_INFO_BASE_URL"))
+	cfg.Upstreams = []source.Upstream{primary}
+	if extra := os.Getenv("BACKEND_EXTRA_BASE_URL"); extra != "" {
+		cfg.Upstreams = append(cfg.Upstreams, upstream(extra, extra))
 	}
 	return cfg
+}
+
+// upstream builds an upstream from the base URL of its live results API and the one of its competitions list, which
+// defaults to the origin of the live results URL.
+func upstream(liveBase, catalogBase string) source.Upstream {
+	u := source.Upstream{DataSourceURL: strings.TrimRight(liveBase, "/") + dataSourcePath, CatalogURL: catalogBase}
+	if u.CatalogURL == "" {
+		u.CatalogURL = originOf(u.DataSourceURL)
+	}
+	return u
 }
 
 // splitList parses a comma separated setting, dropping blanks and the trailing slash of each entry.
@@ -111,19 +122,4 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-// UpstreamURL builds the live results URL for one competition by adding a competitionId query parameter.
-func (c Config) UpstreamURL(id string) (string, error) {
-	u, err := url.Parse(c.DataSourceURL)
-	if err != nil {
-		return "", err
-	}
-	if u.Path == "" {
-		u.Path = "/" // `https://host` and `https://host/` are the same request; send the path explicitly
-	}
-	q := u.Query()
-	q.Set("competitionId", id)
-	u.RawQuery = q.Encode()
-	return u.String(), nil
 }

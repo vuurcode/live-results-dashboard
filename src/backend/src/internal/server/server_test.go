@@ -18,6 +18,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/hub"
 	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
 )
 
@@ -56,7 +57,7 @@ func newTestBackend(t *testing.T, mutate func(*config.Config)) *testBackend {
 	t.Cleanup(upstream.Close)
 
 	cfg := config.Config{
-		DataSourceURL: upstream.URL, DataSourceInterval: 3600, // one fetch per room: the test controls timing
+		Upstreams: []source.Upstream{{DataSourceURL: upstream.URL}}, DataSourceInterval: 3600, // one fetch per room: the test controls timing
 		MaxCompetitions: 2, MaxClientsPerRoom: 100, MaxClients: 1000, MaxClients30Days: 100000, IdleGrace: 50 * time.Millisecond, PingInterval: time.Hour,
 	}
 	if mutate != nil {
@@ -65,7 +66,7 @@ func newTestBackend(t *testing.T, mutate func(*config.Config)) *testBackend {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	ua := useragent.New("")
-	tb.m = hub.New(ctx, cfg, ua)
+	tb.m = hub.New(ctx, cfg, source.NewSet(cfg.Upstreams...), ua)
 	opts := Options{PingInterval: cfg.PingInterval}
 	if cfg.MaxClientsPerIP > 0 {
 		opts.Limiter = ratelimit.New(cfg.ConnectsPerMinute, cfg.ConnectBurst, cfg.MaxClientsPerIP)

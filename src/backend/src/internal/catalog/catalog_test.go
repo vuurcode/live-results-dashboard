@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 )
 
 const testVenues = `[
@@ -49,8 +50,8 @@ func newCatalogEnv(t *testing.T, comps ...string) *catalogEnv {
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	cfg := config.Config{CatalogURL: srv.URL, CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
-	cat, err := New(cfg, fakeUA{})
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: srv.URL}), fakeUA{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +146,7 @@ func TestCatalogKeepsStaleDataOnFailure(t *testing.T) {
 	if _, err := e.cat.Today(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	e.cat.base.Host = "127.0.0.1:1" // unreachable
+	e.cat.upstreams[0].base.Host = "127.0.0.1:1" // unreachable
 	e.now = e.now.Add(25 * time.Hour)
 	if _, err := e.cat.Today(context.Background()); err != nil {
 		t.Fatalf("stale data should be served on refresh failure: %v", err)
@@ -172,8 +173,8 @@ func TestZones(t *testing.T) {
 func TestCatalogBaseWithAndWithoutTrailingSlash(t *testing.T) {
 	for _, suffix := range []string{"", "/"} {
 		e := newCatalogEnv(t, comp("m", "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-24T19:00:00Z"))
-		cfg := config.Config{CatalogURL: e.cat.base.String() + suffix, CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
-		cat, err := New(cfg, fakeUA{})
+		cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+		cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: e.cat.upstreams[0].base.String() + suffix}), fakeUA{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -278,5 +279,43 @@ func TestDataExpiresAfterTheRetentionSinceTheStart(t *testing.T) {
 	e.now = time.Date(2026, 10, 24, 20, 1, 0, 0, time.UTC)
 	if e.cat.Ended("day") {
 		t.Fatal("no retention keeps the competition until the day after it ends")
+	}
+}
+
+func TestCatalogMergesUpstreams(t *testing.T) {
+	today := func(id string) string {
+		return comp(id, "DEV", "SpeedSkating.LongTrack", "2026-10-24T15:30:00Z", "2026-10-24T19:00:00Z")
+	}
+	primary := newCatalogEnv(t, today("primary-1"), today("shared"))
+	demo := newCatalogEnv(t, today("demo-1"), today("shared"))
+	set := source.NewSet(
+		source.Upstream{DataSourceURL: "http://real/Competition", CatalogURL: primary.cat.upstreams[0].base.String()},
+		source.Upstream{DataSourceURL: "http://demo/Competition", CatalogURL: demo.cat.upstreams[0].base.String()},
+	)
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, set, fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat.now = func() time.Time { return primary.now }
+	list, err := cat.Today(context.Background())
+	if err != nil || len(list) != 3 {
+		t.Fatalf("want the competitions of both upstreams, the shared one once: %v, %v", ids(list), err)
+	}
+	for id, want := range map[string]string{
+		"demo-1":    "http://demo/Competition?competitionId=demo-1",
+		"primary-1": "http://real/Competition?competitionId=primary-1",
+		"shared":    "http://real/Competition?competitionId=shared",
+	} {
+		if got, _ := set.FeedURL(id); got != want {
+			t.Errorf("%s is fetched from %q, want %q", id, got, want)
+		}
+	}
+
+	// an upstream that goes away keeps its competitions; the other one still refreshes
+	cat.upstreams[1].base.Host = "127.0.0.1:1"
+	primary.now = primary.now.Add(2 * time.Hour)
+	if list, err = cat.Today(context.Background()); err != nil || len(list) != 3 {
+		t.Fatalf("a failing upstream keeps its data: %v, %v", ids(list), err)
 	}
 }

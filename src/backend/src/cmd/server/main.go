@@ -33,6 +33,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/hub"
 	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
 	"github.com/vuurcode/live-results-experiment/backend/internal/server"
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
 )
 
@@ -44,12 +45,13 @@ func main() {
 	defer stop()
 
 	ua := useragent.New(os.Getenv("BACKEND_USER_AGENT"))
-	h := hub.New(ctx, cfg, ua)
+	set := source.NewSet(cfg.Upstreams...)
+	h := hub.New(ctx, cfg, set, ua)
 
 	limiter := ratelimit.New(cfg.ConnectsPerMinute, cfg.ConnectBurst, cfg.MaxClientsPerIP)
 
 	var today http.HandlerFunc
-	if cat, err := catalog.New(cfg, ua); err != nil {
+	if cat, err := catalog.New(cfg, set, ua); err != nil {
 		slog.Error("Competition list disabled", "err", err)
 	} else {
 		today = cat.ServeToday

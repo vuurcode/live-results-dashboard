@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
 )
 
 func TestAllowanceDropsDaysOutsideTheWindow(t *testing.T) {
-	h := New(context.Background(), config.Config{MaxClients30Days: 100}, useragent.New(""))
+	h := New(context.Background(), config.Config{MaxClients30Days: 100}, source.NewSet(), useragent.New(""))
 	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.UTC)
 	h.Now = func() time.Time { return now }
 

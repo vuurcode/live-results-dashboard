@@ -18,6 +18,7 @@ import (
 	_ "time/tzdata" // the scratch container has no zoneinfo; competitions carry their own time zone
 
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 )
 
 const maxBodyBytes = 64 << 20
@@ -167,10 +168,11 @@ func localDay(t time.Time, loc *time.Location) time.Time {
 	return time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
 }
 
-// Catalog fetches venues once (kept forever) and competitions at most once per
-// TTL, both lazily on first use. A failed refresh keeps serving the old data.
+// Catalog merges the competitions of the upstreams of a source set. Per upstream it fetches venues once (kept forever)
+// and competitions at most once per TTL, both lazily on first use. A failed refresh keeps serving the old data.
 type Catalog struct {
-	base       *url.URL
+	set        *source.Set
+	upstreams  []*upstream
 	country    string
 	discipline string
 	ttl        time.Duration
@@ -180,31 +182,41 @@ type Catalog struct {
 	now        func() time.Time
 
 	mu           sync.Mutex
-	venues       map[string]venue
 	competitions []*competition
 	known        map[string]*competition // every competition of the venues, also those no longer listed
 	fetchedAt    time.Time
 	lastFailed   time.Time
 }
 
-const retryAfterFailure = 30 * time.Second
-
-// New returns a catalog for the competitions list served at cfg.CatalogURL.
-func New(cfg config.Config, ua UserAgent) (*Catalog, error) {
-	base, err := url.Parse(cfg.CatalogURL)
-	if err != nil || base.Scheme == "" || base.Host == "" {
-		return nil, fmt.Errorf("invalid BACKEND_MATCH_INFO_BASE_URL %q", cfg.CatalogURL)
-	}
-	return &Catalog{
-		base: base, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: cfg.CatalogTTL, retention: cfg.DataRetention,
-		ua: ua, client: &http.Client{}, now: time.Now,
-	}, nil
+// upstream is what the catalog holds of one upstream; a failed fetch leaves it as it was.
+type upstream struct {
+	base         *url.URL
+	venues       map[string]venue
+	competitions []*competition // every competition of the venues
 }
 
-func (c *Catalog) getJSON(ctx context.Context, path string, out any) error {
+const retryAfterFailure = 30 * time.Second
+
+// New returns a catalog for the competitions lists of the set's upstreams.
+func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
+	c := &Catalog{
+		set: set, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: cfg.CatalogTTL, retention: cfg.DataRetention,
+		ua: ua, client: &http.Client{}, now: time.Now,
+	}
+	for _, u := range set.Upstreams() {
+		base, err := url.Parse(u.CatalogURL)
+		if err != nil || base.Scheme == "" || base.Host == "" {
+			return nil, fmt.Errorf("invalid match info base URL %q", u.CatalogURL)
+		}
+		c.upstreams = append(c.upstreams, &upstream{base: base})
+	}
+	return c, nil
+}
+
+func (c *Catalog) getJSON(ctx context.Context, base *url.URL, path string, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	u := *c.base
+	u := *base
 	u.Path = strings.TrimRight(u.Path, "/") + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
@@ -227,9 +239,9 @@ func (c *Catalog) getJSON(ctx context.Context, path string, out any) error {
 	return nil
 }
 
-func (c *Catalog) loadVenues(ctx context.Context) error {
+func (c *Catalog) loadVenues(ctx context.Context, u *upstream) error {
 	var raw []rawVenue
-	if err := c.getJSON(ctx, "/api/venues", &raw); err != nil {
+	if err := c.getJSON(ctx, u.base, "/api/venues", &raw); err != nil {
 		return err
 	}
 	venues := map[string]venue{}
@@ -238,22 +250,20 @@ func (c *Catalog) loadVenues(ctx context.Context) error {
 			venues[v.Code] = venue{Code: v.Code, Name: v.Name, City: v.Address.City}
 		}
 	}
-	c.venues = venues
-	slog.Info("Venues loaded", "venues", len(venues), "country", c.country, "discipline", c.discipline)
+	u.venues = venues
+	slog.Info("Venues loaded", "upstream", u.base.Host, "venues", len(venues), "country", c.country, "discipline", c.discipline)
 	return nil
 }
 
-func (c *Catalog) loadCompetitions(ctx context.Context) error {
+func (c *Catalog) loadCompetitions(ctx context.Context, u *upstream) error {
 	var raw []rawCompetition
-	if err := c.getJSON(ctx, "/api/competitions", &raw); err != nil {
+	if err := c.getJSON(ctx, u.base, "/api/competitions", &raw); err != nil {
 		return err
 	}
-	now := c.now()
 	var competitions []*competition
-	known := map[string]*competition{}
 	for i := range raw {
 		r := &raw[i]
-		v, ok := c.venues[r.Venue.Code]
+		v, ok := u.venues[r.Venue.Code]
 		if !ok || r.Discipline != c.discipline || !ValidID(r.ID) {
 			continue
 		}
@@ -269,16 +279,10 @@ func (c *Catalog) loadCompetitions(ctx context.Context) error {
 		} else {
 			m.to = r.Starts
 		}
-		known[m.ID] = m
-		if m.active(now) {
-			competitions = append(competitions, m)
-		}
+		competitions = append(competitions, m)
 	}
-	sort.Slice(competitions, func(i, j int) bool { return competitions[i].from.Before(competitions[j].from) })
-	c.competitions = competitions
-	c.known = known
-	c.fetchedAt = now
-	slog.Info("Competitions loaded", "listed", len(competitions), "of", len(raw))
+	u.competitions = competitions
+	slog.Info("Competitions loaded", "upstream", u.base.Host, "competitions", len(competitions), "of", len(raw))
 	return nil
 }
 
@@ -287,7 +291,7 @@ func (c *Catalog) refresh(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	now := c.now()
-	if c.venues != nil && !c.fetchedAt.IsZero() && now.Sub(c.fetchedAt) < c.ttl {
+	if !c.fetchedAt.IsZero() && now.Sub(c.fetchedAt) < c.ttl {
 		return nil
 	}
 	if !c.lastFailed.IsZero() && now.Sub(c.lastFailed) < retryAfterFailure {
@@ -310,13 +314,57 @@ func (c *Catalog) refresh(ctx context.Context) error {
 	return nil
 }
 
+// reload refreshes every upstream and merges their competitions; an upstream that fails keeps what it had. It fails
+// when none could be refreshed.
 func (c *Catalog) reload(ctx context.Context) error {
-	if c.venues == nil {
-		if err := c.loadVenues(ctx); err != nil {
+	var errs []error
+	for _, u := range c.upstreams {
+		err := c.loadUpstream(ctx, u)
+		if err != nil {
+			slog.Error("Upstream refresh failed", "upstream", u.base.Host, "err", err)
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) == len(c.upstreams) {
+		return errors.Join(errs...)
+	}
+	c.merge()
+	return nil
+}
+
+func (c *Catalog) loadUpstream(ctx context.Context, u *upstream) error {
+	if u.venues == nil {
+		if err := c.loadVenues(ctx, u); err != nil {
 			return err
 		}
 	}
-	return c.loadCompetitions(ctx)
+	return c.loadCompetitions(ctx, u)
+}
+
+// merge combines the competitions of the upstreams, the first upstream winning when two list the same id, and tells the
+// source set which upstream lists what.
+func (c *Catalog) merge() {
+	now := c.now()
+	known := map[string]*competition{}
+	owner := map[string]int{}
+	var listed []*competition
+	for i, u := range c.upstreams {
+		for _, m := range u.competitions {
+			if _, dup := known[m.ID]; dup {
+				continue
+			}
+			known[m.ID] = m
+			owner[m.ID] = i
+			if m.active(now) {
+				listed = append(listed, m)
+			}
+		}
+	}
+	sort.Slice(listed, func(i, j int) bool { return listed[i].from.Before(listed[j].from) })
+	c.competitions = listed
+	c.known = known
+	c.fetchedAt = now
+	c.set.SetOwners(owner)
 }
 
 // ended reports whether id is a competition that is over for good: it expired (see competition.expired) or ended more

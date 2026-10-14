@@ -15,6 +15,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/fetch"
 	"github.com/vuurcode/live-results-experiment/backend/internal/room"
+	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 )
 
 var (
@@ -31,6 +32,7 @@ var (
 // many clients follow it, and is torn down shortly after its last client leaves.
 type Hub struct {
 	cfg    config.Config
+	set    *source.Set
 	ua     fetch.UserAgent
 	client *http.Client
 	ctx    context.Context
@@ -53,8 +55,8 @@ type Hub struct {
 const quotaDays = 30
 
 // New returns a hub whose rooms stop fetching when ctx ends.
-func New(ctx context.Context, cfg config.Config, ua fetch.UserAgent) *Hub {
-	return &Hub{cfg: cfg, ua: ua, client: &http.Client{}, ctx: ctx, Now: time.Now, rooms: map[string]*room.Room{}, connsPerDay: map[string]int{}}
+func New(ctx context.Context, cfg config.Config, set *source.Set, ua fetch.UserAgent) *Hub {
+	return &Hub{cfg: cfg, set: set, ua: ua, client: &http.Client{}, ctx: ctx, Now: time.Now, rooms: map[string]*room.Room{}, connsPerDay: map[string]int{}}
 }
 
 // Join returns the room for id (creating it and its polling loop if needed)
@@ -84,7 +86,7 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 		if len(m.rooms) >= m.cfg.MaxCompetitions {
 			return nil, nil, ErrTooManyRooms
 		}
-		upstream, err := m.cfg.UpstreamURL(id)
+		upstream, err := m.set.FeedURL(id)
 		if err != nil {
 			return nil, nil, err
 		}

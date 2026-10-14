@@ -6,6 +6,7 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL`, `BACKEND_CATALOG_TTL_SE
 | --- | --- | --- |
 | `BACKEND_LIVE_RESULTS_BASE_URL` | `http://localhost:8080` | Base URL (`https://host`) of the live results API, without the path; the backend requests `/Competition?competitionId=<id>`. A trailing `/` is optional. Must not be set to an empty value |
 | `BACKEND_MATCH_INFO_BASE_URL` | `BACKEND_LIVE_RESULTS_BASE_URL` | Base URL (`https://host`) of the competition info API, without the path: the venues and today's competitions (`/api/venues`, `/api/competitions`) |
+| `BACKEND_EXTRA_BASE_URL` | none | Base URL of a second source serving both the competitions list and the live results, such as the demo mockserver. Its competitions are added to the list and fetched from it; when both sources list an id, the primary wins. Off when empty |
 | `BACKEND_LIVE_RESULTS_INTERVAL` | `1` | Seconds between live results requests per competition |
 | `BACKEND_VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `BACKEND_VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
@@ -28,3 +29,7 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL`, `BACKEND_CATALOG_TTL_SE
 Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` and `Permissions-Policy` headers that lock down a JSON-only service.
 
 In `compose.yml` (prod profile) the variables are read from the optional `.env.prod` and the optional, gitignored `.env.prod.local`, which wins; an empty value means the default above. `COMPOSE_APP_PORT` (default `8888`) is the published port.
+
+## Demo match
+
+The combined image carries the mockserver. With `MOCKSERVER_ENABLED=true` it runs on loopback with one generated match, `mock-match-1`, restarted `MOCKSERVER_DATA_EXPIRE_AFTER` seconds (default 300) after it has finished, and the backend reads it as its extra source (`BACKEND_EXTRA_BASE_URL`). Without the variable the service idles and the backend has only its primary source.

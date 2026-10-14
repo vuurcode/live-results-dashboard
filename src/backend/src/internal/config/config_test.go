@@ -5,30 +5,13 @@ import (
 	"testing"
 )
 
-func TestUpstreamURL(t *testing.T) {
-	cases := []struct{ base, want string }{
-		{"http://h/api/data", "http://h/api/data?competitionId=abc"},
-		{"http://h/api/data?x=1", "http://h/api/data?competitionId=abc&x=1"},
-		{"http://h", "http://h/?competitionId=abc"},
-		{"http://h/", "http://h/?competitionId=abc"},
-		{"http://h:8080?x=1", "http://h:8080/?competitionId=abc&x=1"},
-		{"http://h/api/data/", "http://h/api/data/?competitionId=abc"},
-	}
-	for _, c := range cases {
-		got, err := Config{DataSourceURL: c.base}.UpstreamURL("abc")
-		if err != nil || got != c.want {
-			t.Errorf("%s -> %q (%v), want %q", c.base, got, err, c.want)
-		}
-	}
-}
-
 func TestLiveResultsBaseURL(t *testing.T) {
 	for _, tc := range []struct{ base, want string }{
 		{"https://h.test", "https://h.test/Competition"},
 		{"https://h.test/", "https://h.test/Competition"},
 	} {
 		t.Setenv("BACKEND_LIVE_RESULTS_BASE_URL", tc.base)
-		if got := Load().DataSourceURL; got != tc.want {
+		if got := Load().Upstreams[0].DataSourceURL; got != tc.want {
 			t.Errorf("base=%q: got %q, want %q", tc.base, got, tc.want)
 		}
 	}
@@ -68,5 +51,18 @@ func TestSplitList(t *testing.T) {
 	}
 	if got := splitList(""); len(got) != 0 {
 		t.Errorf("splitList(\"\") = %q", got)
+	}
+}
+
+func TestExtraUpstream(t *testing.T) {
+	t.Setenv("BACKEND_LIVE_RESULTS_BASE_URL", "https://real.test")
+	t.Setenv("BACKEND_MATCH_INFO_BASE_URL", "https://info.test")
+	if got := Load().Upstreams; len(got) != 1 || got[0].CatalogURL != "https://info.test" {
+		t.Fatalf("without BACKEND_EXTRA_BASE_URL there is only the primary upstream: %+v", got)
+	}
+	t.Setenv("BACKEND_EXTRA_BASE_URL", "http://127.0.0.1:5001/")
+	got := Load().Upstreams
+	if len(got) != 2 || got[1].DataSourceURL != "http://127.0.0.1:5001/Competition" || got[1].CatalogURL != "http://127.0.0.1:5001/" {
+		t.Fatalf("the extra upstream follows the primary: %+v", got)
 	}
 }
