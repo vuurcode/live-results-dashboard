@@ -5,13 +5,13 @@ WORKDIR /src
 ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
 
 COPY go.mod ./
-COPY main.go ./
+COPY main.go generate.go ./
 RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
 
 FROM scratch
 WORKDIR /app
 COPY --from=build /mockserver /mockserver
-# Mount the sample competitions (one directory per competition) at /app/data
+# Without samples mounted at /app/data (one directory per competition) it serves three generated matches
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/mockserver"]

@@ -8,6 +8,9 @@
 // so the next request replays it from the start.
 // Competitions replay independently of each other.
 //
+// Three matches, each at its own venue, are generated (see generate.go) when DATA_SAMPLE_DIRECTORY does
+// not exist, or when DATA_GENERATE=true; their live data unfolds one lap per interval.
+//
 //	GET  /api/matches                    ids of the available competitions (also a health check)
 //	GET  /api/venues                     synthetic venues (DEV: a Dutch long-track venue that hosts every sample competition, plus distractors)
 //	GET  /api/competitions               one competition per competition, running today, plus synthetic ones
@@ -20,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -40,12 +44,23 @@ type config struct {
 	interval    time.Duration
 	expireAfter time.Duration // how long the last sample is held before the competition is dropped; 0 never
 	listenAddr  string
+	generate    bool // serve the generated matches next to the sample directory
 }
 
 func loadConfig() config {
 	cfg := config{baseDir: "data", interval: 5 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080"}
 	if v := os.Getenv("DATA_SAMPLE_DIRECTORY"); v != "" {
 		cfg.baseDir = v
+	}
+	// Without a sample directory the server is self-contained and generates its own matches.
+	_, err := os.Stat(cfg.baseDir)
+	cfg.generate = err != nil
+	if v := os.Getenv("DATA_GENERATE"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cfg.generate = b
+		} else {
+			slog.Warn("Ignoring invalid DATA_GENERATE", "value", v)
+		}
 	}
 	if v := os.Getenv("LISTEN_ADDR"); v != "" {
 		cfg.listenAddr = v
@@ -92,14 +107,54 @@ type server struct {
 	cfg config
 	ctx context.Context
 
+	generated map[string]*genMatch // by competition id; empty unless cfg.generate
+	genOrder  []*genMatch
+
 	mu      sync.Mutex
 	replays map[string]*replay
+}
+
+// withGenerated adds the generated matches to the server.
+func (s *server) withGenerated() *server {
+	s.generated = map[string]*genMatch{}
+	for _, m := range generatedMatches() {
+		s.generated[m.id] = m
+		s.genOrder = append(s.genOrder, m)
+	}
+	return s
 }
 
 var (
 	errUnknownCompetition = errors.New("unknown competition")
 	errNoSamples          = errors.New("competition has no valid samples")
 )
+
+// sample is one step of a competition's replay.
+type sample struct {
+	name string
+	load func() []byte // nil when the sample is unusable
+}
+
+// samples lists a competition's replay steps: the generated frames of a generated match, else the
+// JSON files of its sample directory in ascending filename order.
+func (s *server) samples(id string) ([]sample, error) {
+	if m, ok := s.generated[id]; ok {
+		out := make([]sample, len(m.frames))
+		for i, f := range m.frames {
+			out[i] = sample{name: fmt.Sprintf("frame-%03d", i), load: func() []byte { return f }}
+		}
+		return out, nil
+	}
+	files, err := s.sampleFiles(id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]sample, len(files))
+	for i, f := range files {
+		out[i] = sample{name: filepath.Base(f), load: func() []byte { return readSample(f) }}
+	}
+	return out, nil
+}
 
 // sampleFiles lists a competition's JSON samples in ascending filename order.
 func (s *server) sampleFiles(id string) ([]string, error) {
@@ -131,14 +186,14 @@ func readSample(path string) []byte {
 // start (re)starts a competition's replay. The first valid sample is loaded before
 // returning, so the caller can serve it immediately.
 func (s *server) start(id string) (*replay, error) {
-	files, err := s.sampleFiles(id)
+	files, err := s.samples(id)
 	if err != nil {
 		return nil, err
 	}
 	first := -1
 	var firstData []byte
 	for i, f := range files {
-		if firstData = readSample(f); firstData != nil {
+		if firstData = f.load(); firstData != nil {
 			first = i
 			break
 		}
@@ -150,7 +205,7 @@ func (s *server) start(id string) (*replay, error) {
 	ctx, cancel := context.WithCancel(s.ctx)
 	r := &replay{id: id, cancel: cancel, current: firstData}
 	slog.Info("Replay started", "competition", id, "files", len(files), "interval", s.cfg.interval)
-	slog.Info("Replay: loaded", "competition", id, "file", filepath.Base(files[first]), "n", first+1, "of", len(files))
+	slog.Info("Replay: loaded", "competition", id, "file", files[first].name, "n", first+1, "of", len(files))
 
 	go func() {
 		for i := first + 1; i < len(files); i++ {
@@ -159,9 +214,9 @@ func (s *server) start(id string) (*replay, error) {
 				return
 			case <-time.After(s.cfg.interval):
 			}
-			if data := readSample(files[i]); data != nil {
+			if data := files[i].load(); data != nil {
 				r.set(data)
-				slog.Info("Replay: loaded", "competition", id, "file", filepath.Base(files[i]), "n", i+1, "of", len(files))
+				slog.Info("Replay: loaded", "competition", id, "file", files[i].name, "n", i+1, "of", len(files))
 			}
 		}
 		slog.Info("Replay complete, holding last sample", "competition", id)
@@ -233,6 +288,9 @@ func fail(w http.ResponseWriter, err error) {
 func (s *server) handleMatches(w http.ResponseWriter, _ *http.Request) {
 	entries, _ := os.ReadDir(s.cfg.baseDir)
 	ids := []string{}
+	for _, m := range s.genOrder {
+		ids = append(ids, m.id)
+	}
 	for _, e := range entries {
 		if e.IsDir() && competitionIDRe.MatchString(e.Name()) {
 			if files, _ := s.sampleFiles(e.Name()); len(files) > 0 {
@@ -307,12 +365,16 @@ func (s *server) handleVenues(w http.ResponseWriter, _ *http.Request) {
 			"discipline": discipline,
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode([]any{
+	list := []any{
 		venue("DEV", "Mock Ice Rink", "Mockville", "NED", "SpeedSkating.LongTrack"),
 		venue("DEV", "Mock Inline Track", "Mockville", "NED", "SpeedSkating.Inline"),
 		venue("OTH", "Other Rink", "Elsewhere", "GER", "SpeedSkating.LongTrack"),
-	})
+	}
+	for _, m := range s.genOrder {
+		list = append(list, venue(m.venue.code, m.venue.name, m.venue.city, "NED", "SpeedSkating.LongTrack"))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(list)
 }
 
 // handleCompetitions lists every available competition as running today, plus a few
@@ -334,6 +396,9 @@ func (s *server) handleCompetitions(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	list := []any{}
+	for _, m := range s.genOrder {
+		list = append(list, comp(m.id, m.name, m.venue.code, now.Add(-time.Hour), now.Add(3*time.Hour)))
+	}
 	for _, e := range entries {
 		if e.IsDir() && competitionIDRe.MatchString(e.Name()) {
 			if files, _ := s.sampleFiles(e.Name()); len(files) > 0 {
@@ -369,6 +434,9 @@ func main() {
 	defer stop()
 
 	s := &server{cfg: cfg, ctx: ctx, replays: map[string]*replay{}}
+	if cfg.generate {
+		s.withGenerated()
+	}
 	srv := &http.Server{Addr: cfg.listenAddr, Handler: s.routes(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
