@@ -12,6 +12,10 @@
 - Don't commit after each task. Commit only when asked, and make all the separate commits in one go.
 - Don't run the full suite when committing. It runs in CI, and manually only when the user asks for it; if you think a full run is warranted, ask first.
 
+# Subagents
+
+- Never spawn subagents (too expensive). Do the work inline, also for reviews and `/simplify`-style passes.
+
 # Where directives go
 
 - Generic development directives (workflow, testing, commits, conventions) belong in this file, not in personal memory. Use memory only for things specific to the user or session context.
