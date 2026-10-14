@@ -120,6 +120,29 @@ test.describe('live heat', () => {
     }
     expect(await page.locator('.timed-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
   });
+
+  test('the total counts up to the new time when a lap arrives, not before', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-multi');
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await page.goto('/?competitionId=e2e-multi');
+    const card = page.locator('[data-live] .timed-card-live:has(.timed-compact-badge)').first();
+    const total = card.locator('.timed-compact-final .race-time');
+    await expect(total).toBeVisible({ timeout: 20_000 });
+    const laps = () => card.locator('.timed-compact-badge').count();
+    const lapCount = await laps();
+    // record every text the total takes from here on, so the count-up is seen whatever the polling moment
+    await card.evaluate((c) => {
+      const seen: string[] = [];
+      (window as unknown as { __totals: string[] }).__totals = seen;
+      const el = c.querySelector('.timed-compact-final .race-time')!;
+      new MutationObserver(() => seen.push(el.textContent ?? '')).observe(el, { subtree: true, characterData: true, childList: true });
+    });
+    await expect.poll(laps, { timeout: 20_000 }).toBeGreaterThan(lapCount);
+    await page.waitForTimeout(2000); // the snake takes 1.4s
+    const seen = await page.evaluate(() => (window as unknown as { __totals: string[] }).__totals);
+    // the total passes through times between the old and the new one, then settles
+    expect(new Set(seen).size, seen.join(' ')).toBeGreaterThan(3);
+  });
 });
 
 test.describe('mass start', () => {

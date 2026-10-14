@@ -47,7 +47,7 @@ export class TimedHeatCardComponent {
    */
   @Input({ required: true })
   set races(value: (CompetitorUpdate | null)[]) {
-    this.holdFinalTotals(this.rawRaces, value);
+    this.noteLapArrivals(this.rawRaces, value);
     this.rawRaces = value;
   }
   get races(): (CompetitorUpdate | null)[] {
@@ -64,20 +64,21 @@ export class TimedHeatCardComponent {
 
   /** Must match the duration of the `snakeAround` animation in _shared.scss. */
   private readonly SNAKE_MS = 1400;
-  /** Race id → the moment its final lap arrived; until the snake around that lap has finished the total counts up to the final time. */
-  private finalLapArrivedAt = new Map<string, number>();
+  /** Race id → the moment its latest lap arrived; until the snake around that lap has finished the total counts up to the new time. */
+  private lapArrivedAt = new Map<string, number>();
   private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   private tickEnd = 0;
 
-  /** Holds the total of a race whose final lap just arrived until the snake around that lap has finished. */
-  private holdFinalTotals(before: (CompetitorUpdate | null)[], after: (CompetitorUpdate | null)[]): void {
+  /** Notes a race whose lap just arrived: its total counts up to the new time while the snake around that lap is drawn. */
+  private noteLapArrivals(before: (CompetitorUpdate | null)[], after: (CompetitorUpdate | null)[]): void {
     const total = this.lapSchedule.length;
     if (!total || this.reducedMotion.matches) return;
     for (const race of after) {
-      if (!race || race.invalid_reason || (race.lap_times?.length ?? 0) < total) continue;
+      const laps = race?.lap_times?.length ?? 0;
+      if (!race || race.invalid_reason || laps > total) continue;
       const earlier = before.find(r => r?.id === race.id);
-      if (!earlier || earlier.lap_times.length >= total) continue;
-      this.finalLapArrivedAt.set(race.id, Date.now());
+      if (!earlier || earlier.lap_times.length >= laps) continue;
+      this.lapArrivedAt.set(race.id, Date.now());
       this.tickUntil(Date.now() + this.SNAKE_MS);
     }
   }
@@ -94,9 +95,9 @@ export class TimedHeatCardComponent {
     requestAnimationFrame(frame);
   }
 
-  /** Progress 0..1 of the snake of the final lap, eased like the animation; 1 when there is none or it has finished. */
-  private finalLapProgress(race: CompetitorUpdate): number {
-    const arrived = this.finalLapArrivedAt.get(race.id);
+  /** Progress 0..1 of the snake of the latest lap, eased like the animation; 1 when there is none or it has finished. */
+  private lapProgress(race: CompetitorUpdate): number {
+    const arrived = this.lapArrivedAt.get(race.id);
     if (arrived === undefined) return 1;
     const t = Math.min(1, (Date.now() - arrived) / this.SNAKE_MS);
     return t * t * (3 - 2 * t);
@@ -104,13 +105,13 @@ export class TimedHeatCardComponent {
 
   /** True while the snake around the final lap is drawing and the total counts up; the result's watermark then waits. */
   protected settling(race: CompetitorUpdate): boolean {
-    return this.finalLapProgress(race) < 1;
+    return (race.lap_times?.length ?? 0) >= this.lapSchedule.length && this.lapProgress(race) < 1;
   }
 
   /** Laps whose total is shown: all of them, but not yet the final one while its snake is still drawing. */
   protected totalLaps(race: CompetitorUpdate): number {
     const laps = race.lap_times?.length ?? 0;
-    return laps >= this.lapSchedule.length && this.finalLapProgress(race) < 1 ? laps - 1 : laps;
+    return laps >= this.lapSchedule.length && this.lapProgress(race) < 1 ? laps - 1 : laps;
   }
 
   /** Number of badge columns the compact body currently has (it follows the card width). */
@@ -278,10 +279,10 @@ export class TimedHeatCardComponent {
   /** The total time so far (the final time once finished), shown after the lap badges in compact mode. */
   protected compactTotalTime(race: CompetitorUpdate): string | null {
     if (race.invalid_reason || !race.lap_times?.length) return null;
-    const progress = this.finalLapProgress(race);
+    const progress = this.lapProgress(race);
     const final = this.timedCumulativeTime(race, race.lap_times.length - 1)!;
     if (progress >= 1) return final;
-    // the previous total counts up to the final time by the moment the snake has finished
+    // the previous total counts up to the new time by the moment the snake has finished
     const previous = race.lap_times.length > 1 ? parseSeconds(this.timedCumulativeTime(race, race.lap_times.length - 2)!) : 0;
     return formatDurationSeconds(previous + (parseSeconds(final) - previous) * progress);
   }
