@@ -3,6 +3,7 @@
 package source
 
 import (
+	"context"
 	"net/url"
 	"sync"
 )
@@ -33,8 +34,9 @@ func (u Upstream) FeedURL(id string) (string, error) {
 type Set struct {
 	upstreams []Upstream
 
-	mu    sync.RWMutex
-	owner map[string]int
+	mu     sync.RWMutex
+	owner  map[string]int
+	lister func(ctx context.Context) error
 }
 
 // NewSet returns a set of at least the primary upstream.
@@ -51,8 +53,27 @@ func (s *Set) SetOwners(owner map[string]int) {
 	s.owner = owner
 }
 
+// SetLister registers what loads the competitions of the upstreams and records their owners through SetOwners.
+func (s *Set) SetLister(list func(ctx context.Context) error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lister = list
+}
+
+// Prepare makes sure the origin of id is known: when no upstream is recorded for it, the lister loads the lists
+// (a cheap no-op while they are fresh). A competition that stays unlisted is requested from the primary upstream.
+func (s *Set) Prepare(ctx context.Context, id string) {
+	s.mu.RLock()
+	_, known := s.owner[id]
+	list := s.lister
+	s.mu.RUnlock()
+	if !known && list != nil {
+		_ = list(ctx)
+	}
+}
+
 // FeedURL builds the live results URL for a competition from the upstream that lists it; a competition nobody has
-// listed (yet) is requested from the primary upstream.
+// listed is requested from the primary upstream. Call Prepare first so the owner is known.
 func (s *Set) FeedURL(id string) (string, error) {
 	s.mu.RLock()
 	i := s.owner[id]

@@ -72,6 +72,8 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 		return nil, nil, ErrCompetitionEnded
 	}
 
+	m.set.Prepare(m.ctx, id) // outside the lock: it may fetch the competition lists
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

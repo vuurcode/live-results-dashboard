@@ -210,6 +210,7 @@ func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
 		}
 		c.upstreams = append(c.upstreams, &upstream{base: base})
 	}
+	set.SetLister(c.refresh)
 	return c, nil
 }
 

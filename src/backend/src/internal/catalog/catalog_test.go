@@ -318,4 +318,19 @@ func TestCatalogMergesUpstreams(t *testing.T) {
 	if list, err = cat.Today(context.Background()); err != nil || len(list) != 3 {
 		t.Fatalf("a failing upstream keeps its data: %v, %v", ids(list), err)
 	}
+
+	// a competition asked for before anyone listed the competitions is still routed to its own upstream
+	set2 := source.NewSet(
+		source.Upstream{DataSourceURL: "http://real/Competition", CatalogURL: primary.cat.upstreams[0].base.String()},
+		source.Upstream{DataSourceURL: "http://demo/Competition", CatalogURL: demo.cat.upstreams[0].base.String()},
+	)
+	cat2, err := New(cfg, set2, fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat2.now = func() time.Time { return primary.now }
+	set2.Prepare(context.Background(), "demo-1")
+	if got, _ := set2.FeedURL("demo-1"); got != "http://demo/Competition?competitionId=demo-1" {
+		t.Errorf("demo-1 is fetched from %q before the list was requested", got)
+	}
 }

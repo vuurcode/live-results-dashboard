@@ -1,6 +1,9 @@
 package source
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestFeedURL(t *testing.T) {
 	cases := []struct{ base, want string }{
@@ -34,5 +37,23 @@ func TestSetRoutesACompetitionToItsOwner(t *testing.T) {
 	}
 	if got, _ := s.FeedURL("real-1"); got != "http://real/Competition?competitionId=real-1" {
 		t.Errorf("real-1 -> %q", got)
+	}
+}
+
+func TestSetPrepareLoadsOwnersOnce(t *testing.T) {
+	set := NewSet(Upstream{DataSourceURL: "http://real/Competition"}, Upstream{DataSourceURL: "http://demo/Competition"})
+	calls := 0
+	set.SetLister(func(context.Context) error {
+		calls++
+		set.SetOwners(map[string]int{"demo-1": 1})
+		return nil
+	})
+	set.Prepare(context.Background(), "demo-1")
+	set.Prepare(context.Background(), "demo-1")
+	if calls != 1 {
+		t.Errorf("the lists are loaded %d times, want once", calls)
+	}
+	if got, _ := set.FeedURL("demo-1"); got != "http://demo/Competition?competitionId=demo-1" {
+		t.Errorf("demo-1 is fetched from %q", got)
 	}
 }
