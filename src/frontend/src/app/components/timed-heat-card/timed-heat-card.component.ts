@@ -249,6 +249,11 @@ export class TimedHeatCardComponent {
     return sameHundredths(total, race.personal_record) ? 3 : 2;
   }
 
+  /** Columns of the wide layout: the lanes of the widest heat in the distance, at most four. */
+  get laneCount(): number {
+    return Math.min(4, Math.max(1, this.maxLanes || this.races.length));
+  }
+
   /** Lane colour of a slot: the competitor's own, else the colour other heats show for it, else the standard order. */
   laneColor(race: CompetitorUpdate | null, slot: number): string | null {
     return race?.lane ?? this.laneColors[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
