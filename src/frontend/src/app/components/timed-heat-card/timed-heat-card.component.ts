@@ -7,7 +7,7 @@ import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, s
 import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../logic/race-codes';
 import { categoryName } from '../../logic/category.util';
 import { lapBadgeColor } from '../../logic/lap-color.util';
-import { isTimedFinished, timedRaceComplete, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
+import { isTimedFinished, timedStartDegrees, timedFinishAngle, timedRaceComplete, timedPrComparison as timedPrComparisonUtil } from '../../logic/heats.util';
 
 /** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
 const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
@@ -299,6 +299,17 @@ export class TimedHeatCardComponent {
   /** True when the first lap is shorter than a full 400m lap (a start from the middle of the track): lap 2 has no fair comparison. */
   firstLapPartial(): boolean {
     return this.lapSchedule.length > 0 && this.lapSchedule[0] < 400;
+  }
+
+  /** Where the finish line is on a lap badge's ring, in degrees clockwise from the top. */
+  get ringFinish(): string {
+    return `${this.distanceMeters == null ? 0 : timedFinishAngle(this.distanceMeters)}deg`;
+  }
+
+  /** Share of the ring the snake draws for lap i: the first lap from where the distance starts on the oval, the others all the way round. */
+  lapFraction(i: number): number {
+    if (i > 0 || this.distanceMeters == null) return 1;
+    return Math.min(1, timedStartDegrees(this.distanceMeters) / 360);
   }
 
   /** True once the final lap is done. */

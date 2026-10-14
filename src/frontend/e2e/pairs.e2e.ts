@@ -37,8 +37,11 @@ test.describe('two-lane competition', () => {
     await page.getByRole('button', { name: /^Display/ }).click();
     await page.locator('#thousandthsInput').uncheck();
     await expect(cardA.locator('.timed-compact-final .race-time')).toHaveText(/^\d+:?\d*\.\d{2}$/);
-    // the old personal best on the card title is struck through once it has been beaten
-    await expect(cardA.locator('.timed-pb-beaten')).toHaveCSS('text-decoration-line', 'line-through');
+    // the old personal best on the card title is struck through (a line drawn across it) once it has been beaten
+    await expect(cardA.locator('.timed-pb-beaten')).toBeVisible();
+    await expect
+      .poll(() => cardA.locator('.timed-pb-beaten').evaluate((el) => getComputedStyle(el, '::after').height))
+      .toBe('1px');
     // ... and stays plain for a skater who did not improve it (Competitor C finished slower than 43.0)
     await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor C' }).locator('.timed-pb-beaten')).toHaveCount(0);
     // a time slower than the personal best shows the difference as an orange watermark, not as a badge

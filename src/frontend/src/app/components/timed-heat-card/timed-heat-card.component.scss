@@ -152,10 +152,24 @@
 }
 
 .timed-split-badge.timed-pb-beaten {
-  // thin, see-through line: the previous value stays readable
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  text-decoration-color: rgba(69, 76, 82, 0.45);
+  position: relative;
+  // thin, see-through line drawn across the time from left to right: the previous value stays readable
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0.3em;
+    right: 0.3em;
+    top: 50%;
+    height: 1px;
+    background: rgba(69, 76, 82, 0.45);
+    transform-origin: left center;
+    animation: strikeThrough 0.9s ease-out 0.3s both;
+  }
+  @media (prefers-reduced-motion: reduce) { &::after { animation: none; } }
+}
+@keyframes strikeThrough {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
 }
 .timed-split-badge.timed-compact-latest {
   background-color: #454c52; // dark gray: the newest lap stands out (white on it is 8.7:1)
@@ -283,13 +297,20 @@
 // Updates ease in instead of snapping: badge, total and card colours change gradually. Motion is skipped for people who ask for less of it.
 .timed-split-badge,
 .timed-compact-final .timed-lap-time {
-  transition: background-color 0.6s ease, color 0.6s ease, box-shadow 0.4s ease;
+  transition: background-color 1.2s ease, color 1.2s ease, box-shadow 0.8s ease;
+}
+// A lap time or total that appears fades in from nothing (the element is new, so this runs once and not on later updates).
+.timed-split-badge.timed-compact-badge,
+.timed-compact-final .timed-lap-time {
+  transition: background-color 1.2s ease, color 1.2s ease, box-shadow 0.8s ease, opacity 0.5s ease-out;
+  @starting-style { opacity: 0; }
 }
 .timed-competitor-card {
-  transition: outline 0.1s, border-color 0.6s ease, background-color 0.6s ease;
+  transition: outline 0.1s, border-color 1.2s ease, background-color 1.2s ease;
 }
 @media (prefers-reduced-motion: reduce) {
   .timed-split-badge,
+  .timed-split-badge.timed-compact-badge,
   .timed-compact-final .timed-lap-time,
   .timed-competitor-card { transition: none; }
 }

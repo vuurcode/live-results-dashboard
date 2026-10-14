@@ -10,6 +10,8 @@ import {
   timedPrComparison,
   massFinishGapFromLeader,
   pendingLapCount,
+  timedStartDegrees,
+  timedFinishAngle,
 } from './heats.util';
 
 describe('timedDistanceLapSchedule / timedDistanceTotalLaps', () => {
@@ -135,5 +137,21 @@ describe('pendingLapCount', () => {
     expect(pendingLapCount(3, 5)).toBe(2);
     expect(pendingLapCount(5, 5)).toBe(0);
     expect(pendingLapCount(6, 5)).toBe(0);
+  });
+});
+
+describe('timedStartDegrees', () => {
+  it('places each distance where it starts on the oval', () => {
+    expect([100, 500, 1000, 1500, 3000, 5000, 10000].map(timedStartDegrees)).toEqual([90, 90, 180, 270, 180, 180, 360]);
+  });
+  it('derives other distances from the length of their first lap', () => {
+    expect(timedStartDegrees(800)).toBeCloseTo(360); // two full laps: starts at the finish
+    expect(timedStartDegrees(600)).toBeCloseTo(180); // 200m first lap
+  });
+});
+
+describe('timedFinishAngle', () => {
+  it('puts the finish on the bottom straight right of the middle, and the 1000m finish in the middle of the bottom', () => {
+    expect([500, 1500, 10000, 1000].map(timedFinishAngle)).toEqual([135, 135, 135, 180]);
   });
 });

@@ -33,6 +33,10 @@
   83%  { outline-color: #ff5722; }
   100% { outline-color: #e040fb; }
 }
+@keyframes snakeAround {
+  from { --snake-angle: 0deg; }
+  to   { --snake-angle: var(--arc, 360deg); }
+}
 @keyframes flashGreen {
   0%   { background-color: #d4edda; }
   100% { background-color: transparent; }
@@ -261,7 +265,32 @@
   &.lap-badge-slow   { background-color: $tint-slow-bg; color: $tint-slow-fg; }
   &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
   &.timed-compact-partial { background-color: #e9ecef; color: #212529; } // the first lap has no previous lap to differ from: light grey while the diff colours are on
-  &.timed-compact-latest[class*='lap-badge-'] { box-shadow: 0 0 0 2px #212529; } // the newest lap keeps standing out
+  // the newest lap stands out: a ring that a snake draws around the badge counter-clockwise, once, when the lap appears;
+  // a first lap shorter than a full lap keeps its ring, as it shows where the distance starts on the oval
+  &.timed-compact-latest[class*='lap-badge-'],
+  &.timed-compact-start-ring[class*='lap-badge-'] {
+    position: relative;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      padding: 2px; // the ring's thickness
+      border-radius: calc(0.25rem + 2px);
+      // The ring is the oval: the finish line is at --ring-from (degrees clockwise from the top), and a lap covers the share of the ring
+      // --lap-fraction (half for a 200m first lap) back from there. It is drawn from the lap's start to the finish, counter-clockwise,
+      // the way skaters go round.
+      --arc: calc(360deg * var(--lap-fraction, 1));
+      background: conic-gradient(from var(--ring-from, 0deg), transparent calc(var(--arc) - var(--snake-angle)), #212529 0 var(--arc), transparent 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask-composite: exclude; // only the padding box stays: the ring
+      -webkit-mask-composite: xor;
+      pointer-events: none;
+      animation: snakeAround calc(1.4s * var(--lap-fraction, 1)) ease-in-out both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      &::after { animation: none; --snake-angle: var(--arc); }
+    }
+  }
   &.timed-flash-update[class*='lap-badge-'] { animation: none; }
 }
 .timed-compact-final .timed-lap-time {

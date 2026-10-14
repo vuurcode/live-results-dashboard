@@ -21,6 +21,30 @@ export function timedDistanceTotalLaps(distanceMeters: number): number {
   return timedDistanceLapSchedule(distanceMeters).length;
 }
 
+/**
+ * Where a timed distance starts on the 400m oval, in degrees back from its finish line (1m = 0.9 degrees; 360 is the
+ * finish line itself). Read from the track diagram: the 100m and 500m start 100m before the finish, the 3000m and 5000m
+ * 200m, the 1500m 300m. The 1000m starts on the opposite straight and finishes in the middle of the other one, 200m on.
+ */
+const START_DEGREES: Record<number, number> = { 100: 90, 500: 90, 1000: 180, 1500: 270, 3000: 180, 5000: 180, 10000: 360 };
+
+/** Start of a timed distance in degrees back from its finish; a distance not listed follows from the length of its first lap. */
+export function timedStartDegrees(distanceMeters: number): number {
+  return START_DEGREES[distanceMeters] ?? ((distanceMeters % 400) || 400) * 0.9;
+}
+
+/**
+ * Where the finish line is on the oval as drawn on a lap badge, in degrees clockwise from the top: on the bottom straight,
+ * right of the middle, like the diagram of the track, except for the 1000m, which finishes in the middle of the bottom straight
+ * (180 degrees). A badge is wider than it is high, so its bottom and top edges are the straights and its ends the turns; 135
+ * degrees is clear of the right-hand turn (it begins at 117 degrees on a badge twice as wide as it is high, and at 135 only on a
+ * square one), and so are the starts that follow from it: 45 degrees (1500m) and 315 degrees (3000m, 5000m) on the top straight, 225 degrees (100m, 500m) on the bottom one,
+ * and 0 degrees (1000m). A snake never starts or stops inside a turn.
+ */
+export function timedFinishAngle(distanceMeters: number): number {
+  return distanceMeters === 1000 ? 180 : 135;
+}
+
 export interface TimedRace {
   laps_count: number;
   invalid_reason: string | null;

@@ -44,3 +44,10 @@ html {
 // Shrinking a pinned distance title moves the content below it. With scroll anchoring the browser answers by scrolling,
 // which un-pins the title again right at the pinning boundary and makes the bars flicker.
 html { overflow-anchor: none; }
+
+// how far round the newest lap badge the snake has drawn its ring (see the snakeAround keyframes)
+@property --snake-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
