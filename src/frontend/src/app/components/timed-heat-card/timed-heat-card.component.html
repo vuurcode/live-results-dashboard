@@ -44,7 +44,7 @@
           }
           <div class="timed-comp-header" [class.timed-comp-header-merged]="!titleExpanded(race)">
             <span class="timed-comp-name">{{ race.name }}@if (showLive(race)) { <c-badge color="danger" class="glowing-badge timed-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
-            <!-- category / club code, small below the name; the line keeps its height when there is none -->
+            <!-- category name and (club code), small below the name; the line keeps its height when there is none -->
             <span class="timed-comp-meta">{{ metaLine(race) }}</span>
             <!-- Badges on their own line; the row keeps its height when there are none -->
             <div class="timed-comp-badges">

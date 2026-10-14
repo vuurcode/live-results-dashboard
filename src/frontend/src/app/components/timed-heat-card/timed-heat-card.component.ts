@@ -147,13 +147,6 @@ export class TimedHeatCardComponent {
     });
   }
 
-  /** The full category name followed by its code: "Women Juniors A1 (DA1)". */
-  private categoryLabel(code: string | null): string {
-    const name = this.categoryFullName(code);
-    const trimmed = code?.trim() ?? '';
-    return name === trimmed ? name : `${name} (${trimmed})`;
-  }
-
   /** Split a space-separated remark string into individual codes. */
   splitRemarks(remark: string | null): string[] {
     if (!remark) return [];
@@ -259,9 +252,10 @@ export class TimedHeatCardComponent {
     return race?.lane ?? this.laneColors[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
   }
 
-  /** Category and club code for under the name: "DA1 / IFX", or whichever of the two there is. */
+  /** Category name and club code for under the name: "Women Juniors A1 (CLF4)", or whichever of the two there is. */
   metaLine(race: CompetitorUpdate): string {
-    return [this.categoryLabel(race.category), race.club_code].filter(Boolean).join(' / ');
+    const name = this.categoryFullName(race.category);
+    return race.club_code ? (name ? `${name} (${race.club_code})` : race.club_code) : name;
   }
 
   /** The badges sit beside the name until the race has a code (DNS, PR, ...); then the title gets the room of three lines. */

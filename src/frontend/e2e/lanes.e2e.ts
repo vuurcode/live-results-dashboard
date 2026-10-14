@@ -80,10 +80,10 @@ test.describe('card watermark placement', () => {
 });
 
 test.describe('card content', () => {
-  test('the category is named in full, with its code behind it, before the club code', async ({ page }) => {
+  test('the category is named in full, with the club code in brackets behind it', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/?competitionId=e2e-pairs');
-    await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor A' }).locator('.timed-comp-meta')).toHaveText('Women Juniors A1 (DA1) / IFX');
+    await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor A' }).locator('.timed-comp-meta')).toHaveText('Women Juniors A1 (IFX)');
   });
 
   test('a total time that does not fit on the row of the lap badges is centred on the next row', async ({ page }) => {
