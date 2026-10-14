@@ -82,23 +82,28 @@ jobs:
           dockerfile: Containerfile
       - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
-          dockerfile: backend/Containerfile
-      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
-        with:
-          dockerfile: frontend/Containerfile
-      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
-        with:
           dockerfile: mockserver/Containerfile
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: prod/Containerfile
       - run: shellcheck dev-services.sh entrypoint.sh record-match.sh
       - uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
 
-  # The production images build from their own Containerfiles; nothing is pushed.
+  # The mockserver image builds from its own Containerfile; nothing is pushed.
   images:
     runs-on: ubuntu-latest
     needs: [frontend, backend, mockserver, lint]
     strategy:
       matrix:
-        service: [backend, frontend, mockserver]
+        service: [mockserver]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -f ${{ matrix.service }}/Containerfile ${{ matrix.service }}
+
+  # The combined image builds from the repository root.
+  combined-image:
+    runs-on: ubuntu-latest
+    needs: [frontend, backend, lint]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: docker build -f prod/Containerfile .

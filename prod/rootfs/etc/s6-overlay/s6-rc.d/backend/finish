@@ -1,0 +1,4 @@
+#!/command/with-contenv sh
+# The container is only useful with both processes: stop it, so the platform restarts it from a clean state.
+echo "backend exited (code $1, signal $2), stopping the container" >&2
+exec /run/s6/basedir/bin/halt

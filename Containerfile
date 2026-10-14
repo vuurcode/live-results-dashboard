@@ -6,8 +6,7 @@ FROM node:${NODE_VERSION}-slim AS node
 FROM golang:${GO_VERSION} AS go
 
 # Single dev container: Claude Code + Go mockserver + Go backend + Angular dev server.
-# Production images are built from backend/Containerfile and frontend/Containerfile
-# and contain none of this.
+# The production image is built from prod/Containerfile and contains none of this.
 FROM python:${PYTHON_VERSION}-slim-trixie AS dev
 
 WORKDIR /app

@@ -1,4 +1,4 @@
-# Template: BACKEND_UPSTREAM (host:port of the backend) is filled in when the container starts.
+# Template: LISTEN_PORT and BACKEND_UPSTREAM (host:port of the backend) are filled in when the container starts.
 server_tokens off;
 
 # text assets compress to about a quarter; the websocket and already compressed images are left alone
@@ -9,7 +9,7 @@ gzip_vary on;
 gzip_types text/css application/javascript text/javascript application/json image/svg+xml text/plain image/x-icon;
 
 server {
-    listen 80;
+    listen ${LISTEN_PORT};
     root /usr/share/nginx/html;
 
     # Every location includes the security headers itself: a location with an add_header of its own drops the inherited ones.
@@ -46,6 +46,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Liveness of the backend behind the proxy (the page routes above fall back to the app, so this needs its own entry).
+    location = /healthcheck {
+        proxy_pass http://${BACKEND_UPSTREAM};
+        access_log off;
     }
     location ^~ /ws {
         proxy_pass http://${BACKEND_UPSTREAM}/ws;

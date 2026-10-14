@@ -1,0 +1,4 @@
+#!/command/with-contenv sh
+# Only nginx is reachable from outside: the backend listens on loopback.
+export LISTEN_ADDR=127.0.0.1:5000
+exec s6-setuidgid nobody /usr/local/bin/backend

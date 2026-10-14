@@ -28,9 +28,6 @@ services:
     volumes:
       - .:/app
       - /app/frontend/node_modules          # keep host node_modules out; installed in-container
-      # Hide the tunnel files from Claude (empty in-memory dir over the real one)
-      - type: tmpfs
-        target: /app/tunnel
       # git hooks/config and Claude's deny rules stay read-only: a hook or
       # core.fsmonitor/hooksPath/sshCommand set from here would run on the host
       - ./.git/hooks:/app/.git/hooks:ro
@@ -40,15 +37,15 @@ services:
       - ./container-data/claude:/root/.claude
       - ./container-data/claude.json:/root/.claude.json
 
-  # Production, built without Claude or dev tooling:
+  # Production: frontend (nginx) and backend in one container, built without Claude or dev tooling:
   #   LIVE_RESULTS_BASE_URL=https://<host> MATCH_INFO_BASE_URL=https://<host> docker compose --profile prod up -d --build
-  # http://localhost:8888
-  backend:
+  # http://localhost:8888 (nginx serves the page and proxies /api, /ws and /healthcheck to the backend inside)
+  app:
     profiles: [prod]
-    container_name: backend
+    container_name: app
     build:
-      context: ./backend
-      dockerfile: Containerfile
+      context: .
+      dockerfile: prod/Containerfile
     environment:
       LIVE_RESULTS_BASE_URL: ${LIVE_RESULTS_BASE_URL:-}
       MATCH_INFO_BASE_URL: ${MATCH_INFO_BASE_URL:-}
@@ -69,47 +66,14 @@ services:
       VENUE_COUNTRY_CODE: ${VENUE_COUNTRY_CODE:-}
       VENUE_DISCIPLINE: ${VENUE_DISCIPLINE:-}
       USER_AGENT: ${USER_AGENT:-}
-    restart: unless-stopped
-    networks:
-      - dashboard-net
-
-  frontend:
-    profiles: [prod]
-    container_name: frontend
-    build:
-      context: ./frontend
-      dockerfile: Containerfile
-    environment:
       BACKEND_URL: ${BACKEND_URL:-}
-      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-backend:5000}
       CSP_CONNECT_SRC: ${CSP_CONNECT_SRC:-'self'}
       CSP_FRAME_ANCESTORS: ${CSP_FRAME_ANCESTORS:-'none'}
     ports:
-      - "${FRONTEND_PORT:-8888}:80"
-    depends_on:
-      - backend
+      - "${APP_PORT:-8888}:8080"
     restart: unless-stopped
     networks:
       - dashboard-net
-
-  # Opt-in: TUNNEL_DIR=/path/outside/project docker compose --profile prod --profile tunnel up -d
-  # TUNNEL_DIR holds config.yml, cert.pem and tunnel-credentials.json; keep it outside
-  # the project so the dev container (and Claude) can never see it.
-#  tunnel:
-#    profiles: [tunnel]
-#    image: cloudflare/cloudflared:latest
-#    container_name: tunnel
-#    restart: unless-stopped
-#    command: tunnel run
-#    volumes:
-#      - ${TUNNEL_DIR:?set TUNNEL_DIR to the directory holding the tunnel files}/config.yml:/etc/cloudflared/config.yml:ro
-#      - ${TUNNEL_DIR}/cert.pem:/etc/cloudflared/cert.pem:ro
-#      - ${TUNNEL_DIR}/tunnel-credentials.json:/etc/cloudflared/tunnel-credentials.json:ro
-#    depends_on:
-#      - frontend
-#      - backend
-#    networks:
-#      - dashboard-net
 
 networks:
   dashboard-net:
