@@ -1,3 +1,0 @@
-(function() {
-  window.BACKEND_URL = "${BACKEND_URL}";
-})();

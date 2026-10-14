@@ -1,0 +1,70 @@
+# Template: FRONTEND_LISTEN_PORT and FRONTEND_BACKEND_UPSTREAM (host:port of the backend) are filled in when the container starts.
+server_tokens off;
+
+# text assets compress to about a quarter; the websocket and already compressed images are left alone
+gzip on;
+gzip_comp_level 6;
+gzip_min_length 512;
+gzip_vary on;
+gzip_types text/css application/javascript text/javascript application/json image/svg+xml text/plain image/x-icon;
+
+server {
+    listen ${FRONTEND_LISTEN_PORT};
+    root /usr/share/nginx/html;
+
+    # Every location includes the security headers itself: a location with an add_header of its own drops the inherited ones.
+    # Files with a hash in their name never change: cache them for good.
+    location ~ "^/.+-[A-Z0-9]{8}\.(js|css)$" {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        include /etc/nginx/security-headers.conf;
+        try_files $uri =404;
+    }
+    # The page and the runtime settings change with a deploy: always revalidate.
+    location = /index.html {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+    }
+    location = /env-inject.js {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+    }
+    # Anything with a file extension that does not exist is a real 404; only page routes fall back to the app.
+    location ~* \.[a-z0-9]+$ {
+        add_header Cache-Control "public, max-age=86400" always;
+        include /etc/nginx/security-headers.conf;
+        try_files $uri =404;
+    }
+    location / {
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/security-headers.conf;
+        try_files $uri /index.html;
+    }
+    location ^~ /api {
+        include /etc/nginx/security-headers.conf;
+        # The headers the include sets are not repeated by the backend's own copies
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_hide_header Referrer-Policy;
+        proxy_hide_header Permissions-Policy;
+        proxy_pass http://${FRONTEND_BACKEND_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    # Liveness of the backend behind the proxy (the page routes above fall back to the app, so this needs its own entry).
+    location = /healthcheck {
+        proxy_pass http://${FRONTEND_BACKEND_UPSTREAM};
+        access_log off;
+    }
+    location ^~ /ws {
+        proxy_pass http://${FRONTEND_BACKEND_UPSTREAM}/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        # the backend pings every 25 seconds; an idle socket is not dropped before that matters
+        proxy_read_timeout 1h;
+        proxy_send_timeout 1h;
+    }
+}
