@@ -36,7 +36,7 @@ type Config struct {
 	IdleGrace            time.Duration // how long an empty competition keeps polling before it is closed
 	PingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
-	CatalogTTL      time.Duration // how long the competitions list is cached; venues are cached forever
+	CatalogTTL      time.Duration // how long the competitions list is cached; venues are refetched at most once an hour
 	DataRetention   time.Duration // how long after its start a competition's data is served; 0 = until the day after it ends
 	VenueCountry    string        // only venues in this country (ISO 3166 alpha-3, as the upstream uses)
 	VenueDiscipline string        // only venues and competitions of this discipline

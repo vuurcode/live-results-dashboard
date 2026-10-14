@@ -168,8 +168,12 @@ func localDay(t time.Time, loc *time.Location) time.Time {
 	return time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
 }
 
-// Catalog merges the competitions of the upstreams of a source set. Per upstream it fetches venues once (kept forever)
-// and competitions at most once per TTL, both lazily on first use. A failed refresh keeps serving the old data.
+// maxCacheAge caps how long venues and competitions are kept before they are fetched again, whatever the TTL says.
+const maxCacheAge = time.Hour
+
+// Catalog merges the competitions of the upstreams of a source set. Per upstream it fetches the venues at most once an
+// hour and the competitions at most once per TTL (never more than an hour), both lazily on first use. A failed
+// refresh keeps serving the old data.
 type Catalog struct {
 	set        *source.Set
 	upstreams  []*upstream
@@ -192,6 +196,7 @@ type Catalog struct {
 type upstream struct {
 	base         *url.URL
 	venues       map[string]venue
+	venuesAt     time.Time
 	competitions []*competition // every competition of the venues
 }
 
@@ -200,7 +205,7 @@ const retryAfterFailure = 30 * time.Second
 // New returns a catalog for the competitions lists of the set's upstreams.
 func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
 	c := &Catalog{
-		set: set, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: cfg.CatalogTTL, retention: cfg.DataRetention,
+		set: set, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: min(cfg.CatalogTTL, maxCacheAge), retention: cfg.DataRetention,
 		ua: ua, client: &http.Client{}, now: time.Now,
 	}
 	for _, u := range set.Upstreams() {
@@ -252,6 +257,7 @@ func (c *Catalog) loadVenues(ctx context.Context, u *upstream) error {
 		}
 	}
 	u.venues = venues
+	u.venuesAt = c.now()
 	slog.Info("Venues loaded", "upstream", u.base.Host, "venues", len(venues), "country", c.country, "discipline", c.discipline)
 	return nil
 }
@@ -334,9 +340,12 @@ func (c *Catalog) reload(ctx context.Context) error {
 }
 
 func (c *Catalog) loadUpstream(ctx context.Context, u *upstream) error {
-	if u.venues == nil {
+	if u.venues == nil || c.now().Sub(u.venuesAt) >= maxCacheAge {
 		if err := c.loadVenues(ctx, u); err != nil {
-			return err
+			if u.venues == nil {
+				return err
+			}
+			slog.Warn("Venues refresh failed, keeping the earlier ones", "upstream", u.base.Host, "err", err)
 		}
 	}
 	return c.loadCompetitions(ctx, u)

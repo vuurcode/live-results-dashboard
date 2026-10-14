@@ -10,7 +10,7 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL`, `BACKEND_CATALOG_TTL_SE
 | `BACKEND_LIVE_RESULTS_INTERVAL` | `1` | Seconds between live results requests per competition |
 | `BACKEND_VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `BACKEND_VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
-| `BACKEND_CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (venues are cached for the life of the process). Rooms of competitions that ended more than a day ago are closed within a minute |
+| `BACKEND_CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (capped at one hour; venues are refetched at most once an hour). Rooms of competitions that ended more than a day ago are closed within a minute |
 | `BACKEND_USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
 | `BACKEND_DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
 | `BACKEND_MAX_COMPETITIONS` | `25` | Competitions the backend follows at the same time |

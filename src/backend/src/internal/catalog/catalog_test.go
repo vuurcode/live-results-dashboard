@@ -132,12 +132,23 @@ func TestCatalogCaching(t *testing.T) {
 	if e.venueHits.Load() != 1 || e.compHits.Load() != 1 {
 		t.Fatalf("hits venues=%d competitions=%d, want 1/1", e.venueHits.Load(), e.compHits.Load())
 	}
-	e.now = e.now.Add(25 * time.Hour)
+	e.now = e.now.Add(time.Hour)
 	if _, err := e.cat.Today(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if e.venueHits.Load() != 1 || e.compHits.Load() != 2 {
-		t.Fatalf("after TTL hits venues=%d competitions=%d, want 1/2", e.venueHits.Load(), e.compHits.Load())
+	if e.venueHits.Load() != 2 || e.compHits.Load() != 2 {
+		t.Fatalf("after an hour hits venues=%d competitions=%d, want 2/2", e.venueHits.Load(), e.compHits.Load())
+	}
+}
+
+func TestCatalogCacheIsCappedAtAnHour(t *testing.T) {
+	cfg := config.Config{CatalogTTL: 24 * time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: "http://127.0.0.1:1"}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cat.ttl != time.Hour {
+		t.Fatalf("ttl = %v, want the cap of one hour", cat.ttl)
 	}
 }
 
