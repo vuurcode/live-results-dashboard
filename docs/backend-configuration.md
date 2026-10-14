@@ -27,4 +27,4 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL`, `BACKEND_CATALOG_TTL_SE
 
 Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy` and `Permissions-Policy` headers that lock down a JSON-only service.
 
-In `compose.yml` (prod profile) the variables are read from `.env.prod` (committed defaults) and the optional, gitignored `.env.prod.local`, which wins; an empty value means the default above. `COMPOSE_APP_PORT` (default `8888`) is the published port.
+In `compose.yml` (prod profile) the variables are read from the optional `.env.prod` and the optional, gitignored `.env.prod.local`, which wins; an empty value means the default above. `COMPOSE_APP_PORT` (default `8888`) is the published port.

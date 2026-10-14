@@ -38,7 +38,7 @@ services:
       - ./container-data/claude.json:/root/.claude.json
 
   # Production: frontend (nginx) and backend in one container, built without Claude or dev tooling:
-  # Settings come from .env.prod (defaults, committed) and .env.prod.local (gitignored, wins over the defaults):
+  # Optional settings come from .env.prod (shared) and .env.prod.local (gitignored, wins):
   #   docker compose --profile prod up -d --build
   # http://localhost:8888 (nginx serves the page and proxies /api, /ws and /healthcheck to the backend inside)
   app:
@@ -48,8 +48,10 @@ services:
       context: .
       dockerfile: prod/Containerfile
     env_file:
-      - .env.prod
-      # Local settings (such as the real source URLs) in a gitignored file; optional
+      # Both optional; the image carries the defaults. Later files win.
+      - path: .env.prod
+        required: false
+      # Local settings such as the real source URLs; gitignored
       - path: .env.prod.local
         required: false
     ports:
