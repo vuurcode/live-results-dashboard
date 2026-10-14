@@ -1,4 +1,4 @@
-// Live Results Dashboard — Backend
+// Live Results Experiment - Proof of Concept — Backend
 //
 // Clients connect to /ws?competitionId=<id>. For each competition that has at
 // least one client, the backend fetches raw race data from the live results API on

@@ -1,7 +1,7 @@
 import type { Translations } from './translations';
 
 export const fr: Translations = {
-  pageTitle: 'Résultats en direct',
+  pageTitle: 'Live Results Experiment - Proof of Concept',
   displaySettings: 'Paramètres d’affichage/de visualisation',
   massStartSettings: 'Départ groupé',
   todayCompetitionsLabel: 'Compétitions du jour',

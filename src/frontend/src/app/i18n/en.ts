@@ -1,7 +1,7 @@
 import type { Translations } from './translations';
 
 export const en: Translations = {
-  pageTitle: 'Live Results Dashboard',
+  pageTitle: 'Live Results Experiment - Proof of Concept',
   displaySettings: 'Display/visualization settings',
   massStartSettings: 'Mass Start',
   todayCompetitionsLabel: 'Competitions today',

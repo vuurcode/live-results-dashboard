@@ -17,7 +17,7 @@ test.describe('competition selection', () => {
     await restartReplay(request, 'e2e-mass');
     await page.goto('/?competitionId=e2e-mass');
     await expect(page.locator('.topbar-title')).toHaveText('E2E Mass Start Event');
-    await expect(page).toHaveTitle('E2E Mass Start Event | Live Results Dashboard');
+    await expect(page).toHaveTitle('E2E Mass Start Event | Live Results Experiment - Proof of Concept');
   });
 
   test('follows no competition when the URL names none, and offers the competition list', async ({ page }) => {

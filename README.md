@@ -1,4 +1,4 @@
-# Live results dashboard
+# Live Results Experiment - Proof of Concept
 Experimental - non commercial.
 
 ## About

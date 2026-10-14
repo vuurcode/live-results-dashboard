@@ -32,7 +32,7 @@ All components:
 - [x] The scroll target keeps the followed element a fixed fraction down the viewport, clamped to the page
 
 ### UI (e2e specs: `src/frontend/e2e`)
-- [x] Page title `<event name> | Live Results Dashboard`; the event name is the page heading, replaced visually by the competition picker; top bar dark, pinned with the open distance title below it; the title shrinks while pinned
+- [x] Page title `<event name> | Live Results Experiment - Proof of Concept`; the event name is the page heading, replaced visually by the competition picker; top bar dark, pinned with the open distance title below it; the title shrinks while pinned
 - [x] Distances in a full-width accordion by `event_number` descending; the live one opens on load; done ones are slightly dimmed; badges before the name: Live (animated), Done, X/Y progress, PR N / TRC N after it
 - [x] Mass start: group cards in a strip pinned below the title, and one standings list with rank, start number, name, gap or total time, lap badges coloured by the lap diff rules, laps counter and Final lap badge; rows can be selected; a lap times toggle hides only the badges
 - [x] Timed distance: one plain row per heat with cards in lane columns: four per row from 1280px, two from 768px, one below; lane sets without a competitor are hidden on narrow screens; the cards of a row, and their titles, are equally tall
