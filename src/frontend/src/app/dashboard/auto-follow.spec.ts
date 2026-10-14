@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
+import { CompetitorUpdate, ProcessedDistance } from '../results/data.models';
 import { AutoFollow, HEADER_ANCHOR, HEAT_ANCHOR } from './auto-follow';
 
 interface Heat { label: string; races: (CompetitorUpdate | null)[] }

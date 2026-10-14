@@ -1,6 +1,6 @@
-import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
-import { RaceCode } from '../../logic/race-codes';
-import { findLiveHeat } from '../../logic/live-heat';
+import { CompetitorUpdate, ProcessedDistance } from '../results/data.models';
+import { RaceCode } from '../results/race-codes';
+import { findLiveHeat } from '../results/live-heat';
 
 /** Where the followed element lands, as a fraction of the viewport height from the top. */
 export const HEAT_ANCHOR = 0.3; // active heat a third of the way down, previous heats still partly visible

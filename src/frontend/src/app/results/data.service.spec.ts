@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { BackendMessage, CompetitorUpdate, DistanceMeta } from '../models/data.models';
+import { BackendMessage, CompetitorUpdate, DistanceMeta } from './data.models';
 import { DataService } from './data.service';
 
-interface Applier { _applyMessage(msg: BackendMessage): boolean }
+interface Applier { applyMessage(msg: BackendMessage): boolean }
 
 const meta = (over: Partial<DistanceMeta> = {}): DistanceMeta => ({
   id: 'd1', name: '500 m', event_number: 1, is_live: true, is_mass_start: false, distance_meters: 500, total_laps: 1,
@@ -23,10 +23,10 @@ describe('DataService message handling', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({});
     service = TestBed.inject(DataService);
-    apply = (msg) => (service as unknown as Applier)._applyMessage(msg);
+    apply = (msg) => (service as unknown as Applier).applyMessage(msg);
   });
 
-  const publish = () => (service as unknown as { _publishState(): void })._publishState();
+  const publish = () => (service as unknown as { publishState(): void }).publishState();
   const distances = () => firstValueFrom(service.processedData$);
 
   it('follows nothing without a competition in the URL', async () => {
@@ -41,7 +41,7 @@ describe('DataService message handling', () => {
   });
 
   it('remembers how far the stream got, but only once the replay has arrived', () => {
-    const track = (msg: BackendMessage) => (service as unknown as { _track(m: BackendMessage): void })._track(msg);
+    const track = (msg: BackendMessage) => (service as unknown as { track(m: BackendMessage): void }).track(msg);
     const point = () => (service as unknown as { resumePoint: unknown }).resumePoint;
     const status = (seq: number, epoch: string, following: number): BackendMessage =>
       ({ type: 'status', data: { data_source_url: 'http://x', data_source_interval: 2, seq, epoch, following } });

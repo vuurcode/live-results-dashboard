@@ -1,8 +1,8 @@
 import { Injectable, NgZone, inject } from '@angular/core';
-import { TranslateService } from './translate.service';
-import { randomJitter, reconnectDelay } from '../logic/backoff';
-import { HIDDEN_PAUSE_MS, needsReconnect } from '../logic/hidden';
-import { SettingsService } from './settings.service';
+import { TranslateService } from '../i18n/translate.service';
+import { randomJitter, reconnectDelay } from './backoff';
+import { HIDDEN_PAUSE_MS, needsReconnect } from './hidden';
+import { SettingsService } from '../settings/settings.service';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { BehaviorSubject, Subject, Subscription, merge } from 'rxjs';
 import { skip } from 'rxjs/operators';
@@ -13,10 +13,10 @@ import {
   CompetitorUpdate,
   ProcessedDistance,
   StandingsGroup,
-} from '../models/data.models';
-import { recomputePositions, recomputeGroups, resolveRaces } from '../logic/standings.util';
-import { FeedStatus, TodayCompetition } from '../models/data.models';
-import { competitionIdFromSearch, withCompetitionId, withResume } from '../logic/competition.util';
+} from './data.models';
+import { recomputePositions, recomputeGroups, resolveRaces } from './standings.util';
+import { FeedStatus, TodayCompetition } from './data.models';
+import { competitionIdFromSearch, withCompetitionId, withResume } from './competition.util';
 
 export interface BackendStatus {
   status: 'Disconnected' | 'Connecting...' | 'Connected' | 'Error' | 'No competition';
@@ -35,8 +35,8 @@ const RENDER_INTERVAL_MS = 250;
 export class DataService {
   private socket$: WebSocketSubject<BackendMessage> | null = null;
   /** Competition to follow, from the page URL (`?competitionId=...`); without one nothing is followed. */
-  public readonly competitionId = competitionIdFromSearch(window.location.search);
-  private readonly BACKEND_URL = withCompetitionId((() => {
+  readonly competitionId = competitionIdFromSearch(window.location.search);
+  private readonly backendUrl = withCompetitionId((() => {
     const raw = (window as BackendWindow).BACKEND_URL;
     // Ignore unsubstituted template placeholder (env-inject.js not processed by envsubst)
     const base = raw && !raw.startsWith('${') ? raw : null;
@@ -52,7 +52,7 @@ export class DataService {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
     return `${proto}://${window.location.host}/ws`;
   })(), this.competitionId);
-  private readonly BACKEND_HTTP_URL: string = (() => {
+  private readonly backendHttpUrl: string = (() => {
     const raw = (window as BackendWindow).BACKEND_URL;
     return raw && !raw.startsWith('${') ? raw : `${window.location.protocol}//${window.location.host}`;
   })();
@@ -60,7 +60,7 @@ export class DataService {
   /** Competitions happening today, from the backend; an empty list when it cannot be loaded. */
   async todayCompetitions(): Promise<TodayCompetition[]> {
     try {
-      const res = await fetch(`${this.BACKEND_HTTP_URL}/api/competitions/today`);
+      const res = await fetch(`${this.backendHttpUrl}/api/competitions/today`);
       if (!res.ok) return [];
       const list: unknown = await res.json();
       return Array.isArray(list) ? (list as TodayCompetition[]) : [];
@@ -69,26 +69,26 @@ export class DataService {
     }
   }
 
-  private _status = new BehaviorSubject<BackendStatus>({ status: 'Disconnected', url: '', interval: null });
-  public status$ = this._status.asObservable();
-  private _reset = new Subject<void>();
-  public reset$ = this._reset.asObservable();
+  private statusSubject = new BehaviorSubject<BackendStatus>({ status: 'Disconnected', url: '', interval: null });
+  status$ = this.statusSubject.asObservable();
+  private resetSubject = new Subject<void>();
+  reset$ = this.resetSubject.asObservable();
   /** The page came back from suspension and the connection was renewed. */
   private resumed = new Subject<void>();
-  public resumed$ = this.resumed.asObservable();
-  private _processedData = new BehaviorSubject<ProcessedDistance[]>([]);
-  public processedData$ = this._processedData.asObservable();
-  private _eventName = new BehaviorSubject<string>('');
-  public eventName$ = this._eventName.asObservable();
-  private _feed = new BehaviorSubject<FeedStatus | null>(null);
+  resumed$ = this.resumed.asObservable();
+  private processedDataSubject = new BehaviorSubject<ProcessedDistance[]>([]);
+  processedData$ = this.processedDataSubject.asObservable();
+  private eventNameSubject = new BehaviorSubject<string>('');
+  eventName$ = this.eventNameSubject.asObservable();
+  private feedSubject = new BehaviorSubject<FeedStatus | null>(null);
   /** The data source's state as reported by the backend; null until it has answered. */
-  public feed$ = this._feed.asObservable();
+  feed$ = this.feedSubject.asObservable();
 
-  private _errors = new BehaviorSubject<string[]>([]);
-  public errors$ = this._errors.asObservable();
-  private _displayedGroups = new BehaviorSubject<Map<string, StandingsGroup[]>>(new Map());
-  public displayedGroups$ = this._displayedGroups.asObservable();
-  private _groupDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private errorsSubject = new BehaviorSubject<string[]>([]);
+  errors$ = this.errorsSubject.asObservable();
+  private displayedGroupsSubject = new BehaviorSubject<Map<string, StandingsGroup[]>>(new Map());
+  displayedGroups$ = this.displayedGroupsSubject.asObservable();
+  private groupDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private distanceMap = new Map<string, ProcessedDistance>();
   private competitorMap = new Map<string, Map<string, CompetitorUpdate>>();
@@ -115,42 +115,42 @@ export class DataService {
   constructor() {
     // A page restored from the back/forward cache comes back with a dead socket and stale results; load it afresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
-    document.addEventListener('visibilitychange', () => this._onVisibilityChange());
+    document.addEventListener('visibilitychange', () => this.onVisibilityChange());
     window.addEventListener('online', () => this.resume());
     // changing how mass starts group shows at once
     merge(this.settings.groupThreshold.changes$.pipe(skip(1)), this.settings.maxGroups.changes$.pipe(skip(1)))
-      .subscribe(() => this._regroup());
+      .subscribe(() => this.regroup());
     this.connect();
   }
 
-  private _regroup() {
+  private regroup() {
     for (const dist of this.distanceMap.values()) {
-      if (dist.isMassStart) this._recomputeGroups(dist);
+      if (dist.isMassStart) this.recomputeGroups(dist);
     }
-    for (const timer of this._groupDebounceTimers.values()) clearTimeout(timer);
-    this._groupDebounceTimers.clear();
-    this._flushDisplayedGroups();
-    this.ngZone.run(() => this._publishState());
+    for (const timer of this.groupDebounceTimers.values()) clearTimeout(timer);
+    this.groupDebounceTimers.clear();
+    this.flushDisplayedGroups();
+    this.ngZone.run(() => this.publishState());
   }
 
   connect() {
     if (this.socket$ && !this.socket$.closed) return;
     if (!this.competitionId) {
-      this._status.next({ status: 'No competition', url: '', interval: null });
+      this.statusSubject.next({ status: 'No competition', url: '', interval: null });
       return;
     }
-    this._errors.next([]);
-    this._feed.next(null);
-    this._status.next({ status: 'Connecting...', url: '', interval: null });
+    this.errorsSubject.next([]);
+    this.feedSubject.next(null);
+    this.statusSubject.next({ status: 'Connecting...', url: '', interval: null });
     this.noCompetition = false;
     this.socket$ = webSocket<BackendMessage>({
-      url: withResume(this.BACKEND_URL, this.resumePoint),
+      url: withResume(this.backendUrl, this.resumePoint),
       closeObserver: { next: (e: CloseEvent) => { this.noCompetition = e.code === CLOSE_NO_COMPETITION; } },
     });
     this.socketSub = this.socket$.subscribe({
-      next: (msg) => this._enqueue(msg),
-      error: (err: unknown) => this._handleError(err),
-      complete: () => this._handleDisconnect(),
+      next: (msg) => this.enqueue(msg),
+      error: (err: unknown) => this.handleError(err),
+      complete: () => this.handleDisconnect(),
     });
   }
 
@@ -158,10 +158,10 @@ export class DataService {
    * A hidden page stops listening after a while (the backend's bandwidth is limited) and comes back with a fresh replay;
    * a brief switch to another tab changes nothing, unless the connection broke meanwhile.
    */
-  private _onVisibilityChange() {
+  private onVisibilityChange() {
     if (document.visibilityState === 'hidden') {
       this.hiddenSince = Date.now();
-      if (!this.pauseTimer) this.pauseTimer = setTimeout(() => this._pause(), HIDDEN_PAUSE_MS);
+      if (!this.pauseTimer) this.pauseTimer = setTimeout(() => this.pause(), HIDDEN_PAUSE_MS);
       return;
     }
     if (this.pauseTimer) {
@@ -172,10 +172,10 @@ export class DataService {
   }
 
   /** Closes the connection without the reconnect and banner that a lost connection brings. */
-  private _pause() {
+  private pause() {
     this.pauseTimer = null;
-    this._cancelReconnect();
-    this._cancelLostError();
+    this.cancelReconnect();
+    this.cancelLostError();
     this.socketSub?.unsubscribe(); // the last subscriber leaving closes the socket
     this.socketSub = null;
     this.socket$ = null;
@@ -184,7 +184,7 @@ export class DataService {
   /** A suspended phone leaves a socket that looks open but is dead; drop it and fetch the current results. */
   resume() {
     if (!this.competitionId || this.noCompetition) return;
-    this._cancelReconnect();
+    this.cancelReconnect();
     this.reconnectAttempts = 0;
     this.socket$?.complete();
     this.socket$ = null;
@@ -193,11 +193,11 @@ export class DataService {
   }
 
   disconnect() {
-    this._cancelReconnect();
-    this._cancelLostError();
+    this.cancelReconnect();
+    this.cancelLostError();
     this.socket$?.complete();
     this.socket$ = null;
-    this._status.next({ status: 'Disconnected', url: '', interval: null });
+    this.statusSubject.next({ status: 'Disconnected', url: '', interval: null });
   }
 
   resetDashboard() {
@@ -205,18 +205,18 @@ export class DataService {
     window.location.reload();
   }
 
-  private _enqueue(msg: BackendMessage) {
-    this._cancelLostError();
-    this._track(msg);
+  private enqueue(msg: BackendMessage) {
+    this.cancelLostError();
+    this.track(msg);
     this.queue.push(msg);
     if (!this.renderLoopRunning) {
       this.renderLoopRunning = true;
-      this.ngZone.runOutsideAngular(() => this._scheduleNextCycle());
+      this.ngZone.runOutsideAngular(() => this.scheduleNextCycle());
     }
   }
 
   /** Follows how far the stream has got; the point to resume from only stands once everything the status announced has arrived. */
-  private _track(msg: BackendMessage) {
+  private track(msg: BackendMessage) {
     if (msg.type === 'status') {
       const { epoch, seq, following } = msg.data;
       this.resumePoint = null;
@@ -232,35 +232,35 @@ export class DataService {
     }
   }
 
-  private _scheduleNextCycle() {
-    setTimeout(() => this._runCycle(), 0);
+  private scheduleNextCycle() {
+    setTimeout(() => this.runCycle(), 0);
   }
 
-  private _runCycle() {
+  private runCycle() {
     if (this.queue.length === 0) { this.renderLoopRunning = false; return; }
     const deadline = Date.now() + RENDER_INTERVAL_MS;
     let changed = false;
     while (this.queue.length > 0 && Date.now() < deadline) {
       const msg = this.queue.shift();
-      if (msg) changed = this._applyMessage(msg) || changed;
+      if (msg) changed = this.applyMessage(msg) || changed;
     }
     if (changed) {
       // Flush groups immediately so the strip renders on initial load
       // (debounce will still update it again after the threshold delay)
-      this._flushDisplayedGroups();
-      this.ngZone.run(() => this._publishState());
+      this.flushDisplayedGroups();
+      this.ngZone.run(() => this.publishState());
     }
-    if (this.queue.length > 0) this._scheduleNextCycle();
+    if (this.queue.length > 0) this.scheduleNextCycle();
     else this.renderLoopRunning = false;
   }
 
-  private _applyMessage(msg: BackendMessage): boolean {
+  private applyMessage(msg: BackendMessage): boolean {
     switch (msg.type) {
       case 'status':
-        this._cancelReconnect();
+        this.cancelReconnect();
         this.reconnectAttempts = 0;
         this.clearErrors();
-        this.ngZone.run(() => this._status.next({
+        this.ngZone.run(() => this.statusSubject.next({
           status: 'Connected',
           url: msg.data.data_source_url,
           interval: msg.data.data_source_interval,
@@ -268,44 +268,44 @@ export class DataService {
         }));
         return false;
       case 'feed_status':
-        this.ngZone.run(() => this._feed.next(msg.data));
+        this.ngZone.run(() => this.feedSubject.next(msg.data));
         return false;
       case 'event_name':
-        this.ngZone.run(() => this._eventName.next(msg.data.name));
+        this.ngZone.run(() => this.eventNameSubject.next(msg.data.name));
         return false;
       case 'error':
-        this.ngZone.run(() => this._status.next({
-          ...this._status.value,
+        this.ngZone.run(() => this.statusSubject.next({
+          ...this.statusSubject.value,
           status: 'Error',
           errorMessage: msg.data,
         }));
         return false;
       case 'reset':
-        this._applyReset();
+        this.applyReset();
         return false;
       case 'distance_meta':
-        return this._applyDistanceMeta(msg.data);
+        return this.applyDistanceMeta(msg.data);
       case 'competitor_update':
-        return this._applyCompetitorUpdate(msg.data);
+        return this.applyCompetitorUpdate(msg.data);
       default:
         return false;
     }
   }
 
-  private _applyReset(): void {
+  private applyReset(): void {
     this.distanceMap.clear();
     this.competitorMap.clear();
-    for (const timer of this._groupDebounceTimers.values()) clearTimeout(timer);
-    this._groupDebounceTimers.clear();
+    for (const timer of this.groupDebounceTimers.values()) clearTimeout(timer);
+    this.groupDebounceTimers.clear();
     this.ngZone.run(() => {
-      this._eventName.next('');
-      this._processedData.next([]);
-      this._displayedGroups.next(new Map());
-      this._reset.next();
+      this.eventNameSubject.next('');
+      this.processedDataSubject.next([]);
+      this.displayedGroupsSubject.next(new Map());
+      this.resetSubject.next();
     });
   }
 
-  private _applyDistanceMeta(meta: DistanceMeta): boolean {
+  private applyDistanceMeta(meta: DistanceMeta): boolean {
     let dist = this.distanceMap.get(meta.id);
     if (!dist) {
       dist = {
@@ -322,17 +322,17 @@ export class DataService {
       dist.distanceMeters = meta.distance_meters; dist.totalLaps = meta.total_laps;
       dist.anyFinished = meta.any_finished;
       // finishingLineAfter is intentionally NOT updated from the backend here;
-      // it is computed instantly by _recomputeFinishingLine on every competitor update.
+      // it is computed instantly by recomputeFinishingLine on every competitor update.
     }
     dist.heatGroups = meta.heat_groups.map(hg => ({
       heat: hg.heat,
       raceIds: hg.race_ids,
-      races: this._resolveRaces(meta.id, hg.race_ids, !meta.is_mass_start),
+      races: this.resolveRaces(meta.id, hg.race_ids, !meta.is_mass_start),
     }));
     return true;
   }
 
-  private _applyCompetitorUpdate(comp: CompetitorUpdate): boolean {
+  private applyCompetitorUpdate(comp: CompetitorUpdate): boolean {
     comp.lastUpdated = Date.now();
     let distComps = this.competitorMap.get(comp.distance_id);
     if (!distComps) { distComps = new Map(); this.competitorMap.set(comp.distance_id, distComps); }
@@ -371,11 +371,11 @@ export class DataService {
       dist.finishingLineAfter = comp.id;
 
       if (dist.isMassStart) {
-        this._recomputeGroups(dist);
-        this._scheduleGroupDebounce(comp.distance_id);
+        this.recomputeGroups(dist);
+        this.scheduleGroupDebounce(comp.distance_id);
       } else {
         dist.heatGroups.forEach(hg => {
-          hg.races = this._resolveRaces(comp.distance_id, hg.raceIds, true);
+          hg.races = this.resolveRaces(comp.distance_id, hg.raceIds, true);
         });
       }
     } else {
@@ -388,7 +388,7 @@ export class DataService {
     return true;
   }
 
-  private _recomputeGroups(dist: ProcessedDistance) {
+  private recomputeGroups(dist: ProcessedDistance) {
     dist.standingsGroups = recomputeGroups(
       dist.processedRaces,
       this.settings.groupThreshold.value,
@@ -397,51 +397,51 @@ export class DataService {
     ) as StandingsGroup[];
   }
 
-  private _scheduleGroupDebounce(distId: string) {
-    const existing = this._groupDebounceTimers.get(distId);
+  private scheduleGroupDebounce(distId: string) {
+    const existing = this.groupDebounceTimers.get(distId);
     if (existing) clearTimeout(existing);
     const thresholdMs = this.settings.groupThreshold.value * 1000;
     const timer = setTimeout(() => {
-      this._groupDebounceTimers.delete(distId);
-      this._flushDisplayedGroups();
+      this.groupDebounceTimers.delete(distId);
+      this.flushDisplayedGroups();
     }, thresholdMs);
-    this._groupDebounceTimers.set(distId, timer);
+    this.groupDebounceTimers.set(distId, timer);
   }
 
-  private _flushDisplayedGroups() {
+  private flushDisplayedGroups() {
     const map = new Map<string, StandingsGroup[]>();
     for (const [id, dist] of this.distanceMap) {
       if (dist.isMassStart) map.set(id, dist.standingsGroups);
     }
-    this.ngZone.run(() => this._displayedGroups.next(map));
+    this.ngZone.run(() => this.displayedGroupsSubject.next(map));
   }
 
-  private _resolveRaces(distId: string, ids: string[], pinnedByLane = false): (CompetitorUpdate | null)[] {
+  private resolveRaces(distId: string, ids: string[], pinnedByLane = false): (CompetitorUpdate | null)[] {
     return resolveRaces(ids, this.competitorMap.get(distId), pinnedByLane);
   }
 
-  private _publishState() {
+  private publishState() {
     const distances = Array.from(this.distanceMap.values())
       .sort((a, b) => b.eventNumber - a.eventNumber);
-    this._processedData.next(distances);
+    this.processedDataSubject.next(distances);
   }
 
 
   addError(msg: string) {
-    this._errors.next([...this._errors.value, msg]);
+    this.errorsSubject.next([...this.errorsSubject.value, msg]);
   }
 
   dismissError(index: number) {
-    const current = [...this._errors.value];
+    const current = [...this.errorsSubject.value];
     current.splice(index, 1);
-    this._errors.next(current);
+    this.errorsSubject.next(current);
   }
 
   clearErrors() {
-    this._errors.next([]);
+    this.errorsSubject.next([]);
   }
 
-  private _scheduleReconnect() {
+  private scheduleReconnect() {
     if (this.reconnectTimer) return;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
@@ -452,7 +452,7 @@ export class DataService {
   }
 
   /** A dropped connection is usually back within moments, so the banner only appears if it stays down. */
-  private _scheduleLostError() {
+  private scheduleLostError() {
     if (this.lostErrorTimer) return;
     this.lostErrorTimer = setTimeout(() => {
       this.lostErrorTimer = null;
@@ -460,14 +460,14 @@ export class DataService {
     }, LOST_ERROR_GRACE_MS);
   }
 
-  private _cancelLostError() {
+  private cancelLostError() {
     if (this.lostErrorTimer) {
       clearTimeout(this.lostErrorTimer);
       this.lostErrorTimer = null;
     }
   }
 
-  private _cancelReconnect() {
+  private cancelReconnect() {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -475,32 +475,32 @@ export class DataService {
   }
 
   /** Reconnecting cannot help when no competition was chosen; the viewer has to pick a competition. */
-  private _stopForNoCompetition(): boolean {
+  private stopForNoCompetition(): boolean {
     if (!this.noCompetition) return false;
     this.socket$ = null;
-    this._status.next({ status: 'No competition', url: '', interval: null });
+    this.statusSubject.next({ status: 'No competition', url: '', interval: null });
     return true;
   }
 
-  private _handleError(err: unknown) {
-    if (this._stopForNoCompetition()) return;
+  private handleError(err: unknown) {
+    if (this.stopForNoCompetition()) return;
     console.error('WebSocket error:', err);
-    this._scheduleLostError();
+    this.scheduleLostError();
     this.socket$ = null;
-    this._status.next({ status: 'Error', url: '', interval: null });
-    this._scheduleReconnect();
+    this.statusSubject.next({ status: 'Error', url: '', interval: null });
+    this.scheduleReconnect();
   }
 
-  private _handleDisconnect() {
-    if (this._stopForNoCompetition()) return;
+  private handleDisconnect() {
+    if (this.stopForNoCompetition()) return;
     if (
-      this._status.value.status === 'Connected' ||
-      this._status.value.status === 'Connecting...'
+      this.statusSubject.value.status === 'Connected' ||
+      this.statusSubject.value.status === 'Connecting...'
     ) {
-      this._scheduleLostError();
+      this.scheduleLostError();
     }
     this.socket$ = null;
-    this._status.next({ status: 'Disconnected', url: '', interval: null });
-    this._scheduleReconnect();
+    this.statusSubject.next({ status: 'Disconnected', url: '', interval: null });
+    this.scheduleReconnect();
   }
 }

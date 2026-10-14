@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { BadgeModule, CardModule } from '@coreui/angular';
-import { StandingsGroup } from '../../models/data.models';
-import { TranslateService } from '../../services/translate.service';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { isRecentUpdate } from '../../logic/time.util';
-import { raceListAnimation, groupCardAnimation, raceListKey } from '../dashboard/dashboard.animations';
+import { StandingsGroup } from '../../results/data.models';
+import { TranslateService } from '../../i18n/translate.service';
+import { TranslatePipe } from '../../i18n/translate.pipe';
+import { isRecentUpdate } from '../../results/time.util';
+import { raceListAnimation, groupCardAnimation, raceListKey } from '../dashboard.animations';
 
 @Component({
   selector: 'app-group-strip-card',
@@ -16,23 +16,23 @@ import { raceListAnimation, groupCardAnimation, raceListKey } from '../dashboard
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GroupStripCardComponent {
+  private ts = inject(TranslateService);
+
   @Input({ required: true }) group!: StandingsGroup;
   @Input() groupIndex = 0;
   @Input() anyFinished = false;
   @Input() selectedRaceId: string | null = null;
 
-  @Output() raceSelect = new EventEmitter<string>();
+  @Output() readonly raceSelect = new EventEmitter<string>();
 
-  private ts = inject(TranslateService);
+  protected isRecentUpdate = isRecentUpdate;
 
-  isRecentUpdate = isRecentUpdate;
-
-  get firstGroup(): boolean {
+  protected get firstGroup(): boolean {
     return this.groupIndex === 0;
   }
 
   /** Returns d-none classes so card at groupIndex is hidden when viewport is too narrow. */
-  groupCardClass(groupIndex: number): string {
+  protected groupCardClass(groupIndex: number): string {
     if (groupIndex === 0) return '';
     if (groupIndex === 1) return 'd-none d-sm-block';
     if (groupIndex === 2) return 'd-none d-md-block';
@@ -41,11 +41,11 @@ export class GroupStripCardComponent {
   }
 
   /** Returns the display name for a standings group. */
-  groupDisplayName(group: StandingsGroup, isFirst: boolean, anyFinished = false): string {
+  protected groupDisplayName(group: StandingsGroup, isFirst: boolean, anyFinished = false): string {
     if (group.isOthers) return this.ts.t('tailOfRace');
     if (isFirst && !anyFinished) return this.ts.t('headOfRace');
     return this.ts.t('groupLabel', { n: group.groupNumber });
   }
 
-  raceListKey = raceListKey;
+  protected raceListKey = raceListKey;
 }

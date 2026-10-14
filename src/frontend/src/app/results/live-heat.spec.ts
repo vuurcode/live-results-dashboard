@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CompetitorUpdate } from '../models/data.models';
+import { CompetitorUpdate } from './data.models';
 import { findLiveHeat } from './live-heat';
 
 const race = (lapsUpdatedAt?: number, extra: Partial<CompetitorUpdate> = {}) =>

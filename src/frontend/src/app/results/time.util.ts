@@ -3,9 +3,9 @@
  */
 export function parseSeconds(t: string): number {
   const parts = t.split(':');
-  if (parts.length === 3) return +parts[0] * 3600 + +parts[1] * 60 + parseFloat(parts[2]);
-  if (parts.length === 2) return +parts[0] * 60 + parseFloat(parts[1]);
-  return parseFloat(parts[0]);
+  if (parts.length === 3) return Number(parts[0]) * 3600 + Number(parts[1]) * 60 + Number(parts[2]);
+  if (parts.length === 2) return Number(parts[0]) * 60 + Number(parts[1]);
+  return Number(parts[0]);
 }
 
 /** Absolute time difference in seconds between two formatted time strings. */

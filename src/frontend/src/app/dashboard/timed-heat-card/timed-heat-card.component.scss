@@ -1,5 +1,5 @@
-@use '../dashboard/tokens' as *;
-@use '../dashboard/shared';
+@use '../tokens' as *;
+@use '../shared';
 
 .timed-flash-update {
   animation: flashGreen 2s ease-in-out forwards; // keep in sync with SPLIT_FLASH_MS in timed-heat-card.component.ts

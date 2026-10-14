@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { BadgeModule } from '@coreui/angular';
-import { CompetitorUpdate, ProcessedDistance } from '../../models/data.models';
-import { TranslateService } from '../../services/translate.service';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { lapBadgeColor } from '../../logic/lap-color.util';
-import { splitLapTime, splitFormattedTime, isRecentUpdate } from '../../logic/time.util';
-import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount as pendingLapCountUtil } from '../../logic/heats.util';
+import { CompetitorUpdate, ProcessedDistance } from '../../results/data.models';
+import { TranslateService } from '../../i18n/translate.service';
+import { TranslatePipe } from '../../i18n/translate.pipe';
+import { lapBadgeColor } from '../../results/lap-color.util';
+import { splitLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
+import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount as pendingLapCountUtil } from '../../results/heats.util';
 
 @Component({
   selector: 'app-mass-start-race-row',
@@ -16,6 +16,8 @@ import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MassStartRaceRowComponent {
+  protected ts = inject(TranslateService);
+
   @Input({ required: true }) race!: CompetitorUpdate;
   @Input({ required: true }) distance!: ProcessedDistance;
   @Input() raceIdx = 0;
@@ -23,16 +25,14 @@ export class MassStartRaceRowComponent {
   @Input() showLapTimes = false;
   @Input() lapVarianceThreshold = 0;
 
-  @Output() raceSelect = new EventEmitter<string>();
+  @Output() readonly raceSelect = new EventEmitter<string>();
 
-  public ts = inject(TranslateService);
-
-  isRecentUpdate = isRecentUpdate;
-  splitLapTime = splitLapTime;
-  splitFormattedTime = splitFormattedTime;
+  protected isRecentUpdate = isRecentUpdate;
+  protected splitLapTime = splitLapTime;
+  protected splitFormattedTime = splitFormattedTime;
 
   /** Returns [base, superscript] for ordinal, e.g. ordinalSuffix(1) → ['1','st'] */
-  ordinalSuffix(n: number): [string, string] {
+  protected ordinalSuffix(n: number): [string, string] {
     const s = ['th', 'st', 'nd', 'rd'];
     const v = n % 100;
     return [String(n), s[(v - 20) % 10] ?? s[v] ?? s[0]];
@@ -42,7 +42,7 @@ export class MassStartRaceRowComponent {
    * Returns true when the competitor is the leader of the head group
    * (group_number === 1, gap_to_above === null) and no one has finished yet.
    */
-  isRaceLeader(race: CompetitorUpdate, distance: ProcessedDistance): boolean {
+  protected isRaceLeader(race: CompetitorUpdate, distance: ProcessedDistance): boolean {
     if (distance.anyFinished) return false;
     return race.group_number === 1 && race.gap_to_above == null && race.finished_rank == null && !!race.total_time;
   }
@@ -55,7 +55,7 @@ export class MassStartRaceRowComponent {
    *   > threshold% faster  → 'lap-badge-fast'   (purple)
    *   within threshold     → 'lap-badge-normal' (green)
    */
-  lapBadgeColor(lapTimes: string[], i: number): string {
+  protected lapBadgeColor(lapTimes: string[], i: number): string {
     return lapBadgeColor(lapTimes, i, this.lapVarianceThreshold);
   }
 
@@ -63,7 +63,7 @@ export class MassStartRaceRowComponent {
    * Returns the number of pending (not-yet-completed) laps for a mass-start competitor.
    * = totalLaps - lap_times.length, clamped to 0.
    */
-  pendingLapCount(race: CompetitorUpdate, totalLaps: number): number {
+  protected pendingLapCount(race: CompetitorUpdate, totalLaps: number): number {
     return pendingLapCountUtil(race.lap_times?.length ?? 0, totalLaps);
   }
 
@@ -71,7 +71,7 @@ export class MassStartRaceRowComponent {
    * Returns a formatted "+SS.mmm" or "+M:SS.mmm" string for a finished mass-start
    * competitor's gap from the race winner, or null if they are the winner / gap unknown.
    */
-  massFinishGapFromLeader(race: CompetitorUpdate, distance: ProcessedDistance): string | null {
+  protected massFinishGapFromLeader(race: CompetitorUpdate, distance: ProcessedDistance): string | null {
     const leader = distance.processedRaces.find(r => r.finished_rank === 1);
     return massFinishGapFromLeaderUtil(race.finished_rank, race.total_time, leader?.total_time);
   }

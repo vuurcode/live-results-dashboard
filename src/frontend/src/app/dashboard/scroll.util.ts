@@ -1,6 +1,11 @@
+/** The least the element may sit below the pinned top bar and distance title, as a fraction of the viewport height. */
+const PINNED_MARGIN = 0.03;
+
 /**
  * Page scroll position that puts an element `anchorRatio` of the way down the viewport
- * (0 = flush with the top, 0.3 = a third down), clamped to the scrollable range.
+ * (0 = flush with the top, 0.3 = a third down), clamped to the scrollable range. The element always ends up below
+ * the `pinnedHeight` that the top bar and the distance title cover; on a narrow screen, where the top bar wraps
+ * and the viewport is short, that decides the position.
  */
 export function followScrollTop(
   elementTop: number,
@@ -8,13 +13,24 @@ export function followScrollTop(
   viewportHeight: number,
   documentHeight: number,
   anchorRatio: number,
+  pinnedHeight = 0,
 ): number {
-  const target = elementTop + scrollY - viewportHeight * anchorRatio;
+  const offset = Math.max(viewportHeight * anchorRatio, pinnedHeight + viewportHeight * PINNED_MARGIN);
+  const target = elementTop + scrollY - offset;
   const max = Math.max(0, documentHeight - viewportHeight);
   return Math.min(Math.max(0, target), max);
 }
 
-const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+function nextFrame(): Promise<number> {
+  return new Promise<number>((resolve) => requestAnimationFrame(resolve));
+}
+
+/** Height at the top of the viewport that the pinned top bar and the pinned distance title cover. */
+function pinnedHeight(): number {
+  const bar = document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0;
+  const title = document.querySelector('.accordion-header')?.getBoundingClientRect().height ?? 0;
+  return Math.max(0, bar) + title;
+}
 
 /**
  * Scrolls to elements once the page has stopped changing height. A distance that is opening, or cards that are just
@@ -51,6 +67,7 @@ export class SettledScroller {
         window.innerHeight,
         document.documentElement.scrollHeight,
         anchorRatio,
+        pinnedHeight(),
       );
       const zone = attempt === 0 ? SettledScroller.DEAD_ZONE : SettledScroller.CORRECT_ZONE; // already in place: no nudging back and forth
       if (Math.abs(top - window.scrollY) < window.innerHeight * zone) return;

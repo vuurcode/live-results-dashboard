@@ -49,10 +49,10 @@
             <!-- Badges on their own line; the row keeps its height when there are none -->
             <div class="timed-comp-badges">
               @for (remarkCode of splitRemarks(race.remark); track remarkCode) {
-                <c-badge [ngClass]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
+                <c-badge [class]="remarkBadgeClass(remarkCode)" [title]="timedLabelTitle(remarkCode)">{{ remarkBadgeText(remarkCode) }}</c-badge>
               }
               @if (race.invalid_reason) {
-                <c-badge [ngClass]="invalidBadgeClass(race.invalid_reason)" [title]="timedLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
+                <c-badge [class]="invalidBadgeClass(race.invalid_reason)" [title]="timedLabelTitle(race.invalid_reason)">{{ race.invalid_reason }}</c-badge>
               }
               @if (race.personal_record) {
                 <div class="ms-auto d-flex align-items-end gap-1">

@@ -1,5 +1,5 @@
-@use '../dashboard/tokens' as *;
-@use '../dashboard/shared';
+@use '../tokens' as *;
+@use '../shared';
 
 // Mass-start row with lap badges
 .race-item-laps {

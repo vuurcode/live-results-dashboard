@@ -1,5 +1,5 @@
-@use '../dashboard/tokens' as *;
-@use '../dashboard/shared';
+@use '../tokens' as *;
+@use '../shared';
 
 .race-item-group {
   border: 1px solid transparent;

@@ -1,4 +1,4 @@
-import { CompetitorUpdate } from '../models/data.models';
+import { CompetitorUpdate } from './data.models';
 import { isNeverLive } from './race-codes';
 
 /** Where the live heat is among the heats of a distance, and when its laps last changed. */

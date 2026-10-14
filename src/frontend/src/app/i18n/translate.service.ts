@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { LANGUAGES, pickLanguage } from '../i18n/languages';
-import type { Translations } from '../i18n/translations';
+import { LANGUAGES, pickLanguage } from './languages';
+import type { Translations } from './translations';
 
 export type TranslationKey = keyof Translations;
 

@@ -39,9 +39,21 @@ export class Setting<T> {
   }
 }
 
-const parseInteger = (s: string) => { const n = parseInt(s, 10); return isNaN(n) ? undefined : n; };
-const parseNumber = (s: string) => { const n = parseFloat(s); return isNaN(n) ? undefined : n; };
-const parseFlag = (s: string) => s === 'true' ? true : s === 'false' ? false : undefined;
+/** The number in a text, or undefined when it holds none. */
+export function parseNumber(text: string): number | undefined {
+  const n = text.trim() === '' ? NaN : Number(text);
+  return isNaN(n) ? undefined : n;
+}
+
+/** The whole number in a text (a fraction is cut off), or undefined when it holds none. */
+export function parseInteger(text: string): number | undefined {
+  const n = parseNumber(text);
+  return n === undefined ? undefined : Math.trunc(n);
+}
+
+function parseFlag(text: string): boolean | undefined {
+  return text === 'true' ? true : text === 'false' ? false : undefined;
+}
 
 export const MAX_GROUP_THRESHOLD = 10;
 

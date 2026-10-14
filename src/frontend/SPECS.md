@@ -20,7 +20,7 @@ All components:
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
 - [x] Accessible: no axe violations, keyboard selection of mass-start rows, contrast of badges, controls of at least 24px
 
-### Data (unit specs: `src/app/logic/*.spec.ts`, `src/app/components/dashboard/auto-follow.spec.ts`)
+### Data (unit specs: `src/app/results/*.spec.ts`, `src/app/dashboard/auto-follow.spec.ts`)
 - [x] `distance_meta` and `competitor_update` messages are applied to local state; `raceIds` per heat group restores the cards on reconnect; the backend replays everything on connect, nothing else is stored apart from the settings
 - [x] Updates are queued; a render cycle completes before the next (`RENDER_INTERVAL_MS`, default 250 ms)
 - [x] Mass start positions: laps descending, then total time ascending, no time last; `position_change` (`up`, `down`, `null`) comes from the previous position; `is_final_lap` is `laps_remaining === 1`

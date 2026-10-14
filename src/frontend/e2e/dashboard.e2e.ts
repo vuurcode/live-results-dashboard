@@ -104,6 +104,9 @@ test.describe('live heat', () => {
     const cards = live.locator('.timed-competitor-card:not(.timed-lane-placeholder)');
     await expect(page.locator('.timed-card-live').first()).toBeVisible({ timeout: 20_000 });
     await expect(live).toHaveCSS('border-top-width', '0px'); // the row itself carries no border
+    for (const card of await page.locator('.timed-card-live').all()) {
+      await expect(card).toHaveCSS('border-top-color', 'rgb(220, 53, 69)'); // the colour fades in
+    }
     const states = await cards.evaluateAll((els) => els.map((c) => ({
       live: c.classList.contains('timed-card-live'),
       border: getComputedStyle(c).borderTopColor,

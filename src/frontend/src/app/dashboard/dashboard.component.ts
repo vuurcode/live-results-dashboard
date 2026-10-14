@@ -1,17 +1,17 @@
-import { findLiveHeat } from '../../logic/live-heat';
+import { findLiveHeat } from '../results/live-heat';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
-import { DataService } from '../../services/data.service';
-import { SettingsService } from '../../services/settings.service';
-import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../../models/data.models';
+import { DataService } from '../results/data.service';
+import { parseInteger, parseNumber, SettingsService } from '../settings/settings.service';
+import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
 import { Observable, combineLatest, concat, filter, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
-import { TranslateService, TranslationKey } from '../../services/translate.service';
-import { TranslatePipe } from '../../pipes/translate.pipe';
-import { GroupStripCardComponent } from '../group-strip-card/group-strip-card.component';
-import { TimedHeatCardComponent } from '../timed-heat-card/timed-heat-card.component';
-import { MassStartRaceRowComponent } from '../mass-start-race-row/mass-start-race-row.component';
+import { TranslateService, TranslationKey } from '../i18n/translate.service';
+import { TranslatePipe } from '../i18n/translate.pipe';
+import { GroupStripCardComponent } from './group-strip-card/group-strip-card.component';
+import { TimedHeatCardComponent } from './timed-heat-card/timed-heat-card.component';
+import { MassStartRaceRowComponent } from './mass-start-race-row/mass-start-race-row.component';
 import {
   AccordionModule,
   AlertModule,
@@ -29,8 +29,8 @@ import {
   trimmedRaces as trimmedRacesUtil,
   heatGroupLaneColors as heatGroupLaneColorsUtil,
   type MergedHeatGroup,
-} from '../../logic/heats.util';
-import { SettledScroller } from '../../logic/scroll.util';
+} from '../results/heats.util';
+import { SettledScroller } from './scroll.util';
 import { AutoFollow } from './auto-follow';
 import { raceListAnimation, raceListKey } from './dashboard.animations';
 
@@ -57,19 +57,27 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit {
-  sortedDistances$: Observable<ProcessedDistance[]>;
-  eventName$: Observable<string>;
-  errors$: Observable<string[]>;
-  /** Why the page has no results to show (instead of the loading skeleton), or null while it is just connecting. */
-  emptyNotice$!: Observable<EmptyNotice | null>;
-  displayedGroups$: Observable<Map<string, StandingsGroup[]>>;
+  protected dataService = inject(DataService);
+  protected settings = inject(SettingsService);
+  private titleService = inject(Title);
+  protected ts = inject(TranslateService);
+  private cdr = inject(ChangeDetectorRef);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private destroyRef = inject(DestroyRef);
 
-  initialLiveId: string | null = null;
-  liveEventNumber: number | null = null;
-  selectedRaceId: string | null = null;
-  displaySettingsOpen = false;
-  massStartSettingsOpen = false;
-  activeHeatKey: { distanceId: string; label: string } | null = null;
+  protected sortedDistances$: Observable<ProcessedDistance[]>;
+  protected eventName$: Observable<string>;
+  protected errors$: Observable<string[]>;
+  /** Why the page has no results to show (instead of the loading skeleton), or null while it is just connecting. */
+  protected emptyNotice$!: Observable<EmptyNotice | null>;
+  protected displayedGroups$: Observable<Map<string, StandingsGroup[]>>;
+
+  protected initialLiveId: string | null = null;
+  protected liveEventNumber: number | null = null;
+  protected selectedRaceId: string | null = null;
+  protected displaySettingsOpen = false;
+  protected massStartSettingsOpen = false;
+  protected activeHeatKey: { distanceId: string; label: string } | null = null;
 
   private readonly scroller = new SettledScroller();
   private readonly autoFollow = new AutoFollow({
@@ -85,29 +93,28 @@ export class DashboardComponent implements OnInit {
   private resizeObserver: ResizeObserver | null = null;
 
   // Hide mass start settings if no mass start present
-  hasMassStart$: Observable<boolean>;
+  protected hasMassStart$: Observable<boolean>;
 
-  /** Competitions happening today, for the competition picker in the top bar. */
   /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
-  readonly todayCompetitions$: Observable<TodayCompetition[]> = timer(0, 5 * 60_000).pipe(
+  protected readonly todayCompetitions$: Observable<TodayCompetition[]> = timer(0, 5 * 60_000).pipe(
     filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
     switchMap(() => from(this.dataService.todayCompetitions())),
   );
 
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
-  selectedLabelLength(competitions: TodayCompetition[]): number {
+  protected selectedLabelLength(competitions: TodayCompetition[]): number {
     const m = competitions.find(x => x.id === this.dataService.competitionId);
     return m ? `00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
   }
 
   /** Open another competition; the page reads its competitionId on load. */
-  onCompetitionChange(event: Event): void {
+  protected openCompetition(event: Event): void {
     const id = (event.target as HTMLSelectElement).value;
     if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
   }
 
   /** Only one settings group is open at a time. */
-  toggleSettingsGroup(group: 'display' | 'massStart'): void {
+  protected toggleSettingsGroup(group: 'display' | 'massStart'): void {
     const open = group === 'display' ? !this.displaySettingsOpen : !this.massStartSettingsOpen;
     this.displaySettingsOpen = group === 'display' && open;
     this.massStartSettingsOpen = group === 'massStart' && open;
@@ -115,7 +122,7 @@ export class DashboardComponent implements OnInit {
 
   /** A click anywhere outside the settings buttons and panels folds them away. */
   @HostListener('document:click', ['$event'])
-  closeSettingsOnOutsideClick(event: MouseEvent): void {
+  protected closeSettingsOnOutsideClick(event: MouseEvent): void {
     if (!this.displaySettingsOpen && !this.massStartSettingsOpen) return;
     if (event.composedPath().some((el) => el instanceof Element && el.classList.contains('topbar-settings-group'))) return;
     this.closeSettings();
@@ -123,36 +130,36 @@ export class DashboardComponent implements OnInit {
 
   /** Escape folds the settings panel away. */
   @HostListener('document:keydown.escape')
-  closeSettings(): void {
+  protected closeSettings(): void {
     this.displaySettingsOpen = false;
     this.massStartSettingsOpen = false;
   }
 
-  isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {
+  protected isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {
     return competitions.some((m) => m.id === id);
   }
 
-  selectRace(id: string): void {
+  protected selectRace(id: string): void {
     this.selectedRaceId = this.selectedRaceId === id ? null : id;
   }
 
-  onThresholdChange(event: Event): void {
-    const val = parseFloat((event.target as HTMLInputElement).value);
-    if (!isNaN(val)) this.settings.groupThreshold.set(val);
+  protected setGroupThreshold(event: Event): void {
+    const val = parseNumber((event.target as HTMLInputElement).value);
+    if (val !== undefined) this.settings.groupThreshold.set(val);
   }
 
-  onMaxGroupsChange(event: Event): void {
-    const val = parseInt((event.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) this.settings.maxGroups.set(val);
+  protected setMaxGroups(event: Event): void {
+    const val = parseInteger((event.target as HTMLInputElement).value);
+    if (val !== undefined) this.settings.maxGroups.set(val);
   }
 
-  onLapVarianceChange(event: Event): void {
-    const val = parseInt((event.target as HTMLInputElement).value, 10);
-    if (!isNaN(val)) this.settings.lapVariance.set(val);
+  protected setLapVariance(event: Event): void {
+    const val = parseInteger((event.target as HTMLInputElement).value);
+    if (val !== undefined) this.settings.lapVariance.set(val);
   }
 
   /** The values of the threshold example text, following the given setting (a lap of 40.0 s as the base). */
-  lapExample(pct: number): Record<string, string> {
+  protected lapExample(pct: number): Record<string, string> {
     const seconds = (n: number) => this.ts.num(n, 1); // a time always has a decimal
     return { pct: this.ts.num(pct), slow: seconds(40 * (1 + pct / 100)), fast: seconds(40 * (1 - pct / 100)) };
   }
@@ -162,36 +169,28 @@ export class DashboardComponent implements OnInit {
    * so the example text would lag behind. They have no `inputType`; typing does and is applied on `change`, so a
    * half-typed "0." is not overwritten.
    */
-  onLapVarianceStep(event: Event, timed: boolean): void {
+  protected stepLapVariance(event: Event, timed: boolean): void {
     if ((event as InputEvent).inputType) return;
-    if (timed) this.onLapVarianceTimedChange(event);
-    else this.onLapVarianceChange(event);
+    if (timed) this.setLapVarianceTimed(event);
+    else this.setLapVariance(event);
   }
 
-  onLapVarianceTimedChange(event: Event): void {
-    const val = parseFloat((event.target as HTMLInputElement).value);
-    if (!isNaN(val)) this.settings.lapVarianceTimed.set(val);
+  protected setLapVarianceTimed(event: Event): void {
+    const val = parseNumber((event.target as HTMLInputElement).value);
+    if (val !== undefined) this.settings.lapVarianceTimed.set(val);
   }
 
-  onThousandthsChange(event: Event): void {
+  protected setShowThousandths(event: Event): void {
     this.settings.showThousandths.set((event.target as HTMLInputElement).checked);
   }
 
-  onCompactColorsChange(event: Event): void {
+  protected setCompactColors(event: Event): void {
     this.settings.compactColors.set((event.target as HTMLInputElement).checked);
   }
 
-  onShowLapTimesChange(event: Event): void {
+  protected setShowLapTimes(event: Event): void {
     this.settings.showMassStartLapTimes.set((event.target as HTMLInputElement).checked);
   }
-
-  public dataService = inject(DataService);
-  public settings = inject(SettingsService);
-  private titleService = inject(Title);
-  public ts = inject(TranslateService);
-  private cdr = inject(ChangeDetectorRef);
-  private host = inject<ElementRef<HTMLElement>>(ElementRef);
-  private destroyRef = inject(DestroyRef);
 
   constructor() {
     // CoreUI's accordion template puts aria-expanded on the collapsible region (a plain div), which
@@ -289,27 +288,27 @@ export class DashboardComponent implements OnInit {
     return result;
   }
 
-  isActiveHeatRow(distanceId: string, label: string): boolean {
+  protected isActiveHeatRow(distanceId: string, label: string): boolean {
     return this.activeHeatKey?.distanceId === distanceId && this.activeHeatKey?.label === label;
   }
 
-  badgeTextClass(lane: string): string {
+  protected badgeTextClass(lane: string): string {
     const light = ['white', 'yellow', 'orange', 'pink', 'lime'];
     return light.includes((lane || '').toLowerCase()) ? 'text-dark' : 'text-white';
   }
 
-  raceListKey = raceListKey;
-  readonly timedDistanceLapSchedule = timedDistanceLapScheduleUtil;
-  readonly timedDistanceTotalLaps = timedDistanceTotalLapsUtil;
-  readonly trimmedRaces = trimmedRacesUtil;
-  readonly heatGroupLaneColors = heatGroupLaneColorsUtil;
+  protected raceListKey = raceListKey;
+  protected readonly timedDistanceLapSchedule = timedDistanceLapScheduleUtil;
+  protected readonly timedDistanceTotalLaps = timedDistanceTotalLapsUtil;
+  protected readonly trimmedRaces = trimmedRacesUtil;
+  protected readonly heatGroupLaneColors = heatGroupLaneColorsUtil;
 
   /**
    * Returns true when the race at raceIdx is the first competitor of a new
    * standings group (different lapsCount from the previous race), so we can
    * render a small visual gap between groups.
    */
-  isFirstInNewGroup(distance: ProcessedDistance, raceIdx: number): boolean {
+  protected isFirstInNewGroup(distance: ProcessedDistance, raceIdx: number): boolean {
     const races = distance.processedRaces;
     if (!races || raceIdx <= 0 || raceIdx >= races.length) return false;
     return races[raceIdx].laps_count !== races[raceIdx - 1].laps_count;
@@ -319,13 +318,13 @@ export class DashboardComponent implements OnInit {
    * Returns the StandingsGroup that contains the given race id, or null.
    * Used to render a group divider above the first member of each group.
    */
-  groupForRace(distance: ProcessedDistance, raceId: string): StandingsGroup | null {
+  protected groupForRace(distance: ProcessedDistance, raceId: string): StandingsGroup | null {
     if (!distance.standingsGroups) return null;
     return distance.standingsGroups.find(g => g.races[0]?.id === raceId) ?? null;
   }
 
   /** Returns the display name for a standings group. */
-  groupDisplayName(group: StandingsGroup, isFirst: boolean, anyFinished = false): string {
+  protected groupDisplayName(group: StandingsGroup, isFirst: boolean, anyFinished = false): string {
     if (group.isOthers) return this.ts.t('tailOfRace');
     if (isFirst && !anyFinished) return this.ts.t('headOfRace');
     return this.ts.t('groupLabel', { n: group.groupNumber });
@@ -335,7 +334,7 @@ export class DashboardComponent implements OnInit {
    * Returns heat groups for rendering, merging consecutive heats where the
    * first has only white/red lanes and the second has only yellow/blue lanes.
    */
-  mergedHeatGroups(distance: ProcessedDistance): { label: string; races: (CompetitorUpdate | null)[] }[] {
+  protected mergedHeatGroups(distance: ProcessedDistance): { label: string; races: (CompetitorUpdate | null)[] }[] {
     return mergeHeatGroups(
       distance.heatGroups,
       (n) => this.ts.t('heatLabel', { n }),
@@ -344,11 +343,11 @@ export class DashboardComponent implements OnInit {
   }
 
   /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */
-  distanceMaxLaneCount(groups: MergedHeatGroup<CompetitorUpdate>[]): number {
+  protected distanceMaxLaneCount(groups: MergedHeatGroup<CompetitorUpdate>[]): number {
     return Math.max(0, ...groups.map(g => this.trimmedRaces(g.races).length));
   }
 
-  onFollowChange(event: Event): void {
+  protected setFollow(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.settings.follow.set(checked);
     this.autoFollow.restart();
@@ -360,7 +359,7 @@ export class DashboardComponent implements OnInit {
   }
 
   /** Number of completed races in a timed distance. */
-  timedCompletedCount(distance: ProcessedDistance): number {
+  protected timedCompletedCount(distance: ProcessedDistance): number {
     if (!distance.distanceMeters) return 0;
     return distance.processedRaces.filter(r => this.timedRaceComplete(r, distance.distanceMeters!)).length;
   }
@@ -373,7 +372,7 @@ export class DashboardComponent implements OnInit {
   }
 
   /** True when the distance should show the Done badge. */
-  isDistanceDone(distance: ProcessedDistance): boolean {
+  protected isDistanceDone(distance: ProcessedDistance): boolean {
     if (this.liveEventNumber !== null && distance.eventNumber < this.liveEventNumber) return true;
     if (!distance.isMassStart) return this.isTimedDistanceDone(distance);
     return false;

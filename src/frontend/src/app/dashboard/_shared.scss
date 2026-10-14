@@ -285,7 +285,7 @@
       mask-composite: exclude; // only the padding box stays: the ring
       -webkit-mask-composite: xor;
       pointer-events: none;
-      animation: snakeAround calc(1.4s * var(--lap-fraction, 1)) ease-in-out both;
+      animation: snakeAround 1.4s ease-in-out both;
     }
     @media (prefers-reduced-motion: reduce) {
       &::after { animation: none; --snake-angle: var(--arc); }
