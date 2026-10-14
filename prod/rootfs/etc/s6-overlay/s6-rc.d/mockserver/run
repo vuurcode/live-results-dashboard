@@ -1,0 +1,7 @@
+#!/command/with-contenv sh
+# Opt-in demo source: one generated match next to the real competitions. Disabled, the service idles so s6 does not restart it.
+if [ "${MOCKSERVER_ENABLED:-}" != true ]; then
+    exec sleep 2147483647
+fi
+export MOCKSERVER_LISTEN_ADDR=127.0.0.1:5001 MOCKSERVER_DATA_GENERATED_MATCHES=1 MOCKSERVER_DATA_GENERATE=true
+exec s6-setuidgid nobody /usr/local/bin/mockserver

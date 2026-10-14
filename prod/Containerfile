@@ -19,6 +19,13 @@ RUN go mod download && go mod verify
 COPY src/backend/src/ ./
 RUN go build -trimpath -ldflags="-s -w" -o /backend ./cmd/server
 
+# Mockserver build (standard library only); the container starts it only when MOCKSERVER_ENABLED is true
+FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS mockserver
+WORKDIR /src
+ENV CGO_ENABLED=0 GOFLAGS=-mod=readonly GOTOOLCHAIN=local
+COPY src/mockserver/go.mod src/mockserver/main.go src/mockserver/generate.go ./
+RUN go build -trimpath -ldflags="-s -w" -o /mockserver .
+
 # s6-overlay release archives, verified against the published checksums (one stage per architecture)
 FROM scratch AS s6-amd64
 ADD --checksum=sha256:5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec58049b57eb2eda12 https://github.com/just-containers/s6-overlay/releases/download/v3.2.3.2/s6-overlay-noarch.tar.xz /noarch.tar.xz
@@ -37,6 +44,7 @@ FROM nginx:alpine-slim
 # API address the browser uses (empty: the same origin). FRONTEND_CSP_CONNECT_SRC lists the origins the page may call;
 # FRONTEND_CSP_FRAME_ANCESTORS the hosts that may embed it ('none': nobody). BACKEND_LIVE_RESULTS_INTERVAL is the
 # seconds between requests to the upstream source per competition; the other backend settings are passed through as is.
+# MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
 ENV FRONTEND_LISTEN_PORT="8080" \
     FRONTEND_BACKEND_UPSTREAM="127.0.0.1:5000" \
     BACKEND_LIVE_RESULTS_INTERVAL="5" \
@@ -49,6 +57,7 @@ RUN --mount=type=bind,from=s6,target=/s6 tar -C / -Jxpf /s6/noarch.tar.xz && tar
 
 COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=backend /backend /usr/local/bin/backend
+COPY --from=mockserver /mockserver /usr/local/bin/mockserver
 COPY --from=frontend /app/dist/dashboard/browser /usr/share/nginx/html
 COPY src/frontend/config/nginx.conf.template /etc/nginx/default.conf.template
 COPY src/frontend/config/security-headers.conf /etc/nginx/security-headers.conf.template

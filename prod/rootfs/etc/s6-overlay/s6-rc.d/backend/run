@@ -1,4 +1,8 @@
 #!/command/with-contenv sh
 # Only nginx is reachable from outside: the backend listens on loopback.
 export BACKEND_LISTEN_ADDR=127.0.0.1:5000
+# The demo match of the mockserver service joins the competition list.
+if [ "${MOCKSERVER_ENABLED:-}" = true ]; then
+    export BACKEND_EXTRA_BASE_URL=http://127.0.0.1:5001
+fi
 exec s6-setuidgid nobody /usr/local/bin/backend

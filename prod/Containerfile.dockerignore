@@ -6,4 +6,4 @@
 src/frontend/dist
 src/frontend/playwright-report
 src/frontend/test-results
-src/mockserver
+src/mockserver/data
