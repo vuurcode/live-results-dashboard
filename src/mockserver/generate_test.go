@@ -13,14 +13,14 @@ func newGeneratedServer(t *testing.T, interval time.Duration) *httptest.Server {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	s := &server{cfg: config{baseDir: t.TempDir(), interval: interval}, ctx: ctx, replays: map[string]*replay{}}
+	s := &server{cfg: config{baseDir: t.TempDir(), interval: interval, matches: maxGeneratedMatches}, ctx: ctx, replays: map[string]*replay{}}
 	ts := httptest.NewServer(s.withGenerated().routes())
 	t.Cleanup(ts.Close)
 	return ts
 }
 
 func TestGeneratedMatchesHaveOwnVenuesAndLiveFrames(t *testing.T) {
-	matches := generatedMatches()
+	matches := generatedMatches(maxGeneratedMatches)
 	if len(matches) != 3 {
 		t.Fatalf("matches = %d, want 3", len(matches))
 	}
@@ -67,7 +67,7 @@ func TestGeneratedMatchesHaveOwnVenuesAndLiveFrames(t *testing.T) {
 }
 
 func TestGeneratedMatchesAreDeterministic(t *testing.T) {
-	a, b := generatedMatches(), generatedMatches()
+	a, b := generatedMatches(maxGeneratedMatches), generatedMatches(maxGeneratedMatches)
 	for i := range a {
 		if len(a[i].frames) != len(b[i].frames) || string(a[i].frames[len(a[i].frames)-1]) != string(b[i].frames[len(b[i].frames)-1]) {
 			t.Fatalf("%s differs between runs", a[i].id)
@@ -117,7 +117,7 @@ func TestGeneratedServedOnBothAPIs(t *testing.T) {
 // drop out (DNS, DNF, WDR, DQ), a race briefly vanishing, a skater swapped within a race, a corrected time and the assorted remarks.
 func TestGeneratedMatchesContainTrackTimingQuirks(t *testing.T) {
 	counts := map[string]int{}
-	for _, m := range generatedMatches() {
+	for _, m := range generatedMatches(maxGeneratedMatches) {
 		var prev genDoc
 		for _, f := range m.frames {
 			var doc genDoc
@@ -172,5 +172,18 @@ func TestGeneratedMatchesContainTrackTimingQuirks(t *testing.T) {
 		if counts[k] == 0 {
 			t.Errorf("no %s quirk in the generated frames: %v", k, counts)
 		}
+	}
+}
+
+func TestGeneratedMatchCountIsConfigurable(t *testing.T) {
+	t.Setenv("MOCKSERVER_DATA_GENERATED_MATCHES", "1")
+	cfg := loadConfig()
+	s := (&server{cfg: cfg, replays: map[string]*replay{}}).withGenerated()
+	if len(s.genOrder) != 1 || s.genOrder[0].id != "mock-match-1" {
+		t.Fatalf("want only mock-match-1, got %d matches", len(s.genOrder))
+	}
+	t.Setenv("MOCKSERVER_DATA_GENERATED_MATCHES", "9")
+	if got := loadConfig().matches; got != maxGeneratedMatches {
+		t.Errorf("an out of range count is ignored: %d", got)
 	}
 }

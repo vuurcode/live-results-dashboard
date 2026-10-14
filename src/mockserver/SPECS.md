@@ -15,6 +15,7 @@ All components:
 
 ### Generated matches (unit specs: `generate_test.go`)
 - [x] Without a sample directory (or with `MOCKSERVER_DATA_GENERATE=true`) it generates three matches, `mock-match-1..3`, each at its own Dutch long-track venue (`MK1..MK3`), listed by `/api/venues`, `/api/competitions` (running today) and `/api/matches`
+- [x] `MOCKSERVER_DATA_GENERATED_MATCHES` (1 to 3, default 3) limits how many of them are generated and served
 - [x] Each match has live data: distances with heat pairs (and a mass start), a frame per lap with status 0 while running → 4 on finish, ranks on finish, the last frame held; frames are `MOCKSERVER_DATA_SAMPLE_INTERVAL` apart (default 5 s) and deterministic; names, categories and clubs are anonymized
 - [x] The generated feeds contain the quirks of the recorded live feeds: the not-live error (`success: false`, no distances) before the data, running heats at status 0 with laps, a heat reset while running, a future heat reporting laps early, a finished heat flickering back to status 0, skaters with an invalid result (DNS, DNF, WDR, DQ: status 4 with an invalid reason), a replaced skater, a skater swapped within a race, a race briefly vanishing from a distance, a corrected final time, and the remarks `PR`, `TR TRC PR`, `FL`, `MT`, `TRC`, `NR TR`
 - [x] The `Containerfile` builds a self-contained image (no mounted samples needed)

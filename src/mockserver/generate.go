@@ -59,7 +59,11 @@ type genMatch struct {
 
 type genVenue struct{ code, name, city string }
 
-func generatedMatches() []*genMatch {
+// maxGeneratedMatches is how many matches generatedMatches defines.
+const maxGeneratedMatches = 3
+
+// generatedMatches returns the first count generated matches.
+func generatedMatches(count int) []*genMatch {
 	matches := []*genMatch{
 		{
 			id: "mock-match-1", name: "Mock Sprint Day", firstNames: 0,
@@ -89,6 +93,7 @@ func generatedMatches() []*genMatch {
 			},
 		},
 	}
+	matches = matches[:count]
 	for i, m := range matches {
 		m.frames = m.generate(uint64(i + 1))
 	}

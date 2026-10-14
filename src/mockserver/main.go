@@ -45,10 +45,11 @@ type config struct {
 	expireAfter time.Duration // how long the last sample is held before the competition is dropped; 0 never
 	listenAddr  string
 	generate    bool // serve the generated matches next to the sample directory
+	matches     int  // how many of the generated matches are served
 }
 
 func loadConfig() config {
-	cfg := config{baseDir: "data", interval: 5 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080"}
+	cfg := config{baseDir: "data", interval: 5 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080", matches: maxGeneratedMatches}
 	if v := os.Getenv("MOCKSERVER_DATA_SAMPLE_DIRECTORY"); v != "" {
 		cfg.baseDir = v
 	}
@@ -60,6 +61,13 @@ func loadConfig() config {
 			cfg.generate = b
 		} else {
 			slog.Warn("Ignoring invalid MOCKSERVER_DATA_GENERATE", "value", v)
+		}
+	}
+	if v := os.Getenv("MOCKSERVER_DATA_GENERATED_MATCHES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= cfg.matches {
+			cfg.matches = n
+		} else {
+			slog.Warn("Ignoring invalid MOCKSERVER_DATA_GENERATED_MATCHES", "value", v, "max", cfg.matches)
 		}
 	}
 	if v := os.Getenv("MOCKSERVER_LISTEN_ADDR"); v != "" {
@@ -114,10 +122,10 @@ type server struct {
 	replays map[string]*replay
 }
 
-// withGenerated adds the generated matches to the server.
+// withGenerated adds the first cfg.matches generated matches to the server.
 func (s *server) withGenerated() *server {
 	s.generated = map[string]*genMatch{}
-	for _, m := range generatedMatches() {
+	for _, m := range generatedMatches(s.cfg.matches) {
 		s.generated[m.id] = m
 		s.genOrder = append(s.genOrder, m)
 	}
