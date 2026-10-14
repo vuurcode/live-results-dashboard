@@ -79,6 +79,18 @@ test.describe('card watermark placement', () => {
   }
 });
 
+test.describe('top bar icon', () => {
+  for (const [width, shown] of [[FOUR_LANES_MIN - 1, false], [FOUR_LANES_MIN, true]] as const) {
+    test(`${width}px: the app icon is ${shown ? 'shown' : 'hidden'}, named after the application on hover`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/?competitionId=e2e-pairs');
+      const icon = page.locator('.topbar-logo');
+      await expect(icon).toHaveAttribute('title', 'Live Results Experiment - Proof of Concept');
+      await (shown ? expect(icon).toBeVisible() : expect(icon).toBeHidden());
+    });
+  }
+});
+
 test.describe('card content', () => {
   test('the category is named in full, with the club code in brackets behind it', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
