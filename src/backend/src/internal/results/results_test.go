@@ -121,3 +121,13 @@ func TestStartNumberAcceptsNumbers(t *testing.T) {
 		t.Fatalf("got %q, err %v", r.Competitor.StartNumber, err)
 	}
 }
+
+func TestProcessReadsTheDistanceOfAPairedEventFromItsFirstNumber(t *testing.T) {
+	for name, want := range map[string]int{"500 meter - omloop 1": 500, "500 bij 1000 meter": 500, "1500 meter": 1500, "100m": 100} {
+		raw := &RawData{Distances: []rawDistance{{ID: "d1", Name: name, Races: []rawRace{race("1", 1), race("2", 1)}}}}
+		got := Process(raw).Distances[0].Meta.DistanceMeters
+		if got == nil || *got != want {
+			t.Errorf("%q: distance %v, want %d", name, got, want)
+		}
+	}
+}

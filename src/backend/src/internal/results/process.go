@@ -127,8 +127,9 @@ type Processed struct {
 }
 
 var (
-	lapsRe   = regexp.MustCompile(`(?i)(\d+)\s*(?:laps?|ronden?|rondes?)`)
-	metersRe = regexp.MustCompile(`(?i)(\d+)\s*(?:m\b|meter)`)
+	lapsRe = regexp.MustCompile(`(?i)(\d+)\s*(?:laps?|ronden?|rondes?)`)
+	// "500 bij 1000 meter" is a 500m skated in the 1000m event: the first number is the distance
+	metersRe = regexp.MustCompile(`(?i)(\d+)\s*(?:m\b|meter|bij\b)`)
 )
 
 func strPtr(s string) *string {
