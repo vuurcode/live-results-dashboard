@@ -238,6 +238,15 @@
     overflow-wrap: anywhere;
     white-space: pre-line; // keeps the explicit line break (TRC + category name) but wraps long labels inside the card
   }
+  // The result's note stamps in once the snake around the final lap has finished and the total has counted up: it grows
+  // from larger and transparent to its place and colour. `scale` is a property of its own, so the placement transforms stay.
+  .timed-watermark, .timed-comp-title[data-watermark]::before {
+    transition: opacity 0.9s ease-out, scale 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    @media (prefers-reduced-motion: reduce) { transition: none; }
+  }
+  &.timed-card-settling {
+    .timed-watermark, .timed-comp-title[data-watermark]::before { opacity: 0; scale: 1.8; }
+  }
   // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
   &.timed-card-live { border-color: #dc3545; outline: 2px solid #dc3545; outline-offset: -3px; }
   &.timed-card-pr {

@@ -23,6 +23,7 @@
           [class.timed-card-red]="timedCardVariant(race) === 'red'"
           [class.timed-card-orange]="timedCardVariant(race) === 'orange'"
           [class.timed-card-no-time]="watermarkCentered(race)"
+          [class.timed-card-settling]="settling(race)"
         >
         <!-- Card title: the full name, with the status and PB badges on a line below; the watermark sits at its bottom -->
         <div class="timed-comp-title" [attr.data-watermark]="timedWatermarkText(race)">
@@ -99,7 +100,7 @@
           @if (totalTime) {
             <span class="timed-compact-final" [class.timed-compact-done]="compactDone(race)" [class.timed-compact-own-line]="totalOnOwnLine(race)">
               <!-- distance reached so far: small and subtle; 'Finish (distance)' once the final lap is done -->
-              <span class="compact-reached">{{ compactDone(race) ? ts.t('finishLabel') + ' (' : '' }}{{ lapSchedule[race.lap_times.length - 1] }}m{{ compactDone(race) ? ')' : '' }}</span>
+              <span class="compact-reached">{{ compactDone(race) ? ts.t('finishLabel') + ' (' : '' }}{{ lapSchedule[totalLaps(race) - 1] }}m{{ compactDone(race) ? ')' : '' }}</span>
               <span class="timed-lap-time"><span class="race-time">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(totalTime, decimals(race)))[1] }}</small></span></span>
             </span>
           }

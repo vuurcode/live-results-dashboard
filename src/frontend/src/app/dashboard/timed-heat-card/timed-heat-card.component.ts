@@ -47,6 +47,7 @@ export class TimedHeatCardComponent {
    */
   @Input({ required: true })
   set races(value: (CompetitorUpdate | null)[]) {
+    this.holdFinalTotals(this.rawRaces, value);
     this.rawRaces = value;
   }
   get races(): (CompetitorUpdate | null)[] {
@@ -59,6 +60,57 @@ export class TimedHeatCardComponent {
       this.cappedFor = { raw: this.rawRaces, schedule: this.lapSchedule };
     }
     return this.capped;
+  }
+
+  /** Must match the duration of the `snakeAround` animation in _shared.scss. */
+  private readonly SNAKE_MS = 1400;
+  /** Race id → the moment its final lap arrived; until the snake around that lap has finished the total counts up to the final time. */
+  private finalLapArrivedAt = new Map<string, number>();
+  private readonly reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  private tickEnd = 0;
+
+  /** Holds the total of a race whose final lap just arrived until the snake around that lap has finished. */
+  private holdFinalTotals(before: (CompetitorUpdate | null)[], after: (CompetitorUpdate | null)[]): void {
+    const total = this.lapSchedule.length;
+    if (!total || this.reducedMotion.matches) return;
+    for (const race of after) {
+      if (!race || race.invalid_reason || (race.lap_times?.length ?? 0) < total) continue;
+      const earlier = before.find(r => r?.id === race.id);
+      if (!earlier || earlier.lap_times.length >= total) continue;
+      this.finalLapArrivedAt.set(race.id, Date.now());
+      this.tickUntil(Date.now() + this.SNAKE_MS);
+    }
+  }
+
+  /** Renders every frame until the given moment, so the counting totals move smoothly; one loop serves all races. */
+  private tickUntil(end: number): void {
+    const running = this.tickEnd > Date.now();
+    this.tickEnd = end;
+    if (running) return;
+    const frame = () => {
+      this.cdr.markForCheck();
+      if (Date.now() < this.tickEnd) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  /** Progress 0..1 of the snake of the final lap, eased like the animation; 1 when there is none or it has finished. */
+  private finalLapProgress(race: CompetitorUpdate): number {
+    const arrived = this.finalLapArrivedAt.get(race.id);
+    if (arrived === undefined) return 1;
+    const t = Math.min(1, (Date.now() - arrived) / this.SNAKE_MS);
+    return t * t * (3 - 2 * t);
+  }
+
+  /** True while the snake around the final lap is drawing and the total counts up; the result's watermark then waits. */
+  protected settling(race: CompetitorUpdate): boolean {
+    return this.finalLapProgress(race) < 1;
+  }
+
+  /** Laps whose total is shown: all of them, but not yet the final one while its snake is still drawing. */
+  protected totalLaps(race: CompetitorUpdate): number {
+    const laps = race.lap_times?.length ?? 0;
+    return laps >= this.lapSchedule.length && this.finalLapProgress(race) < 1 ? laps - 1 : laps;
   }
 
   /** Number of badge columns the compact body currently has (it follows the card width). */
@@ -226,7 +278,12 @@ export class TimedHeatCardComponent {
   /** The total time so far (the final time once finished), shown after the lap badges in compact mode. */
   protected compactTotalTime(race: CompetitorUpdate): string | null {
     if (race.invalid_reason || !race.lap_times?.length) return null;
-    return this.timedCumulativeTime(race, race.lap_times.length - 1);
+    const progress = this.finalLapProgress(race);
+    const final = this.timedCumulativeTime(race, race.lap_times.length - 1)!;
+    if (progress >= 1) return final;
+    // the previous total counts up to the final time by the moment the snake has finished
+    const previous = race.lap_times.length > 1 ? parseSeconds(this.timedCumulativeTime(race, race.lap_times.length - 2)!) : 0;
+    return formatDurationSeconds(previous + (parseSeconds(final) - previous) * progress);
   }
 
   /**
@@ -307,7 +364,7 @@ export class TimedHeatCardComponent {
 
   /** True once the final lap is done. */
   protected compactDone(race: CompetitorUpdate): boolean {
-    return this.distanceMeters != null && isTimedFinished(race, this.distanceMeters);
+    return this.distanceMeters != null && isTimedFinished(race, this.distanceMeters) && this.totalLaps(race) === race.lap_times.length;
   }
 
   /** True once the skater has finished faster than the personal best shown on the card. */

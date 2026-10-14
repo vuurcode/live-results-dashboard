@@ -26,6 +26,14 @@ test.describe('four lanes in a row', () => {
 test.describe('card watermark placement', () => {
   // Below four lanes the watermark sits in the top right of the title. With four lanes in a row it is dead centre:
   // in the title for a card with a result time (here a new personal best), in the whole card for one without (here a DNF).
+  // the note stamps in (grows to its place) once the final lap has settled: measure it when that has finished
+  async function stamped(card: import('@playwright/test').Locator, pseudo?: '::before') {
+    await expect.poll(() => card.evaluate((c, ps) => {
+      const el = ps ? c.querySelector('.timed-comp-title')! : c.querySelector('.timed-watermark')!;
+      return getComputedStyle(el, ps ?? null).scale;
+    }, pseudo), { timeout: 15_000 }).toBe('none');
+  }
+
   interface Placement { dx: number; dy: number; rightGap: number; topGap: number }
 
   async function pbPlacement(page: import('@playwright/test').Page, width: number): Promise<Placement> {
@@ -33,6 +41,7 @@ test.describe('card watermark placement', () => {
     await page.goto('/?competitionId=e2e-pairs');
     const card = page.locator('.timed-competitor-card', { hasText: 'Competitor A' });
     await expect(card.locator('.timed-watermark')).toBeVisible({ timeout: 15_000 });
+    await stamped(card);
     return card.evaluate((c) => {
       const t = c.querySelector('.timed-comp-title')!.getBoundingClientRect();
       const w = c.querySelector('.timed-watermark')!.getBoundingClientRect();
@@ -46,6 +55,7 @@ test.describe('card watermark placement', () => {
     await page.goto('/?competitionId=e2e-pairs');
     const card = page.locator('.timed-competitor-card.timed-card-no-time', { hasText: 'Competitor B' });
     await expect(card).toBeVisible({ timeout: 15_000 });
+    await stamped(card, '::before');
     return card.evaluate((c) => {
       const cs = getComputedStyle(c.querySelector('.timed-comp-title')!, '::before');
       const r = c.getBoundingClientRect();
