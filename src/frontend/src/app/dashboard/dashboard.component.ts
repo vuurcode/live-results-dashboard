@@ -1,12 +1,13 @@
 import { findLiveHeat } from '../results/live-heat';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, ElementRef, HostBinding, HostListener, OnInit, afterEveryRender, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { DataService } from '../results/data.service';
+import type { ColorSchemeChoice } from '../color-scheme';
 import { parseInteger, parseNumber, SettingsService } from '../settings/settings.service';
 import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
-import { Observable, combineLatest, concat, filter, from, map, of, startWith, switchMap, take, timer } from 'rxjs';
+import { Observable, combineLatest, concat, filter, from, map, merge, of, startWith, switchMap, take, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { GroupStripCardComponent } from './group-strip-card/group-strip-card.component';
@@ -79,7 +80,7 @@ export class DashboardComponent implements OnInit {
   protected massStartSettingsOpen = false;
   protected activeHeatKey: { distanceId: string; label: string } | null = null;
 
-  private readonly scroller = new SettledScroller();
+  private readonly scroller = new SettledScroller(() => this.settings.animations.value);
   private readonly autoFollow = new AutoFollow({
     follow: () => this.settings.follow.value,
     heatGroups: (distance) => this.mergedHeatGroups(distance),
@@ -96,7 +97,7 @@ export class DashboardComponent implements OnInit {
   protected hasMassStart$: Observable<boolean>;
 
   /** The competitions of today, asked again every few minutes so new competitions show up and finished ones drop off while the page stays open. */
-  protected readonly todayCompetitions$: Observable<TodayCompetition[]> = timer(0, 5 * 60_000).pipe(
+  protected readonly todayCompetitions$: Observable<TodayCompetition[]> = merge(timer(0, 5 * 60_000), this.dataService.competitionsChanged$.pipe(map(() => -1))).pipe(
     filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
     switchMap(() => from(this.dataService.todayCompetitions())),
   );
@@ -104,7 +105,7 @@ export class DashboardComponent implements OnInit {
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
   protected selectedLabelLength(competitions: TodayCompetition[]): number {
     const m = competitions.find(x => x.id === this.dataService.competitionId);
-    return m ? `00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
+    return m ? `⚪ 00:00 - 00:00 · ${m.name} (${m.venue.name})`.length : 20;
   }
 
   /** Open another competition; the page reads its competitionId on load. */
@@ -180,6 +181,14 @@ export class DashboardComponent implements OnInit {
     if (val !== undefined) this.settings.lapVarianceTimed.set(val);
   }
 
+  protected setColorScheme(event: Event): void {
+    this.settings.colorScheme.set((event.target as HTMLSelectElement).value as ColorSchemeChoice);
+  }
+
+  protected setAnimations(event: Event): void {
+    this.settings.animations.set((event.target as HTMLInputElement).checked);
+  }
+
   protected setShowThousandths(event: Event): void {
     this.settings.showThousandths.set((event.target as HTMLInputElement).checked);
   }
@@ -192,7 +201,14 @@ export class DashboardComponent implements OnInit {
     this.settings.showMassStartLapTimes.set((event.target as HTMLInputElement).checked);
   }
 
+  /** Switches off the Angular animations (the reordering of rows and the folding of groups) with the setting. */
+  @HostBinding('@.disabled') get animationsDisabled(): boolean { return !this.settings.animations.value; }
+
   constructor() {
+    // the stylesheet stills the CSS animations and transitions under this attribute
+    this.settings.animations.changes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(on => {
+      document.documentElement.setAttribute('data-animations', on ? 'on' : 'off');
+    });
     // CoreUI's accordion template puts aria-expanded on the collapsible region (a plain div), which
     // ARIA does not allow there. The header button already exposes the expanded state, so drop it.
     afterEveryRender(() => {

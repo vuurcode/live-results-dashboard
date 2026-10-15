@@ -12,14 +12,15 @@ All components:
 - [x] Node 26, Angular, CoreUI; dev server on `4200`, prod server (nginx, config in its own folder, inside the combined image of `prod/Containerfile`) on `8080`
 - [x] The backend URL is a runtime environment variable of the container, never hardcoded
 - [x] The competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the competition picker is offered
-- [x] Competition picker lists today's competitions as `<start> - <end> · <name> (<venue>)`; choosing one reloads the page on that competition; the list is asked again every 5 minutes; with no competitions the page says so
+- [x] Competition picker lists today's competitions as `<start> - <end> · <name> (<venue>)`; each is prefixed with a red circle when it is live and a grey one when not; choosing one reloads the page on that competition; the list is asked again every 5 minutes and when the backend hints that it changed; with no competitions the page says so
 - [x] Auto-connect on load; reconnect on a lost connection (waiting 1s, doubling to 30s, with jitter; not while the page is hidden) and show it; a refused competition is not retried; a silent connection and a competition that is not live (with the data source's own message) are reported instead of loading forever
 - [x] A page hidden for 2 minutes closes its connection and stops asking for the competition list; when it is visible again it reconnects (a switch of under 10 seconds keeps the connection), because the backend's bandwidth is limited
-- [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
+- [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, animations, dark mode as browser default, on or off, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
 - [x] The screen stays on while the page is visible (Screen Wake Lock, asked again when the page comes back; browsers without it, or that refuse it, let the screen sleep). It needs a secure context: https, or localhost
 - [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
-- [x] Light and dark theme, following the system preference (also while the page is open); both keep the contrast of text, badges and borders, checked by axe in each
+- [x] Animations can be switched off in the settings (default on): laps, count-ups, flashes, sliding, folding and smooth scrolling then show every change at once
+- [x] Light and dark theme, following the system preference (also while the page is open) unless the setting says On or Off; both keep the contrast of text, badges and borders, checked by axe in each
 - [x] Accessible: no axe violations, keyboard selection of mass-start rows, contrast of badges, controls of at least 24px
 
 ### Data (unit specs: `src/app/results/*.spec.ts`, `src/app/dashboard/auto-follow.spec.ts`)

@@ -62,6 +62,9 @@ export class TimedHeatCardComponent {
     return this.capped;
   }
 
+  /** False shows every lap and total at once, without the snake and the count-up. */
+  @Input() animate = true;
+
   /** Must match the duration of the `snakeAround` animation in _shared.scss. */
   private readonly SNAKE_MS = 1400;
   /** Race id → the moment its latest lap arrived; until the snake around that lap has finished the total counts up to the new time. */
@@ -72,7 +75,7 @@ export class TimedHeatCardComponent {
   /** Notes a race whose lap just arrived: its total counts up to the new time while the snake around that lap is drawn. */
   private noteLapArrivals(before: (CompetitorUpdate | null)[], after: (CompetitorUpdate | null)[]): void {
     const total = this.lapSchedule.length;
-    if (!total || this.reducedMotion.matches) return;
+    if (!total || !this.animate || this.reducedMotion.matches) return;
     for (const race of after) {
       const laps = race?.lap_times?.length ?? 0;
       if (!race || race.invalid_reason || laps > total) continue;
@@ -98,7 +101,7 @@ export class TimedHeatCardComponent {
   /** Progress 0..1 of the snake of the latest lap, eased like the animation; 1 when there is none or it has finished. */
   private lapProgress(race: CompetitorUpdate): number {
     const arrived = this.lapArrivedAt.get(race.id);
-    if (arrived === undefined) return 1;
+    if (arrived === undefined || !this.animate) return 1;
     const t = Math.min(1, (Date.now() - arrived) / this.SNAKE_MS);
     return t * t * (3 - 2 * t);
   }

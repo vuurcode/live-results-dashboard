@@ -22,7 +22,7 @@
             <option value="" selected disabled>{{ 'noCompetitionOption' | translate }}</option>
           }
           @for (m of competitions; track m.id) {
-            <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.name }} ({{ m.venue.name }})</option>
+            <option [value]="m.id" [selected]="m.id === dataService.competitionId">{{ m.live ? '🔴' : '⚪' }} {{ m.start | date: 'HH:mm' }}@if (m.end) { - {{ m.end | date: 'HH:mm' }}} · {{ m.name }} ({{ m.venue.name }})</option>
           }
         </select>
         @if (noCompetition) {
@@ -52,6 +52,36 @@
               <div class="setting-popover">
                 <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
                 <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
+              </div>
+            </div>
+            <div class="setting-group ms-2">
+              <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
+              <select
+                id="colorSchemeInput"
+                class="form-select form-select-sm scheme-select"
+                (change)="setColorScheme($event)"
+              >
+                <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
+                <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
+                <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
+              </select>
+              <div class="setting-popover">
+                <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
+              </div>
+            </div>
+            <div class="setting-group ms-2">
+              <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
+              <div class="form-check form-switch"><input
+                id="animationsInput"
+                type="checkbox"
+                class="form-check-input" role="switch"
+                [checked]="settings.animations.value"
+                (change)="setAnimations($event)"
+              /></div>
+              <div class="setting-popover">
+                <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
+                <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
               </div>
             </div>
             <div class="setting-group ms-2">
@@ -272,6 +302,7 @@
                         [active]="isActiveHeatRow(distance.id, displayGroup.label)"
                         [colorLaps]="settings.compactColors.value"
                         [showThousandths]="settings.showThousandths.value"
+                        [animate]="settings.animations.value"
                         [lapVarianceThreshold]="settings.lapVarianceTimed.value"
                       />
                     }

@@ -136,6 +136,14 @@ html {
 // when finished rows dim their text to 85% opacity. Dark surfaces override it where needed.
 .text-muted { color: var(--lr-text-muted) !important; }
 
+// The animations setting off: every change shows at once. The stylesheet's animations end in the state they would reach anyway.
+[data-animations='off'] {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 // Skeleton styles moved from dashboard.component.scss for global use
 @keyframes shimmer {
   0%   { background-position: -400px 0; }

@@ -39,6 +39,41 @@ test.describe('competition selection', () => {
     await expect(page.locator('#competitionSelect')).toHaveCount(0);
   });
 
+  test('marks the live competitions in the list with a red circle and the others with a grey one', async ({ page }) => {
+    const entry = (id: string, live: boolean) => ({
+      id, code: id, name: `Match ${id}`, start: '2026-10-24T10:00:00Z', allowToSendLive: true, live, venue: { code: 'V', name: 'Venue', city: 'City' },
+    });
+    await page.route('**/api/competitions/today', (route) => route.fulfill({ json: [entry('a', true), entry('b', false)] }));
+    await page.goto('/');
+    const options = page.locator('#competitionSelect option:not([disabled])');
+    await expect(options.nth(0)).toContainText('🔴');
+    await expect(options.nth(0)).toContainText('Match a');
+    await expect(options.nth(1)).toContainText('⚪');
+    await expect(options.nth(1)).toContainText('Match b');
+  });
+
+  test('asks for the competition list again when the backend hints that it changed', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-timed');
+    const entry = (live: boolean) => ({
+      id: 'e2e-timed', code: 'c', name: 'Match', start: '2026-10-24T10:00:00Z', allowToSendLive: true, live, venue: { code: 'V', name: 'Venue', city: 'City' },
+    });
+    let live = false;
+    let requests = 0;
+    await page.route('**/api/competitions/today', (route) => { requests++; return route.fulfill({ json: [entry(live)] }); });
+    let toPage: { send: (message: string) => void } | undefined;
+    await page.routeWebSocket(/\/ws/, (ws) => { ws.connectToServer(); toPage = ws; });
+    await page.goto('/?competitionId=e2e-timed');
+    const option = page.locator('#competitionSelect option:not([disabled])');
+    await expect(option).toContainText('⚪');
+    expect(requests).toBe(1);
+
+    live = true;
+    await expect.poll(() => toPage).toBeTruthy();
+    toPage!.send(JSON.stringify({ type: 'competitions_changed' }));
+    await expect(option).toContainText('🔴');
+    expect(requests).toBe(2);
+  });
+
   test('two viewers of one competition both get its data', async ({ browser, request }) => {
     await restartReplay(request, 'e2e-timed');
     const [a, b] = await Promise.all([browser.newPage(), browser.newPage()]);
@@ -178,6 +213,58 @@ test.describe('snake around the newest lap', () => {
     expect(await snake(page)).toBe('none');
     // the ring itself is still there, in its finished state
     expect(await live(page).locator('.timed-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
+  });
+});
+
+test.describe('dark mode setting', () => {
+  test('follows the browser by default; On and Off override it and persist', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto('/?competitionId=e2e-timed');
+    const theme = () => page.locator('html').getAttribute('data-coreui-theme');
+    await expect.poll(theme).toBe('dark');
+
+    await page.getByRole('button', { name: /Display\/visualization settings/ }).click();
+    const select = page.getByLabel('Dark mode');
+    await expect(select).toHaveValue('auto');
+    await select.selectOption({ label: 'Off' });
+    await expect.poll(theme).toBe('light');
+    expect(await page.evaluate(() => localStorage.getItem('colorScheme'))).toBe('light');
+
+    await page.emulateMedia({ colorScheme: 'light' });
+    await select.selectOption({ label: 'On' });
+    await expect.poll(theme).toBe('dark');
+    await page.reload();
+    await expect.poll(theme).toBe('dark');
+
+    await page.getByRole('button', { name: /Display\/visualization settings/ }).click();
+    await page.getByLabel('Dark mode').selectOption({ label: 'Browser default' });
+    await expect.poll(theme).toBe('light');
+  });
+});
+
+test.describe('animations setting', () => {
+  test('is on by default; switched off, it persists and no snake is drawn when a lap arrives', async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem('compactColors', 'true'));
+    await restartReplay(request, 'e2e-multi');
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await page.goto('/?competitionId=e2e-multi');
+    await expect(page.locator('html')).toHaveAttribute('data-animations', 'on');
+
+    await page.getByRole('button', { name: /Display\/visualization settings/ }).click();
+    const toggle = page.getByRole('switch', { name: 'Animations' });
+    await expect(toggle).toBeChecked();
+    await toggle.uncheck();
+    await expect(page.locator('html')).toHaveAttribute('data-animations', 'off');
+    expect(await page.evaluate(() => localStorage.getItem('animations'))).toBe('false');
+
+    const badges = () => page.locator('[data-live] .timed-card-live .timed-compact-badge').count();
+    await expect.poll(badges, { timeout: 20_000 }).toBeGreaterThan(0);
+    const before = await badges();
+    await expect.poll(badges, { timeout: 20_000 }).toBeGreaterThan(before);
+    await expect(page.locator('.timed-snake-fresh')).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-animations', 'off');
   });
 });
 

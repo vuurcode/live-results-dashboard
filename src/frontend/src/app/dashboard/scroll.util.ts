@@ -53,6 +53,9 @@ export class SettledScroller {
 
   private run = 0;
 
+  /** `smooth` tells whether a scroll glides (true) or jumps. */
+  constructor(private readonly smooth: () => boolean = () => true) {}
+
   /** Scrolls the element competitioning `selector` into place; a newer call replaces one that is still waiting. */
   async scrollTo(selector: string, anchorRatio: number): Promise<void> {
     const run = ++this.run;
@@ -71,7 +74,7 @@ export class SettledScroller {
       );
       const zone = attempt === 0 ? SettledScroller.DEAD_ZONE : SettledScroller.CORRECT_ZONE; // already in place: no nudging back and forth
       if (Math.abs(top - window.scrollY) < window.innerHeight * zone) return;
-      window.scrollTo({ top, behavior: 'smooth' });
+      window.scrollTo({ top, behavior: this.smooth() ? 'smooth' : 'instant' });
       await this.rest(run);
       if (run !== this.run) return;
     }

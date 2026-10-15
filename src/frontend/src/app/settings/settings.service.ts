@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import type { ColorSchemeChoice } from '../color-scheme';
 
 /**
  * One viewer setting: a value that survives page loads in localStorage (when that is available).
@@ -57,6 +58,15 @@ function parseFlag(text: string): boolean | undefined {
 
 export const MAX_GROUP_THRESHOLD = 10;
 
+/** Dark theme: follow the browser's preference, or force it on (`dark`) or off (`light`). */
+
+function parseColorScheme(text: string): ColorSchemeChoice | undefined {
+  return text === 'auto' || text === 'light' || text === 'dark' ? text : undefined;
+}
+
+/** Shared with the code that sets the theme before the app starts, so the page never shows the wrong theme first. */
+export const colorSchemeSetting = new Setting<ColorSchemeChoice>('colorScheme', 'auto', parseColorScheme);
+
 /** The display settings of the viewer. Add a setting here as one `Setting` and bind it in the settings panel. */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
@@ -73,6 +83,9 @@ export class SettingsService {
   readonly compactColors = new Setting('compactColors', true, parseFlag);
   /** Times show thousandths; hundredths when off. */
   readonly showThousandths = new Setting('thousandths', true, parseFlag);
+  readonly colorScheme = colorSchemeSetting;
+  /** Whether things move: laps drawn and counted up, flashes, reordering, folding and scrolling. Off shows every change at once. */
+  readonly animations = new Setting('animations', true, parseFlag);
   /** Whether the page scrolls along with the live heat. */
   readonly follow = new Setting('follow', true, parseFlag);
 }

@@ -71,6 +71,9 @@ export class DataService {
 
   private statusSubject = new BehaviorSubject<BackendStatus>({ status: 'Disconnected', url: '', interval: null });
   status$ = this.statusSubject.asObservable();
+  private competitionsChangedSubject = new Subject<void>();
+  /** The backend hints that the competitions list changed, such as a competition going live. */
+  competitionsChanged$ = this.competitionsChangedSubject.asObservable();
   private resetSubject = new Subject<void>();
   reset$ = this.resetSubject.asObservable();
   /** The page came back from suspension and the connection was renewed. */
@@ -206,6 +209,10 @@ export class DataService {
   }
 
   private enqueue(msg: BackendMessage) {
+    if (msg.type === 'competitions_changed') {
+      this.ngZone.run(() => this.competitionsChangedSubject.next());
+      return;
+    }
     this.cancelLostError();
     this.track(msg);
     this.queue.push(msg);

@@ -1,11 +1,19 @@
+import { Observable } from 'rxjs';
+
+export type ColorSchemeChoice = 'auto' | 'light' | 'dark';
+
 /**
- * Puts the system's light or dark preference on the root element as CoreUI's theme attribute, and follows it while the page is open.
- * Returns a function that stops following.
+ * Puts the light or dark theme on the root element as CoreUI's theme attribute: the system's preference for `auto`
+ * (also while the page is open), otherwise the choice itself. Returns a function that stops following.
  */
-export function followColorScheme(win: Pick<Window, 'matchMedia'>, root: HTMLElement): () => void {
+export function followColorScheme(win: Pick<Window, 'matchMedia'>, root: HTMLElement, choice$: Observable<ColorSchemeChoice>): () => void {
   const query = win.matchMedia('(prefers-color-scheme: dark)');
-  const apply = () => { root.setAttribute('data-coreui-theme', query.matches ? 'dark' : 'light'); };
-  apply();
+  let choice: ColorSchemeChoice = 'auto';
+  const apply = () => {
+    const dark = choice === 'auto' ? query.matches : choice === 'dark';
+    root.setAttribute('data-coreui-theme', dark ? 'dark' : 'light');
+  };
+  const subscription = choice$.subscribe((next) => { choice = next; apply(); });
   query.addEventListener('change', apply);
-  return () => query.removeEventListener('change', apply);
+  return () => { subscription.unsubscribe(); query.removeEventListener('change', apply); };
 }

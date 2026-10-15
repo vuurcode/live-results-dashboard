@@ -10,6 +10,15 @@ export interface Translations {
   noCompetitionOption: string;
   selectCompetitionHint: string;
   noLiveCompetitionsHint: string;
+  colorSchemeLabel: string;
+  colorSchemeAuto: string;
+  colorSchemeOn: string;
+  colorSchemeOff: string;
+  colorSchemePopoverTitle: string;
+  colorSchemePopoverBody: string;
+  animationsLabel: string;
+  animationsPopoverTitle: string;
+  animationsPopoverBody: string;
   thousandthsLabel: string;
   hundredthsLabel: string;
   thousandthsPopoverTitle: string;

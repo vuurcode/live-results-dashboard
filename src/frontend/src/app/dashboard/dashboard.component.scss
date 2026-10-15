@@ -115,8 +115,8 @@
   font-size: 1.25rem;
   font-weight: 700;
   background-color: transparent;
-  border-color: transparent;
-  padding-left: 0;
+  border-color: #fff; // the border is what tells it is a select, next to the chevron
+  padding-left: 0.75rem;
 }
 // Tooltip-style callout to the right of the picker, pointing at it
 .competition-hint {
@@ -151,7 +151,7 @@
   min-height: 2.5rem;
   width: 100%;
   background-color: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.25);
+  border-color: #fff;
   color: #fff;
   option { color: #212529; background-color: #fff; padding: 0.35rem 0.75rem; } // side padding is honoured by Chromium and Firefox popups
 }
@@ -165,6 +165,17 @@
   .topbar-competitions-title .topbar-competition-select {
     font-size: clamp(0.85rem, calc(50rem / var(--competition-label-length, 40)), 1.25rem);
   }
+}
+.scheme-select {
+  // white chevron: CoreUI's dark one disappears on the dark bar (needs 3:1)
+  --cui-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-image: var(--cui-form-select-bg-img);
+  width: auto;
+  background-color: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+  color: #fff;
+  option { color: #212529; background-color: #fff; }
+  &:focus { background-color: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); color: #fff; box-shadow: none; }
 }
 .threshold-input {
   width: 4.5rem;
