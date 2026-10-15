@@ -4,6 +4,7 @@
 // Room below the last distance. Pinning a title shrinks it and with it a short page; without this room the browser
 // would then clamp the scroll position, which unpins the title again, and the two alternate every frame.
 :host { display: block; padding-bottom: 2rem; }
+:host { --chevron-white: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); } // CoreUI's dark select chevron disappears on the dark bar (needs 3:1)
 
 // Zero-height scroll target placed before each accordion item
 .accordion-scroll-anchor {
@@ -32,6 +33,7 @@
 }
 // The timeline of a mass start stays visible under the pinned title and grows with its rows; only a very tall one scrolls inside.
 :host ::ng-deep .groups-strip {
+  border-bottom: 1px solid var(--cui-border-color, #dee2e6);
   position: sticky;
   top: calc(var(--topbar-h, 3rem) + 1.65rem);
   z-index: 9;
@@ -108,8 +110,7 @@
   .topbar-group-btn { min-height: 2.5rem; }
 }
 .topbar-competitions-title .topbar-competition-select {
-  // white chevron: CoreUI's dark one disappears on the black bar (needs 3:1)
-  --cui-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  --cui-form-select-bg-img: var(--chevron-white);
   background-image: var(--cui-form-select-bg-img);
   &:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: none; }
   // takes the place of the event name: same look as the title
@@ -175,8 +176,7 @@
   }
 }
 .scheme-select {
-  // white chevron: CoreUI's dark one disappears on the dark bar (needs 3:1)
-  --cui-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  --cui-form-select-bg-img: var(--chevron-white);
   background-image: var(--cui-form-select-bg-img);
   width: auto;
   // controls are darker than the cards around them (the help boxes, the panel), with a clear border
@@ -495,12 +495,6 @@
   color: var(--lr-gap-fg);
   white-space: nowrap;
   letter-spacing: 0.02em;
-}
-
-// ===== HORIZONTAL GROUPS STRIP =====
-
-.groups-strip {
-  border-bottom: 1px solid var(--cui-border-color, #dee2e6);
 }
 
 // The threshold setting slides open and shut when the colours are switched on or off
