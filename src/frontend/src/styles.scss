@@ -18,8 +18,8 @@ html {
   --lr-text-muted: #565e64;    // on the surface: 6.4:1
   --lr-text-small: #454c52;    // the small grey labels: 9:1
   --lr-text-meta: #495057;
-  --lr-text-subtle: #6c757d;   // 4.7:1
-  --lr-text-faint: #adb5bd;    // the dimmed labels and the lap time before a lap arrives
+  --lr-text-subtle: #5c636a;   // 6.2:1
+  --lr-text-faint: #6c757d;    // the dimmed labels and the lap time before a lap arrives, 4.7:1
   --lr-line: rgba(0, 0, 0, 0.12);
   --lr-line-soft: rgba(0, 0, 0, 0.05);
   --lr-tint: rgba(0, 0, 0, 0.02);
@@ -59,7 +59,7 @@ html {
   --lr-popover-fg: #212529;
   --lr-popover-line: rgba(0, 0, 0, 0.15);
   --lr-separator-line: #ced4da;
-  --lr-separator-text: #adb5bd;
+  --lr-separator-text: #6c757d;
   --lr-count-bg: rgba(108, 117, 125, 0.18);
   --lr-gap-bg: rgba(253, 126, 20, 0.15);
   --lr-gap-fg: #fd7e14;
@@ -73,11 +73,11 @@ html {
   color-scheme: dark;
   --lr-surface: var(--cui-body-bg);
   --lr-text: #e9ecef;
-  --lr-text-muted: #aab3bc;
-  --lr-text-small: #c3cad1;
-  --lr-text-meta: #b8c0c8;
-  --lr-text-subtle: #9ba5ae;
-  --lr-text-faint: #7f8993;
+  --lr-text-muted: #c3cad1;
+  --lr-text-small: #dee2e6;
+  --lr-text-meta: #d0d6db;
+  --lr-text-subtle: #bcc3ca;
+  --lr-text-faint: #aab3bc;
   --lr-line: rgba(255, 255, 255, 0.2);
   --lr-line-soft: rgba(255, 255, 255, 0.1);
   --lr-tint: rgba(255, 255, 255, 0.04);
@@ -117,7 +117,7 @@ html {
   --lr-popover-fg: #e9ecef;
   --lr-popover-line: rgba(255, 255, 255, 0.25);
   --lr-separator-line: #4b5560;
-  --lr-separator-text: #8d98a2;
+  --lr-separator-text: #aab3bc;
   --lr-count-bg: rgba(173, 181, 189, 0.2);
   --lr-gap-bg: rgba(253, 126, 20, 0.22);
   --lr-gap-fg: #ffa24d;

@@ -204,7 +204,7 @@
   overflow: hidden;
   letter-spacing: -0.02em;
   font-size: 0.5rem;
-  color: var(--lr-text-subtle); // 4.7:1 on white; small and subtle
+  color: var(--lr-text-subtle); // 6.2:1 on white
   font-variant-numeric: tabular-nums;
 }
 .timed-compact-final {
@@ -237,7 +237,7 @@
   align-self: center;
   text-align: center;
   font-size: 0.5rem;
-  color: var(--lr-text-subtle); // 4.7:1 on white; small and subtle
+  color: var(--lr-text-subtle); // 6.2:1 on white
   font-variant-numeric: tabular-nums;
 }
 .timed-comp-body.timed-compact-body { // beats the plain .timed-comp-body padding defined further down

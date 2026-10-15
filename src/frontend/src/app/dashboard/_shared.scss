@@ -152,10 +152,7 @@
     opacity: 1;
     animation: lapPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
   }
-  &.lap-badge-prev,
-  &.lap-badge-old {
-    opacity: 0.35;
-  }
+  // earlier laps keep their full colours: fading them would drop the text below 4.5:1
 
   /* Decimal as smaller subtext on the baseline, like the decimals of the timed splits */
   .lap-time-decimal {
