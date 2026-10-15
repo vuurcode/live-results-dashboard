@@ -16,6 +16,7 @@ All components:
 - [x] Auto-connect on load; reconnect on a lost connection (waiting 1s, doubling to 30s, with jitter; not while the page is hidden) and show it; a refused competition is not retried; a silent connection and a competition that is not live (with the data source's own message) are reported instead of loading forever
 - [x] A page hidden for 2 minutes closes its connection and stops asking for the competition list; when it is visible again it reconnects (a switch of under 10 seconds keeps the connection), because the backend's bandwidth is limited
 - [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
+- [x] The screen stays on while the page is visible (Screen Wake Lock, asked again when the page comes back; browsers without it, or that refuse it, let the screen sleep). It needs a secure context: https, or localhost
 - [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
 - [x] Accessible: no axe violations, keyboard selection of mass-start rows, contrast of badges, controls of at least 24px

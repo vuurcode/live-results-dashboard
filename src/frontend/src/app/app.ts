@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, DestroyRef, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { keepScreenAwake } from './wake-lock';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -7,4 +9,8 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
   styleUrls: ['./app.scss'],
 })
-export class App {}
+export class App {
+  constructor() {
+    inject(DestroyRef).onDestroy(keepScreenAwake(navigator, document));
+  }
+}
