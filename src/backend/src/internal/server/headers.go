@@ -76,8 +76,17 @@ func originPatterns(allowed []string) []string {
 	return patterns
 }
 
-// secretHeaders are left out of the log of the first request.
-var secretHeaders = map[string]bool{"Cookie": true, "Authorization": true, "Proxy-Authorization": true}
+// secretHeader reports whether a header probably carries a credential, judging by its name: its value is left out of the
+// log of the first request.
+func secretHeader(name string) bool {
+	name = strings.ToLower(name)
+	for _, part := range []string{"cookie", "auth", "token", "key", "secret", "session", "jwt", "assertion", "credential", "password"} {
+		if strings.Contains(name, part) {
+			return true
+		}
+	}
+	return false
+}
 
 // logFirstRequest writes the headers of the first request the server gets to the log, which shows what the proxy in
 // front of it passes on (the client address header for BACKEND_CLIENT_IP_HEADER, the origin, the forwarded scheme).
@@ -87,7 +96,7 @@ func logFirstRequest(next http.Handler) http.Handler {
 		once.Do(func() {
 			headers := make([]any, 0, 2*len(req.Header))
 			for name, values := range req.Header {
-				if secretHeaders[name] {
+				if secretHeader(name) {
 					values = []string{"<hidden>"}
 				}
 				headers = append(headers, name, strings.Join(values, ", "))

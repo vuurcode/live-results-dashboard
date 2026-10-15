@@ -98,6 +98,19 @@ func TestOriginPatterns(t *testing.T) {
 	}
 }
 
+func TestSecretHeader(t *testing.T) {
+	for _, name := range []string{"Cookie", "Authorization", "X-Api-Key", "Cf-Access-Jwt-Assertion", "X-Auth-Token"} {
+		if !secretHeader(name) {
+			t.Errorf("%s is logged", name)
+		}
+	}
+	for _, name := range []string{"Do-Connecting-Ip", "X-Forwarded-For", "Origin", "User-Agent"} {
+		if secretHeader(name) {
+			t.Errorf("%s is hidden", name)
+		}
+	}
+}
+
 func TestLogFirstRequestHidesSecretsAndPassesOn(t *testing.T) {
 	rec := do(logFirstRequest(ok), http.MethodGet, "", map[string]string{"Cookie": "a=b", "Do-Connecting-Ip": "203.0.113.9"})
 	if rec.Code != http.StatusOK {
