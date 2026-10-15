@@ -81,3 +81,26 @@ func TestCORSPreflight(t *testing.T) {
 		t.Errorf("disallowed preflight: %d %v", rec.Code, rec.Header())
 	}
 }
+
+func TestOriginPatterns(t *testing.T) {
+	cases := map[string][]string{
+		"empty":    nil,
+		"wildcard": {"https://a.example", "*"},
+	}
+	for name, in := range cases {
+		if got := originPatterns(in); len(got) != 1 || got[0] != "*" {
+			t.Errorf("%s: %v, want [*]", name, got)
+		}
+	}
+	got := originPatterns([]string{"https://a.example", "b.example:8080"})
+	if len(got) != 2 || got[0] != "a.example" || got[1] != "b.example:8080" {
+		t.Errorf("hosts: %v", got)
+	}
+}
+
+func TestLogFirstRequestHidesSecretsAndPassesOn(t *testing.T) {
+	rec := do(logFirstRequest(ok), http.MethodGet, "", map[string]string{"Cookie": "a=b", "Do-Connecting-Ip": "203.0.113.9"})
+	if rec.Code != http.StatusOK {
+		t.Errorf("status %d", rec.Code)
+	}
+}

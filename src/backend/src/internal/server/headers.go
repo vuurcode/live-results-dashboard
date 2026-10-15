@@ -1,8 +1,12 @@
 package server
 
 import (
+	"log/slog"
 	"net/http"
+	"net/url"
 	"slices"
+	"strings"
+	"sync"
 )
 
 // securityHeaders marks every response as data that is neither rendered, framed nor leaked through the referrer: the
@@ -20,7 +24,7 @@ func securityHeaders(next http.Handler) http.Handler {
 }
 
 // cors lets pages from the allowed origins call the API from the browser; "*" allows every origin. An empty list adds
-// nothing, which keeps the API to its own origin. The websocket does not go through the browser's CORS check.
+// nothing, which keeps the API to its own origin. The websocket does not go through the browser's CORS check (see originPatterns).
 func cors(allowed []string, next http.Handler) http.Handler {
 	if len(allowed) == 0 {
 		return next
@@ -51,6 +55,45 @@ func cors(allowed []string, next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		next.ServeHTTP(w, req)
+	})
+}
+
+// originPatterns turns the allowed origins of the websocket (`https://example.com` or a bare host) into the host
+// patterns the handshake checks the Origin header against. Empty or "*" allows every origin, as the frontend usually
+// reaches the backend through a proxy.
+func originPatterns(allowed []string) []string {
+	if len(allowed) == 0 || slices.Contains(allowed, "*") {
+		return []string{"*"}
+	}
+	patterns := make([]string, 0, len(allowed))
+	for _, o := range allowed {
+		if u, err := url.Parse(o); err == nil && u.Host != "" {
+			o = u.Host
+		}
+		patterns = append(patterns, o)
+	}
+	return patterns
+}
+
+// secretHeaders are left out of the log of the first request.
+var secretHeaders = map[string]bool{"Cookie": true, "Authorization": true, "Proxy-Authorization": true}
+
+// logFirstRequest writes the headers of the first request the server gets to the log, which shows what the proxy in
+// front of it passes on (the client address header for BACKEND_CLIENT_IP_HEADER, the origin, the forwarded scheme).
+func logFirstRequest(next http.Handler) http.Handler {
+	var once sync.Once
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		once.Do(func() {
+			headers := make([]any, 0, 2*len(req.Header))
+			for name, values := range req.Header {
+				if secretHeaders[name] {
+					values = []string{"<hidden>"}
+				}
+				headers = append(headers, name, strings.Join(values, ", "))
+			}
+			slog.Info("First request", "method", req.Method, "path", req.URL.Path, "remote", req.RemoteAddr, slog.Group("headers", headers...))
+		})
 		next.ServeHTTP(w, req)
 	})
 }

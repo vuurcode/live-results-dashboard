@@ -36,6 +36,7 @@ type Config struct {
 	ConnectBurst         int           // connection attempts one client address may make back to back
 	ClientIPHeader       string        // request header naming the client address behind a proxy; empty = the connection's address
 	CORSAllowedOrigins   []string      // origins whose pages may call the HTTP API from a browser; "*" = all, empty = none
+	WebSocketOrigins     []string      // origins whose pages may open the websocket (the host of the request always may); "*" or empty = all
 	IdleGrace            time.Duration // how long an empty competition keeps polling before it is closed
 	PingInterval         time.Duration // how often idle websocket clients are pinged, so proxies do not close a quiet connection
 
@@ -74,6 +75,7 @@ func Load() Config {
 		ConnectBurst:         int(number("BACKEND_CONNECT_BURST", positive)),
 		ClientIPHeader:       os.Getenv("BACKEND_CLIENT_IP_HEADER"),
 		CORSAllowedOrigins:   splitList(os.Getenv("BACKEND_CORS_ALLOWED_ORIGINS")),
+		WebSocketOrigins:     splitList(os.Getenv("BACKEND_WEBSOCKET_ALLOWED_ORIGINS")),
 		IdleGrace:            time.Duration(number("BACKEND_IDLE_GRACE_SECONDS", nonNegative) * float64(time.Second)),
 		PingInterval:         DefaultPingInterval,
 

@@ -31,6 +31,8 @@ type Options struct {
 	ClientIPHeader string
 	// CORSAllowedOrigins are the origins whose pages may call the HTTP API from the browser; "*" allows all, empty none.
 	CORSAllowedOrigins []string
+	// WebSocketOrigins are the origins whose pages may open the websocket, next to the host the request is made to; "*" or empty allows all.
+	WebSocketOrigins []string
 }
 
 // Server connects websocket clients to the rooms of a hub.
@@ -55,7 +57,7 @@ func (s *Server) Handler(ua *useragent.Mirror, today http.HandlerFunc) http.Hand
 	if today != nil {
 		mux.HandleFunc("GET /api/competitions/today", today)
 	}
-	return ua.Middleware(securityHeaders(cors(s.opts.CORSAllowedOrigins, mux)))
+	return ua.Middleware(logFirstRequest(securityHeaders(cors(s.opts.CORSAllowedOrigins, mux))))
 }
 
 // Healthcheck answers an empty 200, for the hosting platform's health check.
@@ -78,7 +80,7 @@ func (s *Server) ServeWS(w http.ResponseWriter, req *http.Request) {
 	if errors.Is(err, hub.ErrBadCompetitionID) || errors.Is(err, hub.ErrCompetitionEnded) {
 		// A browser cannot read the status of a failed handshake and would retry forever, so the
 		// refusal is a close frame it can recognise.
-		if conn, acceptErr := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}}); acceptErr == nil {
+		if conn, acceptErr := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: originPatterns(s.opts.WebSocketOrigins)}); acceptErr == nil {
 			_ = conn.Close(websocket.StatusPolicyViolation, err.Error())
 		}
 		return
@@ -106,9 +108,9 @@ func resumeFrom(q url.Values) *room.Resume {
 }
 
 func (s *Server) serve(w http.ResponseWriter, req *http.Request, r *room.Room, c *room.Client) {
-	// Any origin is accepted: the frontend reaches us through a proxy. The messages are repetitive JSON: compressing
+	// The messages are repetitive JSON: compressing
 	// them with a window shared across messages cuts the traffic by about 80% (browsers without support get them plain).
-	conn, err := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: []string{"*"}, CompressionMode: websocket.CompressionContextTakeover})
+	conn, err := websocket.Accept(w, req, &websocket.AcceptOptions{OriginPatterns: originPatterns(s.opts.WebSocketOrigins), CompressionMode: websocket.CompressionContextTakeover})
 	if err != nil {
 		r.Log.Warn("WebSocket accept failed", "err", err)
 		return

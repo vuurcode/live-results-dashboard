@@ -64,7 +64,7 @@ func main() {
 	}
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           server.New(h, server.Options{PingInterval: cfg.PingInterval, Limiter: limiter, ClientIPHeader: cfg.ClientIPHeader, CORSAllowedOrigins: cfg.CORSAllowedOrigins}).Handler(ua, today),
+		Handler:           server.New(h, server.Options{PingInterval: cfg.PingInterval, Limiter: limiter, ClientIPHeader: cfg.ClientIPHeader, CORSAllowedOrigins: cfg.CORSAllowedOrigins, WebSocketOrigins: cfg.WebSocketOrigins}).Handler(ua, today),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
