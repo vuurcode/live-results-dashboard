@@ -155,18 +155,18 @@
 /* Smaller lap time badges to reduce visual weight */
 .lap-time-badge {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline; // the small decimal sits on the baseline of the whole seconds
   justify-content: center;
-  font-size: 0.72rem; /* reduced */
+  font-size: 0.78rem;
   line-height: 1;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  padding: 0.14em 0.32em; /* tighter padding for compact badges */
+  padding: 0.32em 0.4em; /* as tall as the lap badges of the individual cards */
   border-radius: 0.22rem;
   flex-shrink: 0;
   opacity: 1;
-  min-width: 2.6rem; /* reduced fixed width */
+  min-width: 3rem; /* wide enough for the lap label above it */
   text-align: center;
 
   // soft tints with dark text: the colour hints at the difference without shouting
@@ -199,7 +199,6 @@
 
 /* Targeted dimming: only reduce opacity of text/labels so badges retain their colors. */
 .race-finished .race-name-fixed,
-.race-finished .rank-label,
 .race-finished .laps-counter-text,
 .race-finished .laps-counter-total,
 .race-finished .race-time,

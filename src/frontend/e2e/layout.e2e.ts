@@ -98,11 +98,10 @@ test.describe('mass start timeline', () => {
       await page.waitForTimeout(800);
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-mass');
-      const racers = page.locator('.mass-timeline .timeline-racer');
-      await expect(racers.first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('.mass-timeline .timeline-leader')).toBeVisible({ timeout: 15_000 }); // the racers are placed from the first update on
       await page.waitForTimeout(600); // the badges slide into place
       const { boxes, lane } = await page.evaluate(() => {
-        const l = document.querySelector('.mass-timeline')!.getBoundingClientRect();
+        const l = document.querySelector('.mass-timeline .timeline-lane')!.getBoundingClientRect();
         const bs = [...document.querySelectorAll('.mass-timeline .timeline-racer')].map((e) => {
           const r = e.getBoundingClientRect();
           return { x: r.x, y: r.y, w: r.width, h: r.height };

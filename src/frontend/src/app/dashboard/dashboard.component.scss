@@ -30,13 +30,13 @@
     .badge { font-size: 0.6rem; }
   }
 }
-// The groups overview of a mass start stays visible under the pinned title; tall overviews scroll inside.
+// The timeline of a mass start stays visible under the pinned title and grows with its rows; only a very tall one scrolls inside.
 :host ::ng-deep .groups-strip {
   position: sticky;
   top: calc(var(--topbar-h, 3rem) + 1.65rem);
   z-index: 9;
-  max-height: 35vh;
-  overflow: auto;
+  max-height: 60vh;
+  overflow: hidden auto;
   background: var(--lr-surface);
 }
 
@@ -413,15 +413,15 @@
   height: 0.6rem;
 }
 
-// The mass start competitors are cards of equal width in centred rows (a lone card of a group sits in the middle);
-// the group and finishing lines take a whole row
+// The mass start competitors are cards on top of each other, up to twice the width of a grid card so that more lap
+// badges fit on a row; the group and finishing lines take the whole width
 .mass-cards {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
-  > * { flex: 0 1 min(100%, 22rem); min-width: 0; }
-  > .group-finishing-line, > .finishing-line, > .standings-group-gap { flex: 0 0 100%; }
+  > * { width: min(100%, 44rem); min-width: 0; }
+  > .group-finishing-line, > .finishing-line, > .standings-group-gap { width: 100%; }
 }
 
 // Inline finishing-line style used at the top of each group in the standings list
@@ -496,8 +496,8 @@
 }
 
 // ===== HORIZONTAL GROUPS STRIP =====
+
 .groups-strip {
-  overflow-x: auto;
   border-bottom: 1px solid var(--cui-border-color, #dee2e6);
 }
 

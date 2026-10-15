@@ -1,24 +1,40 @@
-<div #lane class="mass-timeline" role="group" [attr.aria-label]="'timelineLabel' | translate" [style.height.rem]="rows * rowRem">
-  @for (p of placed; track p.race.id) {
-    <div
-      class="timeline-racer race-item-group"
-      [class.timeline-leader]="$first"
-      [class.flash-update]="isRecentUpdate(p.race.lastUpdated)"
-      [class.race-selected]="selectedRaceIds.has(p.race.id)"
-      [style.right.px]="p.offset"
-      [style.top.rem]="p.row * rowRem"
-      (click)="select(p.race.id)"
-      role="button"
-      tabindex="0"
-      [attr.aria-pressed]="selectedRaceIds.has(p.race.id)"
-      (keydown.enter)="select(p.race.id)"
-      (keydown.space)="$event.preventDefault(); select(p.race.id)"
-    >
-      <c-badge class="start-num-badge badge-black" style="font-size:0.75em">{{ p.race.start_number }}</c-badge>
-      <span class="timeline-name">{{ p.race.name }}</span>
-      @if (p.gapText) {
-        <span class="timeline-gap">{{ p.gapText }}</span>
+<div class="mass-timeline" role="group" [attr.aria-label]="'timelineLabel' | translate">
+  <div class="timeline-scale" aria-hidden="true">
+    @for (t of ticks; track t.seconds) {
+      @if (t.label) {
+        <span class="timeline-tick-label" [style.right.px]="t.offset">{{ t.seconds ? '+' + t.seconds : 0 }}s</span>
       }
-    </div>
-  }
+    }
+  </div>
+  <div #lane class="timeline-lane" [style.height.rem]="rows * rowRem + 2 * padRem">
+    @for (t of ticks; track t.seconds) {
+      <span class="timeline-grid-line" [class.timeline-grid-major]="t.label" aria-hidden="true" [style.right.px]="t.offset"></span>
+    }
+    @for (lap of lineKeys; track lap) {
+      <span class="timeline-finish" aria-hidden="true" [class.timeline-finish-done]="lineDone" [style.--from.px]="lineFromPx" [style.--travel.px]="width" [style.--slide.s]="lineSeconds"></span>
+    }
+    @for (p of placed; track p.race.id + ':' + p.race.laps_count) {
+      <div
+        class="timeline-racer race-item-group"
+        [class.timeline-leader]="$first && !p.fromLeft"
+        [class.timeline-racer-faded]="faded.has(p.race.id)"
+        [class.race-selected]="selectedRaceIds.has(p.race.id)"
+        [style.right.px]="p.fromLeft ? null : p.offset"
+        [style.left.px]="p.fromLeft ? p.offset : null"
+        [style.top.rem]="padRem + p.row * rowRem"
+        (click)="select(p.race.id)"
+        role="button"
+        tabindex="0"
+        [attr.aria-pressed]="selectedRaceIds.has(p.race.id)"
+        (keydown.enter)="select(p.race.id)"
+        (keydown.space)="$event.preventDefault(); select(p.race.id)"
+      >
+        <c-badge class="start-num-badge badge-black" style="font-size:0.75em">{{ p.race.start_number }}</c-badge>
+        <span class="timeline-name">{{ p.race.name }}</span>
+        @if (p.gapText) {
+          <span class="timeline-gap">{{ p.gapText }}</span>
+        }
+      </div>
+    }
+  </div>
 </div>

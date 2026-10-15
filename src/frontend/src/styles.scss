@@ -30,6 +30,8 @@ html {
   --lr-placeholder: #ced4da;
   --lr-strong-bg: #454c52;     // the newest lap and the final time
   --lr-strong-fg: #fff;
+  --lr-rank-bg: #546a85;       // the position badge of the mass start cards, slate blue: white on it is 5.5:1
+  --lr-rank-fg: #fff;
   --lr-strong-flash: #1e6b34;  // the update flash on the strong badge, white on it is 6.6:1
   --lr-flash-yellow: #fff3cd;
   --lr-flash-green: #d4edda;
@@ -88,6 +90,8 @@ html {
   --lr-placeholder: #3f4954;
   --lr-strong-bg: #dee2e6;
   --lr-strong-fg: #11161b;
+  --lr-rank-bg: #aebfd3;
+  --lr-rank-fg: #11161b;
   --lr-strong-flash: #7fd49a;  // dark text on it: 10:1
   --lr-flash-yellow: #54430f;
   --lr-flash-green: #1d4a2c;

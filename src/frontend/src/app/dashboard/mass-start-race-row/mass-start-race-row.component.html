@@ -2,11 +2,11 @@
   class="race-item race-item-laps mass-card"
   [attr.data-race-id]="race.id"
   [attr.data-finished-label]="race.finished_rank != null ? ('finished' | translate) : null"
-  [class.flash-update]="isRecentUpdate(race.lastUpdated)"
   [class.pos-up]="race.position_change === 'up'"
   [class.pos-down]="race.position_change === 'down'"
   [class.race-finished]="race.finished_rank != null"
   [class.race-selected]="selectedRaceIds.has(race.id)"
+  [class.mass-card-leader]="isRaceLeader(race, distance)"
   (click)="raceSelect.emit(race.id)"
   role="button"
   tabindex="0"
@@ -15,7 +15,6 @@
   (keydown.space)="$event.preventDefault(); raceSelect.emit(race.id)"
 >
   <div class="mass-card-head">
-    <span class="rank-label text-muted">{{ ordinalSuffix(raceIdx + 1)[0] }}<sup class="rank-sup">{{ ordinalSuffix(raceIdx + 1)[1] }}</sup></span>
     <c-badge class="start-num-badge badge-black">{{ race.start_number }}</c-badge>
     <span class="race-name-fixed">{{ race.name }}</span>
     @if (isRaceLeader(race, distance)) {
@@ -39,32 +38,34 @@
       }
     </span>
   </div>
-  <!-- Body: the lap times as badges wrapping over rows, each with its lap number above, and the laps still to go -->
+  <!-- Body: the latest lap times as badges on one row, each with its lap number above, and the laps still to go -->
   <div class="mass-card-body">
     <div class="lap-times-strip">
-      @for (lt of race.lap_times; track $index; let i = $index; let last = $last; let count = $count) {
+      <!-- Newest first: the strip fills from the right, so the oldest laps are the ones that drop out of the row -->
+      @if (distance.totalLaps && pendingLapCount(race, distance.totalLaps) > 0) {
+        <span class="mass-lap" aria-hidden="true">
+          <span class="mass-lap-no">{{ 'lapUnit' | translate }} {{ race.lap_times.length + 1 }}</span>
+          <span class="lap-time-badge lap-time-placeholder" data-pending="0"> -</span>
+        </span>
+      }
+      @for (lt of race.lap_times.slice().reverse(); track $index; let first = $first) {
+        @let i = race.lap_times.length - 1 - $index;
         <span class="mass-lap">
-          <span class="mass-lap-no">{{ i + 1 }}</span>
+          <span class="mass-lap-no">{{ 'lapUnit' | translate }} {{ i + 1 }}</span>
           <span class="lap-time-badge {{ lapBadgeColor(race.lap_times, i) }}"
-            [class.lap-badge-latest]="last"
-            [attr.data-lap]="last ? race.laps_count : null">
+            [class.lap-badge-latest]="first"
+            [attr.data-lap]="first ? race.laps_count : null">
             {{ splitLapTime(lt)[0] }}<small class="lap-time-decimal">{{ (splitLapTime(lt)[1] || '').replace('.', '') }}</small>
           </span>
         </span>
       }
-      <!-- Pulsing placeholders for the laps to come -->
-      @if (distance.totalLaps) {
-        @for (_ of [].constructor(pendingLapCount(race, distance.totalLaps)); track $index; let i = $index) {
-          <span class="mass-lap" aria-hidden="true">
-            <span class="mass-lap-no">{{ race.lap_times.length + i + 1 }}</span>
-            <span class="lap-time-badge lap-time-placeholder" [attr.data-pending]="i"> -</span>
-          </span>
-        }
+    </div>
+    <div class="mass-card-foot">
+      <span class="mass-rank-badge">{{ ordinalSuffix(raceIdx + 1)[0] }}<sup class="rank-sup">{{ ordinalSuffix(raceIdx + 1)[1] }}</sup></span>
+      @if (distance.totalLaps && race.finished_rank == null) {
+        @let remaining = distance.totalLaps - race.laps_count - 1;
+        <span class="laps-counter-text" [innerHTML]="ts.html(remaining === 1 ? 'moreLapAfterRound' : 'moreLapsAfterRound', { n: lapsToGoBadge(remaining) })"></span>
       }
     </div>
-    @if (distance.totalLaps && race.finished_rank == null) {
-      @let remaining = distance.totalLaps - race.laps_count - 1;
-      <span class="laps-counter-text" [innerHTML]="ts.html(remaining === 1 ? 'moreLapAfterRound' : 'moreLapsAfterRound', { n: remaining })"></span>
-    }
   </div>
 </div>

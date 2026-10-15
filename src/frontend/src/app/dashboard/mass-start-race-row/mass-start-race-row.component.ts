@@ -4,7 +4,7 @@ import { CompetitorUpdate, ProcessedDistance } from '../../results/data.models';
 import { TranslateService } from '../../i18n/translate.service';
 import { TranslatePipe } from '../../i18n/translate.pipe';
 import { lapBadgeColor } from '../../results/lap-color.util';
-import { splitLapTime, splitFormattedTime, isRecentUpdate } from '../../results/time.util';
+import { splitLapTime, splitFormattedTime } from '../../results/time.util';
 import { massFinishGapFromLeader as massFinishGapFromLeaderUtil, pendingLapCount as pendingLapCountUtil } from '../../results/heats.util';
 
 @Component({
@@ -26,7 +26,6 @@ export class MassStartRaceRowComponent {
 
   @Output() readonly raceSelect = new EventEmitter<string>();
 
-  protected isRecentUpdate = isRecentUpdate;
   protected splitLapTime = splitLapTime;
   protected splitFormattedTime = splitFormattedTime;
 
@@ -64,6 +63,11 @@ export class MassStartRaceRowComponent {
    */
   protected pendingLapCount(race: CompetitorUpdate, totalLaps: number): number {
     return pendingLapCountUtil(race.lap_times?.length ?? 0, totalLaps);
+  }
+
+  /** The number of laps to go as a badge; inline styles because it is part of a translated HTML string. */
+  protected lapsToGoBadge(remaining: number): string {
+    return `<span style="display:inline-block;padding:0.14em 0.4em;border-radius:0.22rem;background:var(--lr-strong-bg);color:var(--lr-strong-fg);font-weight:600">${remaining}</span>`;
   }
 
   /**

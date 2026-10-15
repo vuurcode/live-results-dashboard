@@ -2,25 +2,38 @@ import { AfterViewInit, ChangeDetectorRef, Component, DoCheck, ElementRef, Event
 import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
 import { TranslatePipe } from '../../i18n/translate.pipe';
-import { isRecentUpdate } from '../../results/time.util';
-import { layoutTimeline, timelineGaps, timelineScale } from '../../results/timeline.util';
+import { TIMELINE_SECONDS, layoutTimeline, timelineGaps } from '../../results/timeline.util';
+
+interface Tick {
+  seconds: number;
+  offset: number;
+  label: boolean;
+}
 
 interface PlacedRacer {
   race: CompetitorUpdate;
   gapText: string;
   offset: number;
   row: number;
+  /** Before the start there is no leader or gap: the racers sit at the left edge instead of hanging off the right */
+  fromLeft: boolean;
+  /** The racer has not reported the leader's current lap yet: they show where they were on the previous lap */
+  stale: boolean;
 }
 
 const ROW_REM = 2;
 // badge widths, estimated at the default font size and scaled with the font size of the page
-const NUMBER_PX = 44; // start number badge, padding and borders
+const LANE_PAD_REM = 0.75; // room above and below the racers so the finish line shows on its own
+const NUMBER_PX = 28; // start number badge without its digits, padding and borders
 const CHAR_PX = 8;
+const LABEL_STEPS = [1, 2, 5, 10, 15, 30, 60];
+const LABEL_PX = 48; // room a tick label needs, at the default font size
+const MIN_LINE_PX = 4; // grid lines closer together than this are left out
 
 /**
  * The unfinished racers of a mass start along one time axis: the leader at the right edge, the others to the left of
- * it by their gap behind the leader. The width stands for the slowest lap time; a racer who would touch another one
- * moves to a line below.
+ * it by their gap behind the leader, going down the rows like stairs, with a row added where they would collide. The width stands for a fixed number of seconds, and
+ * racers further behind the leader than that sit at the left edge.
  */
 @Component({
   selector: 'app-mass-start-timeline',
@@ -39,14 +52,27 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
   @ViewChild('lane', { static: true }) private lane!: ElementRef<HTMLElement>;
 
   protected placed: PlacedRacer[] = [];
+  protected ticks: Tick[] = [];
   protected rows = 1;
+  /** The lap the leader has completed while the finish line is under way; the line starts over whenever it changes */
+  protected lineKeys: number[] = [];
+  /** How long the finish line takes for its run: half again the scale, the last part of it slowing down */
+  protected readonly lineSeconds = TIMELINE_SECONDS * 1.5;
+  /** Every racer on the timeline has crossed the line for the current lap: it sprints off and fades out from where it is */
+  protected lineDone = false;
+  protected lineFromPx = 0;
+  /** Racers whose previous-lap position the finish line has passed without their new time coming in */
+  protected readonly faded = new Set<string>();
   protected readonly rowRem = ROW_REM;
-  protected isRecentUpdate = isRecentUpdate;
+  protected readonly padRem = LANE_PAD_REM;
 
-  private width = 0;
+  private lineLap = 0;
+  private lineShown = false;
+  protected width = 0;
   private unit = 1;
   private signature = '';
   private observer: ResizeObserver | null = null;
+  private watching = 0;
 
   ngAfterViewInit(): void {
     this.observer = new ResizeObserver(() => {
@@ -65,6 +91,7 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
+    cancelAnimationFrame(this.watching);
   }
 
   // The races are updated in place, so the layout follows what the racers show rather than the input reference.
@@ -80,19 +107,100 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
   }
 
   private layout(): void {
-    const scale = timelineScale(this.races);
-    const gaps = timelineGaps(this.races, scale);
-    const texts = new Map(gaps.map(({ race, gap }) => [race.id, race === gaps[0].race ? '' : `+${gap.toFixed(1)}s`]));
-    const items = gaps.map(({ race, gap }) => ({
+    if (this.races.length && this.races.every((r) => r.laps_count === 0 && r.finished_rank == null)) {
+      this.layoutGrid();
+      this.finishLine(0, false);
+      return;
+    }
+    const gaps = timelineGaps(this.races, TIMELINE_SECONDS); // a racer further behind than the timeline is wide sits at its left edge
+    const leaderLaps = gaps[0]?.race.laps_count ?? 0;
+    const texts = gaps.map(({ gap }, i) => (i === 0 ? '' : `+${gap.toFixed(1)}s`));
+    const items = gaps.map(({ race, gap }, i) => ({
       id: race.id,
       gap,
-      width: (NUMBER_PX + CHAR_PX * (race.name.length + (texts.get(race.id)?.length ?? 0))) * this.unit,
+      width: (NUMBER_PX + CHAR_PX * (race.start_number.length + race.name.length + texts[i].length)) * this.unit,
     }));
-    const placements = new Map(layoutTimeline(items, scale, this.width).map((p) => [p.id, p]));
-    this.placed = gaps.map(({ race }) => {
-      const p = placements.get(race.id)!;
-      return { race, gapText: texts.get(race.id) ?? '', offset: p.offset, row: p.row };
-    });
+    const rows = new Map(this.placed.filter((p) => !p.fromLeft).map((p) => [p.race.id, p.row]));
+    this.placed = layoutTimeline(items, TIMELINE_SECONDS, this.width, rows).map((p, i) => ({
+      race: gaps[i].race,
+      gapText: texts[i],
+      offset: p.offset,
+      row: p.row,
+      fromLeft: false,
+      stale: gaps[i].race.laps_count < leaderLaps,
+    }));
+    this.ticks = this.gridTicks();
     this.rows = Math.max(1, ...this.placed.map((p) => p.row + 1));
+    this.finishLine(leaderLaps, this.races.every((race) => race.laps_count >= leaderLaps));
+  }
+
+  // A racer who is slower than the previous lap stays where they were until the finish line reaches that spot, which
+  // is when they fade out; a racer who reports in time moves to the new place instead.
+  private watchStale(): void {
+    this.faded.forEach((id) => {
+      if (!this.placed.some((p) => p.race.id === id && p.stale)) this.faded.delete(id);
+    });
+    if (this.watching || !this.placed.some((p) => p.stale && !this.faded.has(p.race.id))) return;
+    this.zone.runOutsideAngular(() => {
+      const step = () => {
+        this.watching = 0;
+        const line = this.lane.nativeElement.querySelector('.timeline-finish');
+        const waiting = this.placed.filter((p) => p.stale && !this.faded.has(p.race.id));
+        if (!line || !waiting.length) return;
+        const travelled = -new DOMMatrixReadOnly(getComputedStyle(line).transform).m41;
+        const passed = waiting.filter((p) => p.offset <= travelled);
+        if (passed.length) {
+          this.zone.run(() => {
+            passed.forEach((p) => this.faded.add(p.race.id));
+            this.cdr.markForCheck();
+          });
+        }
+        if (passed.length < waiting.length) this.watching = requestAnimationFrame(step);
+      };
+      this.watching = requestAnimationFrame(step);
+    });
+  }
+
+  // The finish line leaves the leader's side when the leader has crossed it and then moves along the axis at the pace of
+  // the scale, so a racer's badge meets it as they cross. Once every racer has crossed it sprints to the far side and
+  // fades out; it starts over with the leader's next lap.
+  private finishLine(leaderLaps: number, everyoneCrossed: boolean): void {
+    if (leaderLaps !== this.lineLap) {
+      this.lineLap = leaderLaps;
+      this.lineDone = false;
+      this.faded.clear();
+      this.lineShown = this.width > 0; // a lap that began while the timeline was hidden (a closed accordion) has no line to animate
+    }
+    this.lineKeys = leaderLaps > 0 && this.lineShown ? [leaderLaps] : [];
+    if (everyoneCrossed && leaderLaps > 0 && !this.lineDone) {
+      const line = this.lane.nativeElement.querySelector('.timeline-finish');
+      this.lineFromPx = line ? new DOMMatrixReadOnly(getComputedStyle(line).transform).m41 : 0;
+      this.lineDone = true;
+    }
+    this.watchStale();
+  }
+
+  // The racers of a mass start that has not started: one under the other at the left edge.
+  private layoutGrid(): void {
+    if (this.width <= 0) return;
+    this.placed = this.races.map((race, row) => ({ race, gapText: '', offset: 0, row, fromLeft: true, stale: false }));
+    this.ticks = this.gridTicks();
+    this.rows = Math.max(1, this.races.length);
+  }
+
+  // A grid line every second (when they are not too close together), a label on every few of them where the labels fit.
+  private gridTicks(): Tick[] {
+    if (this.width <= 0) return [];
+    const pxPerSecond = this.width / TIMELINE_SECONDS;
+    const labelEvery = LABEL_STEPS.find((s) => s * pxPerSecond >= LABEL_PX * this.unit) ?? LABEL_STEPS[LABEL_STEPS.length - 1];
+    const lineEvery = pxPerSecond >= MIN_LINE_PX * this.unit ? 1 : labelEvery;
+    const offset = (s: number) => s * pxPerSecond;
+    const ticks: Tick[] = [];
+    for (let s = 0; s <= TIMELINE_SECONDS; s += lineEvery) {
+      // both ends are always labelled, the ones between where the labels fit
+      const label = s === 0 || s === TIMELINE_SECONDS || (s % labelEvery === 0 && offset(s) >= LABEL_PX * this.unit && offset(s) <= this.width - LABEL_PX * this.unit);
+      ticks.push({ seconds: s, offset: offset(s), label });
+    }
+    return ticks;
   }
 }

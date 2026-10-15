@@ -2,7 +2,12 @@
 @use '../shared';
 
 // Mass start competitor: a card like those of the individual races, with the lap times as badges below the name
-:host { display: block; }
+:host {
+  display: block;
+  --mass-card-bg: color-mix(in srgb, var(--lr-neutral-bg) 40%, var(--lr-surface)); // set apart from the page
+  --mass-card-leader-bg: color-mix(in srgb, #2eb85c 16%, var(--lr-surface));
+  --mass-card-leader-line: color-mix(in srgb, #2eb85c 60%, var(--lr-surface));
+}
 .race-item-laps {
   display: flex;
   flex-direction: column;
@@ -12,9 +17,14 @@
   border: 1px solid var(--lr-line-soft);
   border-radius: 0.5rem;
   cursor: pointer;
+  background-color: var(--mass-card-bg);
   transition: outline 0.1s, background-color 0.1s;
+  &.mass-card-leader, &.race-finished { // the leader and everyone who has finished
+    background-color: var(--mass-card-leader-bg);
+    border-color: var(--mass-card-leader-line);
+  }
   &:hover {
-    background-color: var(--lr-tint-hover);
+    background-color: color-mix(in srgb, var(--lr-tint-hover) 100%, var(--mass-card-bg));
   }
   // hovering hints that a card can be selected (to follow that competitor): its border pulses in the selection colour
   &:hover:not(.race-selected) {
@@ -57,23 +67,35 @@
   gap: 0.3rem;
   flex: 1 1 auto;
 }
-// The lap times wrap over rows, so the card never scrolls sideways
+// One row of lap times, newest last: the badges are listed newest first and laid out right to left, and the
+// ones that no longer fit wrap onto a second row that is clipped away
 .lap-times-strip {
   display: flex;
-  flex-wrap: wrap;
+  flex-flow: row-reverse wrap;
+  justify-content: flex-end; // packed to the left, the newest at the end of the row
   align-items: flex-end;
-  gap: 0.25rem 0.3rem;
+  gap: 2rem 0.3rem; // the row gap pushes a wrapped second row fully out of sight
+  height: 2.05rem; // exactly one row of lap badges
+  overflow: hidden;
 }
+// Same layout as the lap badges of the individual cards: the lap sits small above its badge, never wider than it
 .mass-lap {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0.2rem;
+  line-height: 1.1;
 }
 .mass-lap-no {
-  font-size: 0.65rem;
-  line-height: 1;
-  color: var(--lr-text-small);
+  width: 0;
+  min-width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  letter-spacing: -0.02em;
+  font-size: 0.5rem;
+  color: var(--lr-text-subtle);
+  font-variant-numeric: tabular-nums;
 }
 // Remaining laps, below the badges
 .laps-counter-text {
@@ -90,18 +112,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem; /* match .lap-time-badge */
+  font-size: 0.78rem; /* match .lap-time-badge */
   line-height: 1;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
-  padding: 0.14em 0.32em; /* match .lap-time-badge */
+  padding: 0.32em 0.4em; /* match .lap-time-badge */
   border-radius: 0.22rem;
   flex-shrink: 0;
   background: linear-gradient(90deg, var(--lr-neutral-bg) 25%, var(--lr-skeleton-b) 50%, var(--lr-neutral-bg) 75%);
   color: transparent;
   opacity: 1 !important;
   animation: lapPlaceholderPulse 1.4s ease-in-out infinite;
-  min-width: 2.6rem; /* match .lap-time-badge */
+  min-width: 3rem; /* match .lap-time-badge */
 }
 // Raised ordinal suffix in finished rank badge
 .rank-sup {
@@ -109,13 +131,26 @@
   vertical-align: super;
   line-height: 0;
 }
-// Ordinal rank in front of each standings row
-.rank-label {
+// Position and laps still to go, aligned left under the lap times
+.mass-card-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.3rem;
+  .mass-rank-badge { position: absolute; left: 0; }
+}
+// Position badge
+.mass-rank-badge {
+  padding: 0.14em 0.4em;
+  border-radius: 0.22rem;
   font-size: 0.78em;
-  min-width: 2.2em;
-  text-align: right;
-  flex-shrink: 0;
-  color: var(--lr-text-faint);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: var(--lr-rank-bg);
+  color: var(--lr-rank-fg);
+  .rank-sup { vertical-align: baseline; font-size: 0.8em; line-height: 1; } // the suffix stays inside the badge
 }
 // Gap shown on standings rows (mirrors group card intra-group gap style)
 .standings-gap-label {

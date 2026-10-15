@@ -1,10 +1,70 @@
 @use '../tokens' as *;
 @use '../shared';
 
-:host { display: block; }
-.mass-timeline {
+:host {
+  display: block;
+  --mass-card-bg: color-mix(in srgb, var(--lr-neutral-bg) 40%, var(--lr-surface)); // set apart from the page
+  --mass-card-leader-bg: color-mix(in srgb, #2eb85c 16%, var(--lr-surface));
+  --mass-card-leader-line: color-mix(in srgb, #2eb85c 60%, var(--lr-surface));
+}
+.mass-timeline { padding: 0 3rem; } // room for the labels at both ends and some air around the racers
+.timeline-lane {
   position: relative;
   min-height: 2rem;
+  transition: height 0.4s ease; // a line added or dropped
+  @media (prefers-reduced-motion: reduce) { transition: none; }
+}
+// The scale above the lane: a faint line every few seconds behind the badges, each labelled with its gap to the leader
+.timeline-scale {
+  position: relative;
+  height: 1rem;
+  margin-bottom: 0.4rem;
+}
+.timeline-tick-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(50%); // centred on its line, which sits at the same right offset
+  font-size: 0.7rem;
+  line-height: 1rem;
+  color: var(--lr-text-small);
+  white-space: nowrap;
+}
+.timeline-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--lr-line-soft);
+  opacity: 0.45; // very shallow
+  &.timeline-grid-major { opacity: 0.9; } // the lines that carry a label
+}
+// The finish line: a chequered bar behind the badges that travels from the leader's side along the whole axis in the
+// time the axis stands for. It carries the timing, so it moves also when animations are reduced.
+.timeline-finish {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 0.6rem;
+  pointer-events: none;
+  background: repeating-conic-gradient(var(--lr-text) 0 25%, var(--lr-surface) 0 50%) 0 0 / 0.6rem 0.6rem;
+  border: 1px solid var(--lr-text);
+  animation: finish-slide var(--slide) linear forwards;
+}
+// everyone has crossed: from where it is, fast to the far side while fading out
+.timeline-finish-done {
+  animation: finish-out 0.7s ease-in forwards;
+}
+// Linear at the pace of the scale until the scale's end, then slowing down towards the far side, so that the line
+// waits there for the times that are not in yet. The whole run takes half again as long as the scale (--slide).
+@keyframes finish-slide {
+  0% { transform: none; animation-timing-function: linear; }
+  44.4% { transform: translateX(calc(-0.667 * var(--travel))); animation-timing-function: cubic-bezier(0.2, 0.5, 0.4, 1); }
+  100% { transform: translateX(calc(-1 * var(--travel))); }
+}
+@keyframes finish-out {
+  from { transform: translateX(var(--from)); opacity: 1; }
+  to { transform: translateX(calc(-1 * var(--travel))); opacity: 0; }
 }
 // One line per racer; the position along the line follows the gap to the leader
 .timeline-racer {
@@ -17,10 +77,16 @@
   white-space: nowrap;
   border: 1px solid var(--lr-line-soft);
   border-radius: 0.4rem;
-  background: var(--lr-surface);
-  transition: right 0.4s ease, top 0.4s ease, outline 0.1s;
+  z-index: 1;
+  background: var(--mass-card-bg);
+  transition: right 0.4s ease, top 0.4s ease, outline 0.1s, opacity 0.5s ease;
   @media (prefers-reduced-motion: reduce) { transition: none; }
-  &.timeline-leader { border-color: var(--lr-select); }
+  // the right side marks the racer's place on the axis: it lights up for a moment each time the badge is rendered
+  border-right-width: 3px;
+  animation: racer-in 0.5s ease-out, place-mark 4s ease-in-out;
+  @media (prefers-reduced-motion: reduce) { animation: none; border-right-color: var(--lr-text); }
+  &.timeline-racer-faded { opacity: 0; pointer-events: none; }
+  &.timeline-leader { background: var(--mass-card-leader-bg); border-color: var(--mass-card-leader-line); }
 }
 .timeline-name { font-size: 0.85rem; font-weight: 600; }
 .timeline-gap {
@@ -31,4 +97,12 @@
   border-radius: 0.3em;
   background-color: var(--cui-warning, #f9b115);
   color: #212529;
+}
+@keyframes place-mark { // in over the first second, held for two, back to the plain border in the last second
+  0% { border-right-color: transparent; }
+  25%, 75% { border-right-color: var(--lr-text); }
+}
+@keyframes racer-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
