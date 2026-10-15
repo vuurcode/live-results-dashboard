@@ -37,6 +37,8 @@
   z-index: 9;
   max-height: 60vh;
   overflow: hidden auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
   background: var(--lr-surface);
 }
 
