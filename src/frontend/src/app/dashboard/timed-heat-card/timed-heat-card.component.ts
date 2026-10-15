@@ -213,6 +213,11 @@ export class TimedHeatCardComponent {
     return remark.trim().split(/\s+/);
   }
 
+  /** The remark codes that mark the card: a manual time (MT) only says how the time was taken, so the card shows the time and the PR status as usual. */
+  private markingCodes(remark: string | null): string[] {
+    return this.splitRemarks(remark).map(v => v.toUpperCase()).filter(v => v !== RaceCode.ManualTime);
+  }
+
   /** Full description for a remark or invalid_reason code, or null if unknown. */
   protected timedLabelTitle(code: string | null): string | null {
     if (!code) return null;
@@ -225,8 +230,8 @@ export class TimedHeatCardComponent {
     if (race.invalid_reason) {
       return race.invalid_reason.toUpperCase() === RaceCode.Disqualified ? 'red' : 'orange';
     }
-    if (race.remark) {
-      const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
+    const parts = this.markingCodes(race.remark);
+    if (parts.length) {
       if (parts.some(v => RECORD_CODES.has(v))) return 'record';
       if (parts.some(v => v === RaceCode.PersonalRecord)) return 'pr';
       return 'orange';
@@ -263,8 +268,8 @@ export class TimedHeatCardComponent {
     if (race.invalid_reason) {
       return this.timedLabelTitle(race.invalid_reason) ?? race.invalid_reason;
     }
-    if (!race.remark) return null;
-    const parts = this.splitRemarks(race.remark).map(v => v.toUpperCase());
+    const parts = this.markingCodes(race.remark);
+    if (!parts.length) return null;
     // PR watermark is rendered as a DOM overlay to support smaller decimal formatting
     if (parts.every(v => v === RaceCode.PersonalRecord)) return null;
     // records come first, the most significant one wins
