@@ -57,7 +57,7 @@ func (s *Server) Handler(ua *useragent.Mirror, today http.HandlerFunc) http.Hand
 	if today != nil {
 		mux.HandleFunc("GET /api/competitions/today", today)
 	}
-	return ua.Middleware(logFirstRequest(securityHeaders(cors(s.opts.CORSAllowedOrigins, mux))))
+	return ua.Middleware(securityHeaders(cors(s.opts.CORSAllowedOrigins, mux)))
 }
 
 // Healthcheck answers an empty 200, for the hosting platform's health check.

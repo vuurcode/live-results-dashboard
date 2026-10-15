@@ -1,12 +1,9 @@
 package server
 
 import (
-	"log/slog"
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
-	"sync"
 )
 
 // securityHeaders marks every response as data that is neither rendered, framed nor leaked through the referrer: the
@@ -74,35 +71,4 @@ func originPatterns(allowed []string) []string {
 		patterns = append(patterns, o)
 	}
 	return patterns
-}
-
-// secretHeader reports whether a header probably carries a credential, judging by its name: its value is left out of the
-// log of the first request.
-func secretHeader(name string) bool {
-	name = strings.ToLower(name)
-	for _, part := range []string{"cookie", "auth", "token", "key", "secret", "session", "jwt", "assertion", "credential", "password"} {
-		if strings.Contains(name, part) {
-			return true
-		}
-	}
-	return false
-}
-
-// logFirstRequest writes the headers of the first request the server gets to the log, which shows what the proxy in
-// front of it passes on (the client address header for BACKEND_CLIENT_IP_HEADER, the origin, the forwarded scheme).
-func logFirstRequest(next http.Handler) http.Handler {
-	var once sync.Once
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		once.Do(func() {
-			headers := make([]any, 0, 2*len(req.Header))
-			for name, values := range req.Header {
-				if secretHeader(name) {
-					values = []string{"<hidden>"}
-				}
-				headers = append(headers, name, strings.Join(values, ", "))
-			}
-			slog.Info("First request", "method", req.Method, "path", req.URL.Path, "remote", req.RemoteAddr, slog.Group("headers", headers...))
-		})
-		next.ServeHTTP(w, req)
-	})
 }
