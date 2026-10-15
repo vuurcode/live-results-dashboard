@@ -59,7 +59,7 @@ export const sv: Translations = {
   lapVariancePopoverBody:
     'Procentuell skillnad mellan <strong>på varandra följande varvtider</strong> som används för att färga varvmärkena. <br><br><span class="popover-badge popover-badge-green">Inom gränsen</span> <span class="popover-badge popover-badge-orange">Långsammare än gränsen</span> <span class="popover-badge popover-badge-purple">Snabbare än gränsen</span>',
   lapVariancePopoverExample:
-    'T.ex. vid <span class="popover-badge popover-badge-grey">{pct}%</span>, efter ett varv på <span class="popover-badge popover-badge-green">40,0 s</span>: långsammare än <span class="popover-badge popover-badge-orange">{slow} s</span> blir orange, snabbare än <span class="popover-badge popover-badge-purple">{fast} s</span> blir lila.',
+    'T.ex. vid <span class="popover-badge popover-badge-grey">{pct}%</span> efter ett varv på <span class="popover-badge popover-badge-green">40,0 s</span>: långsammare än <span class="popover-badge popover-badge-orange">{slow} s</span> blir orange, snabbare än <span class="popover-badge popover-badge-purple">{fast} s</span> blir lila.',
   lapTimesLabel: 'Varvtider',
   showLapTimesPopoverTitle: 'Visa varvtider',
   showLapTimesPopoverBody:

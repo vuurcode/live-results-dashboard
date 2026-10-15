@@ -59,7 +59,7 @@ export const de: Translations = {
   lapVariancePopoverBody:
     'Prozentualer Unterschied zwischen <strong>aufeinanderfolgenden Rundenzeiten</strong>, mit dem die Rundenabzeichen gefärbt werden. <br><br><span class="popover-badge popover-badge-green">Innerhalb der Schwelle</span> <span class="popover-badge popover-badge-orange">Langsamer als die Schwelle</span> <span class="popover-badge popover-badge-purple">Schneller als die Schwelle</span>',
   lapVariancePopoverExample:
-    'Z. B. bei <span class="popover-badge popover-badge-grey">{pct}%</span>, nach einer Runde von <span class="popover-badge popover-badge-green">40,0 s</span>: langsamer als <span class="popover-badge popover-badge-orange">{slow} s</span> wird orange, schneller als <span class="popover-badge popover-badge-purple">{fast} s</span> wird lila.',
+    'Z. B. bei <span class="popover-badge popover-badge-grey">{pct}%</span> nach einer Runde von <span class="popover-badge popover-badge-green">40,0 s</span>: langsamer als <span class="popover-badge popover-badge-orange">{slow} s</span> wird orange, schneller als <span class="popover-badge popover-badge-purple">{fast} s</span> wird lila.',
   lapTimesLabel: 'Rundenzeiten',
   showLapTimesPopoverTitle: 'Rundenzeiten anzeigen',
   showLapTimesPopoverBody:

@@ -59,7 +59,7 @@ export const nl: Translations = {
   lapVariancePopoverBody:
     'Procentueel verschil tussen <strong>opeenvolgende rondetijden</strong> voor de kleur van rondetijd-badges. <br><br><span class="popover-badge popover-badge-green">Binnen drempel</span> <span class="popover-badge popover-badge-orange">Trager dan drempel</span> <span class="popover-badge popover-badge-purple">Sneller dan drempel</span>',
   lapVariancePopoverExample:
-    'Bijv. bij <span class="popover-badge popover-badge-grey">{pct}%</span>, na een ronde van <span class="popover-badge popover-badge-green">40,0\u202fs</span>: trager dan <span class="popover-badge popover-badge-orange">{slow}\u202fs</span> wordt oranje, sneller dan <span class="popover-badge popover-badge-purple">{fast}\u202fs</span> wordt paars.',
+    'Bijv. bij <span class="popover-badge popover-badge-grey">{pct}%</span> na een ronde van <span class="popover-badge popover-badge-green">40,0\u202fs</span>: trager dan <span class="popover-badge popover-badge-orange">{slow}\u202fs</span> wordt oranje, sneller dan <span class="popover-badge popover-badge-purple">{fast}\u202fs</span> wordt paars.',
   lapTimesLabel: 'Rondetijden',
   showLapTimesPopoverTitle: 'Rondetijden tonen',
   showLapTimesPopoverBody:

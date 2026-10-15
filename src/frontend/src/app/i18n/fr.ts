@@ -59,7 +59,7 @@ export const fr: Translations = {
   lapVariancePopoverBody:
     'Différence en pourcentage entre <strong>temps au tour consécutifs</strong> utilisée pour colorer les pastilles de tour. <br><br><span class="popover-badge popover-badge-green">Dans le seuil</span> <span class="popover-badge popover-badge-orange">Plus lent que le seuil</span> <span class="popover-badge popover-badge-purple">Plus rapide que le seuil</span>',
   lapVariancePopoverExample:
-    'P. ex. à <span class="popover-badge popover-badge-grey">{pct}%</span>, après un tour de <span class="popover-badge popover-badge-green">40,0 s</span> : plus lent que <span class="popover-badge popover-badge-orange">{slow} s</span> passe à l’orange, plus rapide que <span class="popover-badge popover-badge-purple">{fast} s</span> passe au violet.',
+    'P. ex. à <span class="popover-badge popover-badge-grey">{pct}%</span> après un tour de <span class="popover-badge popover-badge-green">40,0 s</span> : plus lent que <span class="popover-badge popover-badge-orange">{slow} s</span> passe à l’orange, plus rapide que <span class="popover-badge popover-badge-purple">{fast} s</span> passe au violet.',
   lapTimesLabel: 'Temps au tour',
   showLapTimesPopoverTitle: 'Afficher les temps au tour',
   showLapTimesPopoverBody:

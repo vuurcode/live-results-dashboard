@@ -59,7 +59,7 @@ export const en: Translations = {
   lapVariancePopoverBody:
     'Percentage difference between <strong>consecutive lap times</strong> used to colour lap badges. <br><br><span class="popover-badge popover-badge-green">Within threshold</span> <span class="popover-badge popover-badge-orange">Slower than threshold</span> <span class="popover-badge popover-badge-purple">Faster than threshold</span>',
   lapVariancePopoverExample:
-    'E.g. at <span class="popover-badge popover-badge-grey">{pct}%</span>, after a lap of <span class="popover-badge popover-badge-green">40.0\u202fs</span>: slower than <span class="popover-badge popover-badge-orange">{slow}\u202fs</span> turns orange, faster than <span class="popover-badge popover-badge-purple">{fast}\u202fs</span> turns purple.',
+    'E.g. at <span class="popover-badge popover-badge-grey">{pct}%</span> after a lap of <span class="popover-badge popover-badge-green">40.0\u202fs</span>: slower than <span class="popover-badge popover-badge-orange">{slow}\u202fs</span> turns orange, faster than <span class="popover-badge popover-badge-purple">{fast}\u202fs</span> turns purple.',
   lapTimesLabel: 'Lap times',
   showLapTimesPopoverTitle: 'Show lap times',
   showLapTimesPopoverBody:

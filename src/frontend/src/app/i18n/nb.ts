@@ -59,7 +59,7 @@ export const nb: Translations = {
   lapVariancePopoverBody:
     'Prosentvis forskjell mellom <strong>påfølgende rundetider</strong> som brukes til å farge rundemerkene. <br><br><span class="popover-badge popover-badge-green">Innenfor grensen</span> <span class="popover-badge popover-badge-orange">Tregere enn grensen</span> <span class="popover-badge popover-badge-purple">Raskere enn grensen</span>',
   lapVariancePopoverExample:
-    'F.eks. ved <span class="popover-badge popover-badge-grey">{pct}%</span>, etter en runde på <span class="popover-badge popover-badge-green">40,0 s</span>: tregere enn <span class="popover-badge popover-badge-orange">{slow} s</span> blir oransje, raskere enn <span class="popover-badge popover-badge-purple">{fast} s</span> blir lilla.',
+    'F.eks. ved <span class="popover-badge popover-badge-grey">{pct}%</span> etter en runde på <span class="popover-badge popover-badge-green">40,0 s</span>: tregere enn <span class="popover-badge popover-badge-orange">{slow} s</span> blir oransje, raskere enn <span class="popover-badge popover-badge-purple">{fast} s</span> blir lilla.',
   lapTimesLabel: 'Rundetider',
   showLapTimesPopoverTitle: 'Vis rundetider',
   showLapTimesPopoverBody:

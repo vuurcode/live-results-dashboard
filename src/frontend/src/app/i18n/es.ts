@@ -59,7 +59,7 @@ export const es: Translations = {
   lapVariancePopoverBody:
     'Diferencia porcentual entre <strong>tiempos de vuelta consecutivos</strong> que se usa para colorear las etiquetas de vuelta. <br><br><span class="popover-badge popover-badge-green">Dentro del umbral</span> <span class="popover-badge popover-badge-orange">Más lento que el umbral</span> <span class="popover-badge popover-badge-purple">Más rápido que el umbral</span>',
   lapVariancePopoverExample:
-    'P. ej. al <span class="popover-badge popover-badge-grey">{pct}%</span>, tras una vuelta de <span class="popover-badge popover-badge-green">40,0 s</span>: más lento que <span class="popover-badge popover-badge-orange">{slow} s</span> se vuelve naranja, más rápido que <span class="popover-badge popover-badge-purple">{fast} s</span> se vuelve morado.',
+    'P. ej. al <span class="popover-badge popover-badge-grey">{pct}%</span> tras una vuelta de <span class="popover-badge popover-badge-green">40,0 s</span>: más lento que <span class="popover-badge popover-badge-orange">{slow} s</span> se vuelve naranja, más rápido que <span class="popover-badge popover-badge-purple">{fast} s</span> se vuelve morado.',
   lapTimesLabel: 'Tiempos de vuelta',
   showLapTimesPopoverTitle: 'Mostrar tiempos de vuelta',
   showLapTimesPopoverBody:

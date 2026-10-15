@@ -104,7 +104,6 @@
   .topbar-group-text { display: none; }
   .topbar-group-cog { display: inline-block; vertical-align: -0.2em; margin-left: 0; }
   .topbar-group-btn { min-height: 2rem; }
-  .setting-group .form-switch .form-check-input { height: 1.5rem; width: 2.75rem; }
 }
 .topbar-competitions-title .topbar-competition-select {
   // white chevron: CoreUI's dark one disappears on the black bar (needs 3:1)
@@ -178,7 +177,7 @@
   &:focus { background-color: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); color: #fff; box-shadow: none; }
 }
 .threshold-input {
-  width: 4.5rem;
+  width: auto;
   background: rgba(255,255,255,0.1);
   border-color: rgba(255,255,255,0.25);
   color: #fff;
@@ -200,10 +199,9 @@
   @media (min-width: 768px) {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    align-items: start;
+    align-items: stretch;
     gap: 0.35rem 1.5rem;
     width: min(100%, 52rem);
-    .setting-collapse { grid-column: 1 / -1; }
   }
   padding: 0.75rem 1rem 1rem;
   background: #11161b;
@@ -213,25 +211,43 @@
   max-height: calc(100vh - var(--topbar-h, 3rem));
   overflow-y: auto;
   .setting-group {
-    flex-wrap: wrap; // the help text takes a row of its own under the setting
-    justify-content: space-between;
+    // the label, the control and its unit share a row; the help text fills the row below, so cards side by side are equally tall
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 2.5rem 1fr;
+    align-items: center;
     margin: 0 !important;
     gap: 0.25rem 0.5rem;
     min-height: 2.25rem;
     padding-top: 0.6rem;
+    flex-shrink: 0; // a tall panel scrolls instead of squeezing the settings over each other
+    // the select and the number input are equally large
+    .scheme-select, .threshold-group { width: 11rem; min-height: 2.25rem; font-size: 1rem; max-width: 100%; }
+    .threshold-input { min-height: 2.25rem; font-size: 1rem; }
+    .setting-label { white-space: normal !important; }
   }
   // The help text is always shown under its setting, in the usual white box: nothing opens or moves on hover.
   .setting-popover {
     display: block;
     position: static;
     transform: none;
-    flex: 1 1 100%;
+    grid-column: 1 / -1;
+    align-self: stretch;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     box-shadow: none;
     &::before, &::after { display: none; }
   }
+}
+.topbar:has(.settings-panel)::after {
+  // open settings: the page below the bar is slightly blurred; clicks pass through to close the panel
+  content: '';
+  position: fixed;
+  inset: var(--topbar-h, 3rem) 0 0 0;
+  z-index: -1;
+  backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 .topbar-group-btn {
   font-size: 1rem; // as large as the competition picker
@@ -291,7 +307,7 @@
   min-height: 0;
   display: flex;
   align-items: center;
-  .form-check-input { margin: 0; float: none; cursor: pointer; }
+  .form-check-input { margin: 0; float: none; cursor: pointer; height: 1.5rem; width: 3rem; }
 }
 .setting-popover {
   display: none;
@@ -442,7 +458,7 @@
     visibility: visible;
     transition: grid-template-rows 0.2s ease, opacity 0.2s ease, visibility 0s;
   }
-  > .setting-collapse-inner { overflow: hidden; min-height: 0; }
+  > .setting-collapse-inner { overflow: hidden; min-height: 0; display: flex; flex-direction: column; > .setting-group { flex: 1; } }
 }
 @media (prefers-reduced-motion: reduce) { .setting-collapse, .setting-collapse.open { transition: none; } }
 
