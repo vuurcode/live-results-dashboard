@@ -9,19 +9,16 @@ All components:
 ## Frontend
 
 ### Features
-- [x] Node 26, Angular, CoreUI; dev server on `4200`, prod server (nginx, config in its own folder, inside the combined image of `prod/Containerfile`) on `8080`
-- [x] The backend URL is a runtime environment variable of the container, never hardcoded
+- [x] Node 26, Angular, CoreUI; dev server on `4200`, prod server (nginx, inside the combined image of `prod/Containerfile`) on `8080`; the backend URL is a runtime environment variable, never hardcoded
 - [x] The competition to follow is read from the page URL (`?competitionId=<id>`, same charset as the backend) and passed on `/ws`; without it nothing is followed and the competition picker is offered
 - [x] Competition picker lists today's competitions as `<start> - <end> · <name> (<venue>)`; each is prefixed with a red circle when it is live and a grey one when not; choosing one reloads the page on that competition; the list is asked again every 5 minutes and when the backend hints that it changed; with no competitions the page says so
 - [x] Auto-connect on load; reconnect on a lost connection (waiting 1s, doubling to 30s, with jitter; not while the page is hidden) and show it; a refused competition is not retried; a silent connection and a competition that is not live (with the data source's own message) are reported instead of loading forever
 - [x] A page hidden for 2 minutes closes its connection and stops asking for the competition list; when it is visible again it reconnects (a switch of under 10 seconds keeps the connection), because the backend's bandwidth is limited
-- [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, animations, dark mode as browser default, on or off, thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
+- [x] Settings, persisted in `localStorage` and folded away by default: **Display** (follow the live heat, animations (off shows every change at once), dark mode (browser default, on or off), thousandths, lap time diff colours with their threshold) and **Mass Start** (group threshold, max groups, lap times; hidden without a mass start); each has a help text below it
 - [x] The screen stays on while the page is visible (Screen Wake Lock, asked again when the page comes back; browsers without it, or that refuse it, let the screen sleep). It needs a secure context: https, or localhost
-- [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
+- [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
-- [x] Animations can be switched off in the settings (default on): laps, count-ups, flashes, sliding, folding and smooth scrolling then show every change at once
-- [x] Light and dark theme, following the system preference (also while the page is open) unless the setting says On or Off; both keep the contrast of text, badges and borders, checked by axe in each
-- [x] Accessible: no axe violations, keyboard selection of mass-start rows, contrast of badges, controls of at least 24px
+- [x] Light and dark theme, following the system preference unless the setting says On or Off; no axe violations in either, keyboard selection of mass-start rows, controls of at least 24px
 
 ### Data (unit specs: `src/app/results/*.spec.ts`, `src/app/dashboard/auto-follow.spec.ts`)
 - [x] `distance_meta` and `competitor_update` messages are applied to local state; `raceIds` per heat group restores the cards on reconnect; the backend replays everything on connect, nothing else is stored apart from the settings
@@ -35,7 +32,7 @@ All components:
 - [x] The scroll target keeps the followed element a fixed fraction down the viewport, clamped to the page
 
 ### UI (e2e specs: `src/frontend/e2e`)
-- [x] Page title `<event name> | Live Results Experiment - Proof of Concept`; the event name is the page heading, replaced visually by the competition picker; top bar dark, pinned with the open distance title below it; the title shrinks while pinned
+- [x] Page title `<event name> | Live Results Experiment - Proof of Concept`; the event name is the page heading, replaced visually by the competition picker; top bar dark, pinned with the open distance title below it
 - [x] Distances in a full-width accordion by `event_number` descending; the live one opens on load; done ones are slightly dimmed; badges before the name: Live (animated), Done, X/Y progress, PR N / TRC N after it
 - [x] Mass start: group cards in a strip pinned below the title, and one standings list with rank, start number, name, gap or total time, lap badges coloured by the lap diff rules, laps counter and Final lap badge; rows can be selected; a lap times toggle hides only the badges
 - [x] Timed distance: one plain row per heat with cards in lane columns: four per row from 1280px, two from 768px, one below; lane sets without a competitor are hidden on narrow screens; the cards of a row, and their titles, are equally tall
@@ -43,4 +40,5 @@ All components:
 - [x] Card body: lap badges with their distance above, total time at the right (on its own line when it does not fit), grey placeholders for laps to come (hidden but keeping their room for DNS, DQ, WDR)
 - [x] Watermarks, centred in the title: NEW PERSONAL BEST with its difference, `+ diff` in orange when slower than the personal best, the record or code name (not for a manual time, which shows its time and PR status as usual); a card without a time centres it on the whole card at four lanes
 - [x] In the live heat every competitor still racing has a thick red border and a Live badge, until the result is in or the card has a border of its own (personal best, record, fall); the page never scrolls sideways; long and unbreakable names stay inside their cards; large screens scale the root font size
-- [x] Narrow screens: competition picker and a cogwheel button share one row; wide screens: a wider picker and the label on the settings button with a space before its cogwheel
+- [x] Narrow screens: competition picker and a cogwheel button share one row; wide screens: a wider picker and the label on the settings button
+- [x] The settings panel is one column on narrow screens and two on wide ones, cards side by side equally tall, the help text always shown under its setting; while it is open the page below is slightly blurred
