@@ -6,3 +6,4 @@ example.json
 /container-data/
 /src/mockserver/data/*
 /session-export/
+/.env.prod
