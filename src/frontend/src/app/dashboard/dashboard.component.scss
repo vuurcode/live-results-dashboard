@@ -37,7 +37,7 @@
   z-index: 9;
   max-height: 35vh;
   overflow: auto;
-  background: #fff;
+  background: var(--lr-surface);
 }
 
 // The distances run edge to edge: no borders, and the content uses the full width of the item.
@@ -124,8 +124,8 @@
   flex: none;
   padding: 0.25rem 0.6rem;
   border-radius: 0.375rem;
-  background: #fff;
-  color: #212529;
+  background: var(--lr-popover-bg);
+  color: var(--lr-popover-fg);
   font-size: 0.85rem;
   font-weight: 600;
   white-space: nowrap;
@@ -136,7 +136,7 @@
     top: 50%;
     width: 0.7rem;
     height: 0.7rem;
-    background: #fff;
+    background: var(--lr-popover-bg);
     transform: translateY(-50%) rotate(45deg);
   }
 }
@@ -153,7 +153,7 @@
   background-color: rgba(255,255,255,0.1);
   border-color: rgba(255,255,255,0.25);
   color: #fff;
-  option { color: #212529; padding: 0.35rem 0.75rem; } // side padding is honoured by Chromium and Firefox popups
+  option { color: #212529; background-color: #fff; padding: 0.35rem 0.75rem; } // side padding is honoured by Chromium and Firefox popups
 }
 @media (max-width: 767.98px) {
   .topbar-competitions { flex: 1 1 0; min-width: 0; }
@@ -243,8 +243,8 @@
   cursor: help; // a ? where there is a tooltip
 }
 .setting-popover-example {
-  border-top: 1px solid rgba(0,0,0,0.07);
-  color: #6c757d;
+  border-top: 1px solid var(--lr-line-soft);
+  color: var(--lr-text-subtle);
   font-style: italic;
 }
 // Inline color badges inside popover description text (the text is injected as HTML: ::ng-deep reaches it)
@@ -253,7 +253,7 @@
   font-size: 0.85em;
   font-weight: 600;
   padding: 0.1em 0.5em;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--lr-line);
   margin: 0.1em 0;
   border-radius: 0.25rem;
   color: #fff;
@@ -261,8 +261,8 @@
   &.popover-badge-green  { background: $tint-normal-bg; color: $tint-normal-fg; }
   &.popover-badge-orange { background: $tint-slow-bg; color: $tint-slow-fg; }
   &.popover-badge-purple { background: $tint-fast-bg; color: $tint-fast-fg; }
-  &.popover-badge-light  { background: #e9ecef; color: #212529; } // the first / partial laps, like the lap badges
-  &.popover-badge-grey   { background: #454c52; color: #fff; border-color: #454c52; } // the current threshold
+  &.popover-badge-light  { background: var(--lr-neutral-bg); color: var(--lr-neutral-fg); } // the first / partial laps, like the lap badges
+  &.popover-badge-grey   { background: var(--lr-strong-bg); color: var(--lr-strong-fg); border-color: var(--lr-strong-bg); } // the current threshold
 }
 .setting-group .form-switch {
   margin: 0;
@@ -281,11 +281,11 @@
   z-index: 1080;
   min-width: 14rem;
   max-width: 20rem;
-  background: #fff;
-  color: #212529;
-  border: 1px solid rgba(0,0,0,0.15);
+  background: var(--lr-popover-bg);
+  color: var(--lr-popover-fg);
+  border: 1px solid var(--lr-popover-line);
   border-radius: 0.375rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   padding: 0;
   pointer-events: none;
   // arrow pointing up
@@ -297,7 +297,7 @@
     transform: translateX(-50%);
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
-    border-bottom: 6px solid rgba(0,0,0,0.15);
+    border-bottom: 6px solid var(--lr-popover-line);
   }
   &::after {
     content: '';
@@ -307,20 +307,20 @@
     transform: translateX(-50%);
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
-    border-bottom: 6px solid #fff;
+    border-bottom: 6px solid var(--lr-popover-bg);
   }
 }
 .setting-popover-title {
   font-size: 0.78rem;
   font-weight: 600;
   padding: 0.4rem 0.6rem 0.25rem;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
+  border-bottom: 1px solid var(--lr-line);
 }
 .setting-popover-body {
   font-size: 0.73rem;
   line-height: 1.45;
   padding: 0.3rem 0.6rem 0.4rem;
-  color: #495057;
+  color: var(--lr-text-meta);
 }
 .setting-group:hover .setting-popover {
   display: block;
@@ -348,7 +348,7 @@
 }
 .finishing-line-bar {
   height: 3px;
-  background: #000;
+  background: var(--lr-finish-line);
   flex-shrink: 0;
 }
 .finishing-line-label {
@@ -356,14 +356,14 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
-  color: #000;
+  color: var(--lr-finish-line);
   font-weight: 600;
 }
 
 // ===== GROUP SEPARATOR LINE =====
 .group-line-bar {
   height: 1px;
-  background: #ced4da;
+  background: var(--lr-separator-line);
   flex-shrink: 0;
 }
 .group-line-label {
@@ -371,7 +371,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
-  color: #adb5bd;
+  color: var(--lr-separator-text);
 }
 // Gray transparent count badge on the separator line
 .group-sep-count-badge {
@@ -384,8 +384,8 @@
   min-width: 1.5em;
   padding: 0.1em 0.4em;
   border-radius: 99px;
-  background-color: rgba(108, 117, 125, 0.18);
-  color: #6c757d;
+  background-color: var(--lr-count-bg);
+  color: var(--lr-text-subtle);
   line-height: 1.4;
 }
 // Orange gap badge on the separator line (mirrors gap-badge but orange)
@@ -396,8 +396,8 @@
   font-weight: 600;
   padding: 0.1em 0.4em;
   border-radius: 0.3em;
-  background-color: rgba(253, 126, 20, 0.15);
-  color: #fd7e14;
+  background-color: var(--lr-gap-bg);
+  color: var(--lr-gap-fg);
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
@@ -427,10 +427,10 @@
 
 // Unofficial-results notice above the top bar
 .disclaimer-bar {
-  background: #fff3cd;
-  color: #664d03; // 7.5:1
+  background: var(--lr-notice-bg);
+  color: var(--lr-notice-fg); // 7.5:1
   font-size: 0.8rem;
   text-align: center;
   padding: 0.25rem 1rem;
-  border-bottom: 1px solid #ffe69c;
+  border-bottom: 1px solid var(--lr-notice-line);
 }

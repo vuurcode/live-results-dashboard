@@ -8,6 +8,125 @@ html {
 
 /* You can add global styles to this file, and also import other style files */
 
+
+// Colours that differ between the light and the dark theme (CoreUI's `data-coreui-theme`, set by color-scheme.ts from the system
+// preference). Every text colour here keeps 4.5:1 (3:1 for borders) on the surface it sits on, in both themes.
+:root {
+  color-scheme: light;
+  --lr-surface: #fff;
+  --lr-text: #212529;
+  --lr-text-muted: #565e64;    // on the surface: 6.4:1
+  --lr-text-small: #454c52;    // the small grey labels: 9:1
+  --lr-text-meta: #495057;
+  --lr-text-subtle: #6c757d;   // 4.7:1
+  --lr-text-faint: #adb5bd;    // the dimmed labels and the lap time before a lap arrives
+  --lr-line: rgba(0, 0, 0, 0.12);
+  --lr-line-soft: rgba(0, 0, 0, 0.05);
+  --lr-tint: rgba(0, 0, 0, 0.02);
+  --lr-tint-hover: rgba(0, 0, 0, 0.04);
+  --lr-chip-bg: rgba(0, 0, 0, 0.08);
+  --lr-neutral-bg: #e9ecef;    // light grey badges and placeholders
+  --lr-neutral-fg: #212529;
+  --lr-placeholder: #ced4da;
+  --lr-strong-bg: #454c52;     // the newest lap and the final time
+  --lr-strong-fg: #fff;
+  --lr-strong-flash: #1e6b34;  // the update flash on the strong badge, white on it is 6.6:1
+  --lr-flash-yellow: #fff3cd;
+  --lr-flash-green: #d4edda;
+  --lr-ring: #212529;
+  --lr-bib-bg: #000;
+  --lr-bib-fg: #fff;
+  --lr-select: #0d6efd;
+  --lr-select-bg: rgba(13, 110, 253, 0.07);
+  --lr-live: #dc3545;
+  --lr-accent: #6f42c1;        // personal bests and records
+  --lr-accent-text: rgba(111, 66, 193, 0.85);
+  --lr-slower-text: rgba(176, 84, 0, 0.9);
+  --lr-fall: red;
+  --lr-fall-text: rgba(255, 0, 0, 0.8);
+  --lr-warn: #c45e00;
+  --lr-warn-text: rgba(200, 100, 0, 0.8);
+  --lr-watermark-bg: rgba(255, 255, 255, 0.65);
+  --lr-finished-mark: rgba(0, 150, 80, 0.22);
+  --lr-skeleton-a: #e0e0e0;
+  --lr-skeleton-b: #f0f0f0;
+  --lr-skeleton-panel: #f8f9fa;
+  --lr-skeleton-line: #dee2e6;
+  --lr-notice-bg: #fff3cd;
+  --lr-notice-fg: #664d03;     // 7.5:1
+  --lr-notice-line: #ffe69c;
+  --lr-popover-bg: #fff;
+  --lr-popover-fg: #212529;
+  --lr-popover-line: rgba(0, 0, 0, 0.15);
+  --lr-separator-line: #ced4da;
+  --lr-separator-text: #adb5bd;
+  --lr-count-bg: rgba(108, 117, 125, 0.18);
+  --lr-gap-bg: rgba(253, 126, 20, 0.15);
+  --lr-gap-fg: #fd7e14;
+  --lr-finish-line: #000;
+  // soft tints of the lap time diff colours (dark text on a light tint: > 9:1)
+  --lr-tint-normal-bg: #d1e7dd; --lr-tint-normal-fg: #0a3622;
+  --lr-tint-slow-bg: #ffe5d0;   --lr-tint-slow-fg: #6a3200;
+  --lr-tint-fast-bg: #e2d9f3;   --lr-tint-fast-fg: #3b2273;
+}
+[data-coreui-theme='dark'] {
+  color-scheme: dark;
+  --lr-surface: var(--cui-body-bg);
+  --lr-text: #e9ecef;
+  --lr-text-muted: #aab3bc;
+  --lr-text-small: #c3cad1;
+  --lr-text-meta: #b8c0c8;
+  --lr-text-subtle: #9ba5ae;
+  --lr-text-faint: #7f8993;
+  --lr-line: rgba(255, 255, 255, 0.2);
+  --lr-line-soft: rgba(255, 255, 255, 0.1);
+  --lr-tint: rgba(255, 255, 255, 0.04);
+  --lr-tint-hover: rgba(255, 255, 255, 0.07);
+  --lr-chip-bg: rgba(255, 255, 255, 0.12);
+  --lr-neutral-bg: #3a434d;
+  --lr-neutral-fg: #f1f3f5;
+  --lr-placeholder: #3f4954;
+  --lr-strong-bg: #dee2e6;
+  --lr-strong-fg: #11161b;
+  --lr-strong-flash: #7fd49a;  // dark text on it: 10:1
+  --lr-flash-yellow: #54430f;
+  --lr-flash-green: #1d4a2c;
+  --lr-ring: #f1f3f5;
+  --lr-bib-bg: #e9ecef;
+  --lr-bib-fg: #000;
+  --lr-select: #6ea8fe;
+  --lr-select-bg: rgba(110, 168, 254, 0.15);
+  --lr-live: #ff6b78;
+  --lr-accent: #b79df0;
+  --lr-accent-text: #c9b5f5;
+  --lr-slower-text: #ffb066;
+  --lr-fall: #ff6b6b;
+  --lr-fall-text: #ff8f8f;
+  --lr-warn: #ff9a3c;
+  --lr-warn-text: #ffa94d;
+  --lr-watermark-bg: rgba(33, 38, 49, 0.75);
+  --lr-finished-mark: rgba(80, 220, 140, 0.25);
+  --lr-skeleton-a: #2c333d;
+  --lr-skeleton-b: #3a434d;
+  --lr-skeleton-panel: #262c37;
+  --lr-skeleton-line: #3a434d;
+  --lr-notice-bg: #4a3b0c;
+  --lr-notice-fg: #ffe69c;
+  --lr-notice-line: #6b5513;
+  --lr-popover-bg: #2c333d;
+  --lr-popover-fg: #e9ecef;
+  --lr-popover-line: rgba(255, 255, 255, 0.25);
+  --lr-separator-line: #4b5560;
+  --lr-separator-text: #8d98a2;
+  --lr-count-bg: rgba(173, 181, 189, 0.2);
+  --lr-gap-bg: rgba(253, 126, 20, 0.22);
+  --lr-gap-fg: #ffa24d;
+  --lr-finish-line: #e9ecef;
+  --lr-tint-normal-bg: #14452a; --lr-tint-normal-fg: #c9ecd6;
+  --lr-tint-slow-bg: #5a3410;   --lr-tint-slow-fg: #ffdcbc;
+  --lr-tint-fast-bg: #3a2a66;   --lr-tint-fast-fg: #e3d9fb;
+}
+
 // Badge text is small (about 12px bold), so it needs 4.5:1 contrast. CoreUI's default
 // success (#1b9e3e) and danger (#e55353) backgrounds reach only 3.5:1 / 3.7:1 with white text.
 .badge.bg-success { background-color: #177d3c !important; } // 5.2:1 with white
@@ -15,7 +134,7 @@ html {
 
 // CoreUI's .text-muted is a translucent grey (3.7:1 on white). This solid grey keeps 4.5:1 even
 // when finished rows dim their text to 85% opacity. Dark surfaces override it where needed.
-.text-muted { color: #565e64 !important; }
+.text-muted { color: var(--lr-text-muted) !important; }
 
 // Skeleton styles moved from dashboard.component.scss for global use
 @keyframes shimmer {
@@ -23,7 +142,7 @@ html {
   100% { background-position:  400px 0; }
 }
 %skeleton-base {
-  background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+  background: linear-gradient(90deg, var(--lr-skeleton-a) 25%, var(--lr-skeleton-b) 50%, var(--lr-skeleton-a) 75%);
   background-size: 400px 100%;
   animation: shimmer 1.4s infinite linear;
   border-radius: 4px;
@@ -36,10 +155,10 @@ html {
 .skeleton-badge    { @extend %skeleton-base; width: 56px;  height: 1.25rem; border-radius: 99px; }
 .skeleton-text     { @extend %skeleton-base; display: inline-block; }
 .skeleton-accordion {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: var(--lr-skeleton-panel);
+  border: 1px solid var(--lr-skeleton-line);
 }
-.skeleton-accordion-header { border-bottom: 1px solid #dee2e6; }
+.skeleton-accordion-header { border-bottom: 1px solid var(--lr-skeleton-line); }
 
 // Shrinking a pinned distance title moves the content below it. With scroll anchoring the browser answers by scrolling,
 // which un-pins the title again right at the pinning boundary and makes the bars flicker.

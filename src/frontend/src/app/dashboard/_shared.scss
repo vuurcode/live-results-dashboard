@@ -3,7 +3,7 @@
 // Styles that more than one of the dashboard's components need; each component includes them.
 // ===== ANIMATIONS =====
 @keyframes flashYellow {
-  0%   { background-color: #fff3cd; }
+  0%   { background-color: var(--lr-flash-yellow); }
   100% { background-color: transparent; }
 }
 @keyframes recordRainbowText {
@@ -38,7 +38,7 @@
   to   { --snake-angle: var(--arc, 360deg); }
 }
 @keyframes flashGreen {
-  0%   { background-color: #d4edda; }
+  0%   { background-color: var(--lr-flash-green); }
   100% { background-color: transparent; }
 }
 // ===== POSITION-CHANGE SWAP ANIMATION =====
@@ -61,8 +61,8 @@
   100% { box-shadow: 0 0 0 0   rgba(220,53,69,0);   }
 }
 @keyframes flashLatestGreen {
-  0%   { background-color: #1e6b34; } // white: 6.6:1
-  100% { background-color: #454c52; }
+  0%   { background-color: var(--lr-strong-flash); }
+  100% { background-color: var(--lr-strong-bg); }
 }
 
 [title]:not(button):not(input):not(select) { cursor: help; }
@@ -95,8 +95,8 @@
   flex-shrink: 0;
 }
 .badge-black {
-  background-color: #000 !important;
-  color: #fff !important;
+  background-color: var(--lr-bib-bg) !important;
+  color: var(--lr-bib-fg) !important;
 }
 // ===== RACE ITEMS =====
 .race-item,
@@ -107,7 +107,7 @@
 .race-item {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid var(--lr-line-soft);
   &.race-finished::before {
     content: attr(data-finished-label);
     position: absolute;
@@ -119,7 +119,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     text-align: center;
-    color: rgba(0, 150, 80, 0.22);
+    color: var(--lr-finished-mark);
     pointer-events: none;
     white-space: nowrap;
     z-index: 0;
@@ -165,9 +165,9 @@
 }
 // Selected state — distinct border + tinted background
 .race-selected {
-  outline: 2px solid #0d6efd !important;
+  outline: 2px solid var(--lr-select) !important;
   outline-offset: -2px;
-  background-color: rgba(13, 110, 253, 0.07) !important;
+  background-color: var(--lr-select-bg) !important;
 }
 // Finished competitors — dimmed
 .race-finished {
@@ -199,14 +199,14 @@
   grid-template-rows: subgrid;
   grid-template-columns: minmax(0, 1fr);
   cursor: default;
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 1px solid var(--lr-line);
   border-radius: 0.375rem;
-  background: #fff;
+  background: var(--lr-surface);
   overflow: clip; // clips the rounded corners without becoming a scroll container, so the title can stick
   transition: outline 0.1s;
   position: relative;
   &.race-selected {
-    outline: 2px solid #0d6efd !important;
+    outline: 2px solid var(--lr-select) !important;
     outline-offset: -2px;
   }
   &.timed-lane-placeholder {
@@ -227,8 +227,8 @@
       left: 50%;
       transform: translate(-50%, -50%) rotate(-6deg);
     }
-    &.timed-watermark-slower { color: rgba(176, 84, 0, 0.9); } // orange, 4.9:1 on white
-    &.timed-watermark-pr { color: rgba(111, 66, 193, 0.85); } // 4.7:1 on white (0.80 gave 4.2:1)
+    &.timed-watermark-slower { color: var(--lr-slower-text); } // orange
+    &.timed-watermark-pr { color: var(--lr-accent-text); } // purple, 4.7:1 on white (0.80 gave 4.2:1)
     .timed-watermark-text { font-size: 0.6em; } // the label is smaller than the diff below it
     .timed-watermark-decimal { font-size: 0.65em; }
   }
@@ -248,32 +248,32 @@
     .timed-watermark, .timed-comp-title[data-watermark]::before { opacity: 0; scale: 1.8; }
   }
   // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
-  &.timed-card-live { border-color: #dc3545; outline: 2px solid #dc3545; outline-offset: -3px; }
+  &.timed-card-live { border-color: var(--lr-live); outline: 2px solid var(--lr-live); outline-offset: -3px; }
   &.timed-card-pr {
-    border: 2px solid #6f42c1;
-    .timed-comp-title::before { color: rgba(111, 66, 193, 0.85); }
+    border: 2px solid var(--lr-accent);
+    .timed-comp-title::before { color: var(--lr-accent-text); }
   }
   &.timed-card-record {
-    border: 4px solid #6f42c1;
+    border: 4px solid var(--lr-accent);
     animation: recordRainbow 2s linear infinite;
     .timed-comp-title::before { animation: recordRainbowText 2s linear infinite; }
   }
   // DQ / DNF / Fall etc. are marked by the border, watermark and badge, not by fading the card:
   // the old card-wide opacity 0.7 made every badge and grey label on these cards fail contrast.
   &.timed-card-red {
-    border: 2px solid red;
-    .timed-comp-title::before { color: rgba(255, 0, 0, 0.80); }
+    border: 2px solid var(--lr-fall);
+    .timed-comp-title::before { color: var(--lr-fall-text); }
   }
   &.timed-card-orange {
-    border: 2px solid #c45e00;
-    .timed-comp-title::before { color: rgba(200, 100, 0, 0.80); }
+    border: 2px solid var(--lr-warn);
+    .timed-comp-title::before { color: var(--lr-warn-text); }
   }
 }
 .timed-split-badge.timed-compact-badge {
   &.lap-badge-normal { background-color: $tint-normal-bg; color: $tint-normal-fg; } // beats the plain badge rule above
   &.lap-badge-slow   { background-color: $tint-slow-bg; color: $tint-slow-fg; }
   &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
-  &.timed-compact-partial { background-color: #e9ecef; color: #212529; } // the first lap has no previous lap to differ from: light grey while the diff colours are on
+  &.timed-compact-partial { background-color: var(--lr-neutral-bg); color: var(--lr-neutral-fg); } // the first lap has no previous lap to differ from: light grey while the diff colours are on
   // the newest lap stands out: a ring that a snake draws around the badge counter-clockwise, once, when the lap arrives
   // (a badge that is merely rendered, such as when a distance is unfolded, shows the finished ring);
   // a first lap shorter than a full lap keeps its ring, as it shows where the distance starts on the oval
@@ -290,7 +290,7 @@
       // --lap-fraction (half for a 200m first lap) back from there. It is drawn from the lap's start to the finish, counter-clockwise,
       // the way skaters go round.
       --arc: calc(360deg * var(--lap-fraction, 1));
-      background: conic-gradient(from var(--ring-from, 0deg), transparent calc(var(--arc) - var(--snake-angle)), #212529 0 var(--arc), transparent 0);
+      background: conic-gradient(from var(--ring-from, 0deg), transparent calc(var(--arc) - var(--snake-angle)), var(--lr-ring) 0 var(--arc), transparent 0);
       mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       mask-composite: exclude; // only the padding box stays: the ring
       -webkit-mask-composite: xor;
@@ -306,8 +306,8 @@
 }
 .timed-compact-final .timed-lap-time {
   // the total as a badge, also while the race runs (light grey, like the placeholder), the same size as the final one
-  background-color: #e9ecef;
-  color: #212529;
+  background-color: var(--lr-neutral-bg);
+  color: var(--lr-neutral-fg);
   border-radius: 0.25rem;
   padding: 0.25em 0.6em;
   font-size: 1.5rem; // the result: much bigger than the lap badges
@@ -344,7 +344,7 @@
 }
 .time-decimal {
   font-size: 0.78em;
-  color: #454c52; // 9:1 on white, still 4.9:1 on the green update flash after finished rows dim to 85% (CoreUI's translucent secondary colour gave 3.7:1)
+  color: var(--lr-text-small); // 9:1 on white, still 4.9:1 on the green update flash after finished rows dim to 85% (CoreUI's translucent secondary colour gave 3.7:1)
 }
 .group-strip-card {
   // Cards share the row evenly, but never get too narrow to read a name nor wider than a card needs;
@@ -357,6 +357,6 @@
 // Keyboard focus for selectable competitor rows
 .race-item[role='button']:focus-visible,
 .race-item-group[role='button']:focus-visible {
-  outline: 2px solid #0d6efd;
+  outline: 2px solid var(--lr-select);
   outline-offset: 1px;
 }

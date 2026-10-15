@@ -11,17 +11,29 @@ async function restartReplay(request: import('@playwright/test').APIRequestConte
   await new Promise((resolve) => setTimeout(resolve, 800));
 }
 
+// Badges ease between colours for over a second; axe must not measure a colour half way between two.
+async function settleTransitions(page: import('@playwright/test').Page) {
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => undefined))),
+  );
+}
+
 test.describe('accessibility', () => {
-  for (const [competition, ready] of [
-    ['e2e-timed', '.timed-compact-done'], // finished cards show the total time badge
-    ['e2e-mass', '.race-item-laps.race-finished'],
+  for (const [competition, ready, scheme] of [
+    ['e2e-timed', '.timed-compact-done', 'light'], // finished cards show the total time badge
+    ['e2e-mass', '.race-item-laps.race-finished', 'light'],
+    ['e2e-timed', '.timed-compact-done', 'dark'],
+    ['e2e-mass', '.race-item-laps.race-finished', 'dark'],
   ] as const) {
-    test(`${competition}: no axe violations once the replay has finished`, async ({ page, request }) => {
+    test(`${competition} (${scheme}): no axe violations once the replay has finished`, async ({ page, request }) => {
+      await page.emulateMedia({ colorScheme: scheme });
       await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // colours on: their contrast is checked too
       await restartReplay(request, competition);
       await page.goto(`/?competitionId=${competition}`);
       // finished rows are the last state of the replay, with every badge and row on screen
       await expect(page.locator(ready)).toHaveCount(4);
+      await expect(page.locator('html')).toHaveAttribute('data-coreui-theme', scheme);
+      await settleTransitions(page);
 
       const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
       expect(
@@ -52,7 +64,9 @@ test.describe('accessibility', () => {
   });
 });
 
-test('compact lap badge colours (green, orange, purple, and the latest one) have enough contrast', async ({ page, request }) => {
+for (const scheme of ['light', 'dark'] as const) {
+test(`compact lap badge colours (green, orange, purple, and the latest one) have enough contrast (${scheme})`, async ({ page, request }) => {
+  await page.emulateMedia({ colorScheme: scheme });
   await restartReplay(request, 'e2e-timed');
   await page.addInitScript(() => localStorage.setItem('compactColors', 'true'));
   await page.goto('/?competitionId=e2e-timed');
@@ -68,6 +82,7 @@ test('compact lap badge colours (green, orange, purple, and the latest one) have
   const { violations } = await new AxeBuilder({ page }).include('.timed-compact-badge').withTags(TAGS).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.html.slice(0, 80)} ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
 });
+}
 
 test('a collapsed distance stands out from the page and keeps its contrast', async ({ page, request }) => {
   await restartReplay(request, 'e2e-timed');

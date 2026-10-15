@@ -19,6 +19,7 @@ All components:
 - [x] The screen stays on while the page is visible (Screen Wake Lock, asked again when the page comes back; browsers without it, or that refuse it, let the screen sleep). It needs a secure context: https, or localhost
 - [x] Follow: the page lands once on the live distance after a load; with follow on it keeps scrolling to the heat marked live, forward only, and opens the live distance
 - [x] Languages: en, nl, de, fr, es, it, nb, sv, chosen by the browser language, with the term for a personal best per language
+- [x] Light and dark theme, following the system preference (also while the page is open); both keep the contrast of text, badges and borders, checked by axe in each
 - [x] Accessible: no axe violations, keyboard selection of mass-start rows, contrast of badges, controls of at least 24px
 
 ### Data (unit specs: `src/app/results/*.spec.ts`, `src/app/dashboard/auto-follow.spec.ts`)

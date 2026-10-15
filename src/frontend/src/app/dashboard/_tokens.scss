@@ -1,7 +1,7 @@
-// Soft tints of the lap time diff colours (dark text on a light tint: > 9:1), used by the lap badges and the help text
-$tint-normal-bg: #d1e7dd; $tint-normal-fg: #0a3622;
-$tint-slow-bg: #ffe5d0; $tint-slow-fg: #6a3200;
-$tint-fast-bg: #e2d9f3; $tint-fast-fg: #3b2273;
+// Soft tints of the lap time diff colours (dark text on a light tint, light on a dark one: > 9:1), used by the lap badges and the help text; the theme colours are in styles.scss
+$tint-normal-bg: var(--lr-tint-normal-bg); $tint-normal-fg: var(--lr-tint-normal-fg);
+$tint-slow-bg: var(--lr-tint-slow-bg); $tint-slow-fg: var(--lr-tint-slow-fg);
+$tint-fast-bg: var(--lr-tint-fast-bg); $tint-fast-fg: var(--lr-tint-fast-fg);
 
 // The smallest viewport that shows four lanes in a row; narrower ones show two per row (one per row on the narrowest)
 $four-lanes-min: 1280px;
@@ -20,7 +20,7 @@ $four-lanes-min: 1280px;
   max-width: 90%;
   padding: 0.1em 0.5em;
   border-radius: 0.3em;
-  background: rgba(255, 255, 255, 0.65); // see-through white keeps the text readable over the rows
+  background: var(--lr-watermark-bg); // see-through keeps the text readable over the rows
   transform: rotate(-6deg);
   @media (min-width: $four-lanes-min) { transform: translate(-50%, -50%) rotate(-6deg); }
   font-size: $font-size; // follows the card width but is capped in rem: cards are wide and short, so it scales with zoom, not with width alone

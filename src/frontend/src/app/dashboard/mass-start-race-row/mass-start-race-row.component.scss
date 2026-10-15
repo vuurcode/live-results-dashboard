@@ -5,12 +5,12 @@
 .race-item-laps {
   display: flex;
   align-items: center;
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid var(--lr-line-soft);
   cursor: pointer;
   transition: outline 0.1s, background-color 0.1s;
   gap: 0.5rem;
   &:hover {
-    background-color: rgba(0, 0, 0, 0.04);
+    background-color: var(--lr-tint-hover);
   }
 }
 // Left column: fixed width so all badge strips start at the same horizontal offset
@@ -38,7 +38,7 @@
   font-size: 0.75rem;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
-  color: #454c52;
+  color: var(--lr-text-small);
   white-space: nowrap;
   line-height: 1;
 }
@@ -69,7 +69,7 @@
   padding: 0.14em 0.32em; /* match .lap-time-badge */
   border-radius: 0.22rem;
   flex-shrink: 0;
-  background: linear-gradient(90deg, #e9ecef 25%, #f3f5f6 50%, #e9ecef 75%);
+  background: linear-gradient(90deg, var(--lr-neutral-bg) 25%, var(--lr-skeleton-b) 50%, var(--lr-neutral-bg) 75%);
   color: transparent;
   opacity: 1 !important;
   animation: lapPlaceholderPulse 1.4s ease-in-out infinite;
@@ -87,12 +87,12 @@
   min-width: 2.2em;
   text-align: right;
   flex-shrink: 0;
-  color: #adb5bd;
+  color: var(--lr-text-faint);
 }
 // Gap shown on standings rows (mirrors group card intra-group gap style)
 .standings-gap-label {
   font-size: 0.78em;
   font-style: italic;
-  color: #454c52; // CoreUI's translucent secondary colour gave 3.7:1
+  color: var(--lr-text-small); // CoreUI's translucent secondary colour gave 3.7:1
   white-space: nowrap;
 }
