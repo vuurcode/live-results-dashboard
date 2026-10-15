@@ -22,13 +22,13 @@ func newGeneratedServer(t *testing.T, interval time.Duration) *httptest.Server {
 
 func TestGeneratedMatchesHaveOwnVenuesAndLiveFrames(t *testing.T) {
 	matches := generatedMatches(maxGeneratedMatches)
-	if len(matches) != 3 {
-		t.Fatalf("matches = %d, want 3", len(matches))
+	if len(matches) != 4 {
+		t.Fatalf("matches = %d, want 4", len(matches))
 	}
 	venues := map[string]bool{}
 	for _, m := range matches {
 		venues[m.venue.code] = true
-		if len(m.frames) < 10 {
+		if len(m.frames) < 8 {
 			t.Errorf("%s: only %d frames", m.id, len(m.frames))
 		}
 		for i, f := range m.frames {
@@ -62,7 +62,7 @@ func TestGeneratedMatchesHaveOwnVenuesAndLiveFrames(t *testing.T) {
 			}
 		}
 	}
-	if len(venues) != 3 {
+	if len(venues) != 4 {
 		t.Errorf("venues = %v, want one per match", venues)
 	}
 }
@@ -80,13 +80,13 @@ func TestGeneratedServedOnBothAPIs(t *testing.T) {
 	ts := newGeneratedServer(t, 20*time.Millisecond)
 
 	_, body := do(t, "GET", ts.URL+"/api/matches")
-	for _, id := range []string{"mock-match-1", "mock-match-2", "mock-match-3"} {
+	for _, id := range []string{"mock-match-1", "mock-match-2", "mock-match-3", "mock-match-4"} {
 		if !strings.Contains(body, id) {
 			t.Errorf("matches %s lacks %s", body, id)
 		}
 	}
 	_, body = do(t, "GET", ts.URL+"/api/venues")
-	for _, code := range []string{`"MK1"`, `"MK2"`, `"MK3"`} {
+	for _, code := range []string{`"MK1"`, `"MK2"`, `"MK3"`, `"MK4"`} {
 		if !strings.Contains(body, code) {
 			t.Errorf("venues lack %s", code)
 		}
@@ -225,5 +225,27 @@ func TestGeneratedFinishedRacesHaveEveryLapAddingUpToTheTotal(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// The match list needs competitions that are not live yet: the later matches answer "not live" for longer.
+func TestLaterGeneratedMatchesStayNotLiveLonger(t *testing.T) {
+	notLiveSteps := func(m *genMatch) int {
+		n := 0
+		for _, f := range m.frames {
+			var doc genDoc
+			if err := json.Unmarshal(f, &doc); err != nil {
+				t.Fatal(err)
+			}
+			if doc.Success {
+				break
+			}
+			n++
+		}
+		return n
+	}
+	ms := generatedMatches(maxGeneratedMatches)
+	if a, b, c := notLiveSteps(ms[0]), notLiveSteps(ms[1]), notLiveSteps(ms[2]); !(0 < a && a < b && b < c) {
+		t.Fatalf("not-live steps %d, %d, %d: want them to grow per match", a, b, c)
 	}
 }

@@ -23,7 +23,8 @@ var (
 		"Kingly Koen", "Lean Lotte", "Lively Luuk", "Magnificent Maud", "Mellow Milo", "Nonstop Nina",
 		"Northern Niels", "Onward Olivia", "Open Oscar", "Pacing Petra", "Plucky Pim", "Roaring Rik",
 		"Rocket Roos", "Smooth Sanne", "Steady Sven", "Tough Tess", "Twisting Tom", "Velocity Vera",
-		"Vigorous Victor", "Winter Wendy", "Wiry Wout",
+		"Vigorous Victor", "Winter Wendy", "Wiry Wout", "Maximiliaan van der Westerhuizen-de Groot",
+		"Sjoukje Bakker-Oosterbeek", "Jan-Willem Kroonenberg", "Anne-Marije Vanderveldt-Smit",
 	}
 	generatedCategories = []string{"DA1", "DB1", "DB2", "DN1", "DN2", "DSA", "HA1", "HA2", "HB1", "HB2", "HN1", "HN2", "HSA", "H40", "D40"}
 	generatedClubs      = []string{"CLF4", "SKS4", "FGI4", "SNO4", "SSK5", "IFX5", "FPD5", "IHK4", "BRU5", "NWD5", "PBR5", "WWO5", "GLC5"}
@@ -55,19 +56,22 @@ type genMatch struct {
 	distances  []genDistance
 	frames     [][]byte
 	firstNames int // offset into generatedNames, so the matches have different fields
+	// notLiveFrames is how many replay steps the feed answers "not live" before the data comes, so the match list
+	// shows competitions that are not live yet and others that turn live while the page is open
+	notLiveFrames int
 }
 
 type genVenue struct{ code, name, city string }
 
 // maxGeneratedMatches is how many matches generatedMatches defines.
-const maxGeneratedMatches = 3
+const maxGeneratedMatches = 4
 
 // generatedMatches returns the first count generated matches.
 func generatedMatches(count int) []*genMatch {
 	matches := []*genMatch{
 		{
-			id: "mock-match-1", name: "PROD DEMO Mock Sprint Day", firstNames: 0,
-			venue: genVenue{"MK1", "Mock Ice Rink One", "Mockville"},
+			id: "mock-match-1", name: "Demo Sprint Day", firstNames: 0, notLiveFrames: 2,
+			venue: genVenue{"MK1", "Demo Ice Rink", "Faketown"},
 			distances: []genDistance{
 				{name: "100 meter", meters: 100, skaters: 8},
 				{name: "500 meter", meters: 500, skaters: 8},
@@ -77,21 +81,28 @@ func generatedMatches(count int) []*genMatch {
 			},
 		},
 		{
-			id: "mock-match-2", name: "Mock Distance Cup", firstNames: 12,
-			venue: genVenue{"MK2", "Mock Ice Rink Two", "Mockdam"},
+			id: "mock-match-2", name: "Example Distance Cup", firstNames: 12, notLiveFrames: 24,
+			venue: genVenue{"MK2", "Example Oval", "Exampledam"},
 			distances: []genDistance{
 				{name: "1500 meter", meters: 1500, skaters: 8, strayLaps: true, scratches: true, inPlace: true, vanish: true},
 				{name: "3000 meter", meters: 3000, skaters: 6},
-				{name: "Massastart 6 ronden", meters: 2400, skaters: 8, massLaps: 6},
+				{name: "Massastart 16 ronden", meters: 6400, skaters: 8, massLaps: 16},
 			},
 		},
 		{
-			id: "mock-match-3", name: "Mock Club Championship", firstNames: 24,
-			venue: genVenue{"MK3", "Mock Ice Rink Three", "Mockburg"},
+			id: "mock-match-3", name: "Sample Club Championship", firstNames: 24, notLiveFrames: 180,
+			venue: genVenue{"MK3", "Sample Ice Stadium", "Sampleburg"},
 			distances: []genDistance{
 				{name: "1000 meter", meters: 1000, skaters: 6},
 				{name: "1500 meter", meters: 1500, skaters: 8, resetHeat: 1, strayLaps: true, flicker: true, retime: true, scratches: true, inPlace: true, vanish: true},
 				{name: "3000 meter", meters: 3000, skaters: 4},
+			},
+		},
+		{
+			id: "mock-match-4", name: "Test Mass Start Cup", firstNames: 36,
+			venue: genVenue{"MK4", "Pretend Skating Hall", "Demostad"},
+			distances: []genDistance{
+				{name: "Massastart 16 ronden", meters: 6400, skaters: 8, massLaps: 16},
 			},
 		},
 	}
@@ -227,12 +238,14 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 		}
 		frames = append(frames, b)
 	}
-	// Before the competition is live the feed answers with an error and no data.
+	// Before the competition is live the feed answers with an error and no data (the first match for two steps, the later ones for minutes).
 	notLive, _ := json.Marshal(map[string]any{
 		"id": nil, "name": nil, "isInternational": false, "distances": []any{}, "success": false,
 		"errorMessage": "Deze wedstrijd is op (nog) niet live.", "errorMode": 0, "resultUrl": nil,
 	})
-	frames = append(frames, notLive, notLive)
+	for range m.notLiveFrames {
+		frames = append(frames, notLive)
+	}
 	snapshot()
 
 	for di := range doc.Distances {
