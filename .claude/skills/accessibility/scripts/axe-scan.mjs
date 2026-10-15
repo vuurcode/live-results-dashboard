@@ -9,7 +9,7 @@
 // Needs a running stack. The e2e stack serves the committed fixture competitions on port 14200:
 //   cd frontend && npm run e2e        (starts it, runs the tests, stops it)
 // or keep it up for scanning by starting the three servers from playwright.config.ts yourself.
-// With no urls it scans the timed and mass-start fixture competitions on the e2e stack.
+// With no urls it scans the individual race and mass-start fixture competitions on the e2e stack.
 //
 // Exit code 1 when any serious or critical violation is found, so it can gate CI.
 import { createRequire } from 'node:module';
@@ -34,7 +34,7 @@ for (let i = 0; i < args.length; i++) {
 }
 if (urls.length === 0) {
   urls.push(
-    'http://localhost:14200/?competitionId=e2e-timed',
+    'http://localhost:14200/?competitionId=e2e-individual',
     'http://localhost:14200/?competitionId=e2e-mass',
   );
 }
