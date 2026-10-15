@@ -10,4 +10,4 @@ Set on the container when it starts (the combined image, see [Hosting](hosting.m
 | `FRONTEND_CSP_CONNECT_SRC` | `'self'` | Origins the page may call, in the Content-Security-Policy. When `FRONTEND_BACKEND_URL` points to another host, list it here, e.g. `'self' https://api.example.com wss://api.example.com` |
 | `FRONTEND_CSP_FRAME_ANCESTORS` | `'none'` | Hosts that may embed the page in a frame, e.g. `https://example.com`; `'none'` allows nobody |
 
-`GET /api/competitions/today` lists the competitions happening today (including ones that have not started), each with the `id` to pass as `?competitionId=`.
+`GET /api/competitions/today` lists the competitions happening today (including ones that have not started), each with the `id` to pass as `?competitionId=` and whether it is `live`.

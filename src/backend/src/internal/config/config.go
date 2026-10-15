@@ -15,6 +15,9 @@ import (
 // DataSourcePath is where the live results API serves a competition; BACKEND_LIVE_RESULTS_BASE_URL supplies the part before it.
 const dataSourcePath = "/Competition"
 
+// ListWatchInterval is how often the competitions list is checked for changes to tell the clients about.
+const ListWatchInterval = 30 * time.Second
+
 // DefaultPingInterval keeps a quiet connection busy enough for proxies (nginx closes after 60s of silence).
 const DefaultPingInterval = 25 * time.Second
 

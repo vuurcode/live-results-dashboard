@@ -185,6 +185,9 @@ type Catalog struct {
 	client     *http.Client
 	now        func() time.Time
 
+	liveMu sync.Mutex
+	live   map[string]liveState // what the data source said last, per competition id
+
 	mu           sync.Mutex
 	competitions []*competition
 	known        map[string]*competition // every competition of the venues, also those no longer listed
@@ -202,11 +205,20 @@ type upstream struct {
 
 const retryAfterFailure = 30 * time.Second
 
+// liveTTL is how long what the data source said about a competition is reused, so the list costs the data source at
+// most one request per competition per period however often it is asked for.
+const liveTTL = 30 * time.Second
+
+type liveState struct {
+	live bool
+	at   time.Time
+}
+
 // New returns a catalog for the competitions lists of the set's upstreams.
 func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
 	c := &Catalog{
 		set: set, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: min(cfg.CatalogTTL, maxCacheAge), retention: cfg.DataRetention,
-		ua: ua, client: &http.Client{}, now: time.Now,
+		ua: ua, client: &http.Client{}, now: time.Now, live: map[string]liveState{},
 	}
 	for _, u := range set.Upstreams() {
 		base, err := url.Parse(u.CatalogURL)
@@ -220,11 +232,16 @@ func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
 }
 
 func (c *Catalog) getJSON(ctx context.Context, base *url.URL, path string, out any) error {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
 	u := *base
 	u.Path = strings.TrimRight(u.Path, "/") + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	return c.getURL(ctx, u.String(), path, out)
+}
+
+// getURL decodes the JSON at target; what names the request in errors.
+func (c *Catalog) getURL(ctx context.Context, target, what string, out any) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return err
 	}
@@ -237,10 +254,10 @@ func (c *Catalog) getJSON(ctx context.Context, base *url.URL, path string, out a
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: HTTP %d", path, resp.StatusCode)
+		return fmt.Errorf("%s: HTTP %d", what, resp.StatusCode)
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(out); err != nil {
-		return fmt.Errorf("%s: decode: %w", path, err)
+		return fmt.Errorf("%s: decode: %w", what, err)
 	}
 	return nil
 }
@@ -404,14 +421,94 @@ func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 	return out, nil
 }
 
-// ServeToday answers with the competitions of today.
+// isLive asks the data source whether the competition is live: it answers and does not say otherwise. A failed
+// request counts as not live. The answer is reused for liveTTL.
+func (c *Catalog) isLive(ctx context.Context, id string) bool {
+	c.liveMu.Lock()
+	st, ok := c.live[id]
+	c.liveMu.Unlock()
+	if ok && c.now().Sub(st.at) < liveTTL {
+		return st.live
+	}
+	live := c.probe(ctx, id)
+	c.liveMu.Lock()
+	c.live[id] = liveState{live: live, at: c.now()}
+	c.liveMu.Unlock()
+	return live
+}
+
+func (c *Catalog) probe(ctx context.Context, id string) bool {
+	feed, err := c.set.FeedURL(id)
+	if err != nil {
+		return false
+	}
+	var raw struct {
+		Success *bool `json:"success"` // false when the competition is not live; absent in older payloads
+	}
+	if err := c.getURL(ctx, feed, "live results", &raw); err != nil {
+		return false
+	}
+	return raw.Success == nil || *raw.Success
+}
+
+// listed is a competition of the list with what the data source says about it.
+type listed struct {
+	*competition
+	Live bool `json:"live"`
+}
+
+// ServeToday answers with the competitions of today, each saying whether it is live.
 func (c *Catalog) ServeToday(w http.ResponseWriter, r *http.Request) {
 	list, err := c.Today(r.Context())
 	if err != nil {
 		http.Error(w, "competition list unavailable", http.StatusBadGateway)
 		return
 	}
+	out := make([]listed, len(list))
+	var wg sync.WaitGroup
+	for i, m := range list {
+		out[i].competition = m
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			out[i].Live = c.isLive(r.Context(), m.ID)
+		}()
+	}
+	wg.Wait()
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "public, max-age=60")
-	_ = json.NewEncoder(w).Encode(list)
+	w.Header().Set("Cache-Control", "public, max-age=30")
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+// Watch checks every `every` whether the list of today, or which of its competitions are live, changed since the
+// previous check, and calls changed when it did. It only looks while active reports clients, so that nobody is
+// polled for no one. It returns when ctx ends.
+func (c *Catalog) Watch(ctx context.Context, every time.Duration, active func() int, changed func()) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	var last string
+	seen := false
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		if active() == 0 {
+			seen = false // what was seen before nobody was there says nothing about what changed since
+			continue
+		}
+		list, err := c.Today(ctx)
+		if err != nil {
+			continue
+		}
+		var sig strings.Builder
+		for _, m := range list {
+			fmt.Fprintf(&sig, "%s:%t,", m.ID, c.isLive(ctx, m.ID))
+		}
+		if seen && sig.String() != last {
+			changed()
+		}
+		last, seen = sig.String(), true
+	}
 }

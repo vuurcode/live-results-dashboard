@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -343,5 +344,107 @@ func TestCatalogMergesUpstreams(t *testing.T) {
 	set2.Prepare(context.Background(), "demo-1")
 	if got, _ := set2.FeedURL("demo-1"); got != "http://demo/Competition?competitionId=demo-1" {
 		t.Errorf("demo-1 is fetched from %q before the list was requested", got)
+	}
+}
+
+func TestServeTodayTellsWhichCompetitionsAreLive(t *testing.T) {
+	var feedHits atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/venues", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(testVenues)) })
+	mux.HandleFunc("/api/competitions", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("[" + comp("on", "DEV", "SpeedSkating.LongTrack", "2026-10-24T10:00:00Z", "2026-10-24T18:00:00Z") + "," +
+			comp("off", "DEV", "SpeedSkating.LongTrack", "2026-10-24T11:00:00Z", "2026-10-24T18:00:00Z") + "," +
+			comp("down", "DEV", "SpeedSkating.LongTrack", "2026-10-24T12:00:00Z", "2026-10-24T18:00:00Z") + "]"))
+	})
+	mux.HandleFunc("/feed", func(w http.ResponseWriter, r *http.Request) {
+		feedHits.Add(1)
+		switch r.URL.Query().Get("competitionId") {
+		case "on":
+			_, _ = w.Write([]byte(`{"success":true}`))
+		case "off":
+			_, _ = w.Write([]byte(`{"success":false,"errorMessage":"not live"}`))
+		default:
+			http.Error(w, "boom", http.StatusInternalServerError)
+		}
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: srv.URL, DataSourceURL: srv.URL + "/feed"}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	cat.now = func() time.Time { return now }
+
+	serve := func() map[string]bool {
+		rec := httptest.NewRecorder()
+		cat.ServeToday(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/competitions/today", nil))
+		var list []struct {
+			ID   string `json:"id"`
+			Live bool   `json:"live"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]bool{}
+		for _, m := range list {
+			got[m.ID] = m.Live
+		}
+		return got
+	}
+	got := serve()
+	if len(got) != 3 || !got["on"] || got["off"] || got["down"] {
+		t.Fatalf("live = %v, want only on", got)
+	}
+	serve()
+	if feedHits.Load() != 3 {
+		t.Fatalf("feed hits = %d, want 3 (the answer is reused)", feedHits.Load())
+	}
+	now = now.Add(liveTTL)
+	serve()
+	if feedHits.Load() != 6 {
+		t.Fatalf("feed hits = %d, want 6 after the answers expired", feedHits.Load())
+	}
+}
+
+func TestWatchTellsWhenTheListChanges(t *testing.T) {
+	var live atomic.Bool
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/venues", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(testVenues)) })
+	mux.HandleFunc("/api/competitions", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("[" + comp("m", "DEV", "SpeedSkating.LongTrack", "2026-10-24T10:00:00Z", "2026-10-24T18:00:00Z") + "]"))
+	})
+	mux.HandleFunc("/feed", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"success":` + strconv.FormatBool(live.Load()) + `}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: srv.URL, DataSourceURL: srv.URL + "/feed"}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var clock atomic.Int64 // seconds past noon; every tick of the watch moves the clock past the answers' lifetime
+	base := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	cat.now = func() time.Time { return base.Add(time.Duration(clock.Load()) * time.Second) }
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	changes := make(chan struct{}, 4)
+	go cat.Watch(ctx, time.Millisecond, func() int { return 1 }, func() { changes <- struct{}{} })
+
+	step := func() { clock.Add(int64(liveTTL / time.Second)) }
+	select {
+	case <-changes:
+		t.Fatal("told about a change before there was one")
+	case <-time.After(50 * time.Millisecond):
+	}
+	live.Store(true)
+	step()
+	select {
+	case <-changes:
+	case <-time.After(2 * time.Second):
+		t.Fatal("not told that the competition went live")
 	}
 }

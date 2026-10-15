@@ -136,6 +136,21 @@ func (r *Room) broadcastLocked(msgs [][]byte) {
 	}
 }
 
+// Notify sends msg to every client without a sequence number and without keeping it for clients that reconnect: it
+// is a hint about something outside the competition, such as the competitions list.
+func (r *Room) Notify(msg []byte) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for c := range r.clients {
+		select {
+		case c.Send <- msg:
+		default:
+			r.Log.Warn("Client too slow, dropping")
+			r.dropLocked(c)
+		}
+	}
+}
+
 func (r *Room) dropLocked(c *Client) {
 	if _, ok := r.clients[c]; ok {
 		delete(r.clients, c)

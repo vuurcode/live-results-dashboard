@@ -35,6 +35,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/server"
 	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
+	"github.com/vuurcode/live-results-experiment/backend/internal/wire"
 )
 
 func main() {
@@ -57,6 +58,9 @@ func main() {
 		today = cat.ServeToday
 		h.Ended = cat.Ended
 		go h.WatchEnded(ctx, time.Minute)
+		go cat.Watch(ctx, config.ListWatchInterval, h.ClientCount, func() {
+			h.Announce(wire.Wrap("competitions_changed", nil))
+		})
 	}
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,

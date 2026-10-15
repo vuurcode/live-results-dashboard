@@ -147,6 +147,22 @@ func (m *Hub) clientTotalLocked() int {
 	return n
 }
 
+// ClientCount is the number of clients of all rooms.
+func (m *Hub) ClientCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.clientTotalLocked()
+}
+
+// Announce sends a message that is not about one competition to every client of every room.
+func (m *Hub) Announce(msg []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, r := range m.rooms {
+		r.Notify(msg)
+	}
+}
+
 // Leave unregisters a client and, once the room is empty, schedules its teardown.
 func (m *Hub) Leave(r *room.Room, c *room.Client) {
 	r.Unregister(c)
