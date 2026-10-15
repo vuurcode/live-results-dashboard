@@ -38,6 +38,15 @@
   opacity: 0.45; // very shallow
   &.timeline-grid-major { opacity: 0.9; } // the lines that carry a label
 }
+// Every tenth of a second in the first seconds: dotted and barely there
+.timeline-grid-fine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: repeating-linear-gradient(to bottom, var(--lr-line-soft) 0 1px, transparent 1px 4px);
+  opacity: 0.35;
+}
 // The finish line: a chequered bar behind the badges that travels from the leader's side along the whole axis in the
 // time the axis stands for. It carries the timing, so it moves also when animations are reduced.
 .timeline-finish {
@@ -50,6 +59,7 @@
   background: repeating-conic-gradient(var(--lr-text) 0 25%, var(--lr-surface) 0 50%) 0 0 / 0.6rem 0.6rem;
   border: 1px solid var(--lr-text);
   animation: finish-slide var(--slide) linear forwards;
+  animation-delay: calc(-1 * var(--elapsed, 0s)); // the run began before the update that showed it
 }
 // everyone has crossed: from where it is, fast to the far side while fading out
 .timeline-finish-done {

@@ -2,6 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, DoCheck, ElementRef, Event
 import { BadgeModule } from '@coreui/angular';
 import { CompetitorUpdate } from '../../results/data.models';
 import { TranslatePipe } from '../../i18n/translate.pipe';
+import { parseSeconds } from '../../results/time.util';
 import { TIMELINE_SECONDS, layoutTimeline, timelineGaps } from '../../results/timeline.util';
 
 interface Tick {
@@ -28,6 +29,7 @@ const NUMBER_PX = 28; // start number badge without its digits, padding and bord
 const CHAR_PX = 8;
 const LABEL_STEPS = [1, 2, 5, 10, 15, 30, 60];
 const LABEL_PX = 48; // room a tick label needs, at the default font size
+const FINE_SECONDS = 5; // the first seconds get a dotted line every tenth of a second
 const MIN_LINE_PX = 4; // grid lines closer together than this are left out
 
 /**
@@ -53,6 +55,8 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
 
   protected placed: PlacedRacer[] = [];
   protected ticks: Tick[] = [];
+  /** Offsets of the lines for every tenth of a second, left out where they would be closer together than MIN_LINE_PX */
+  protected fineOffsets: number[] = [];
   protected rows = 1;
   /** The lap the leader has completed while the finish line is under way; the line starts over whenever it changes */
   protected lineKeys: number[] = [];
@@ -61,6 +65,8 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
   /** Every racer on the timeline has crossed the line for the current lap: it sprints off and fades out from where it is */
   protected lineDone = false;
   protected lineFromPx = 0;
+  /** Seconds the finish line had been under way when its animation was created, by the race clock */
+  protected lineElapsed = 0;
   /** Racers whose previous-lap position the finish line has passed without their new time coming in */
   protected readonly faded = new Set<string>();
   protected readonly rowRem = ROW_REM;
@@ -68,6 +74,10 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
 
   private lineLap = 0;
   private lineShown = false;
+  private lineBegan = 0; // when the animation of the current lap was created, in performance.now() milliseconds
+  private lineClock = 0; // the leader's race clock at the current lap, in milliseconds
+  private clockOffset = Infinity; // performance.now() minus the race clock, at the least delayed update
+  private readonly reported = new Map<string, string>(); // per racer the laps and time of the update last seen
   protected width = 0;
   private unit = 1;
   private signature = '';
@@ -131,7 +141,32 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
     }));
     this.ticks = this.gridTicks();
     this.rows = Math.max(1, ...this.placed.map((p) => p.row + 1));
+    this.timeLine(gaps, leaderLaps);
     this.finishLine(leaderLaps, this.races.every((race) => race.laps_count >= leaderLaps));
+  }
+
+  // The line is timed from the data, not from when an update arrived. The totals are the race clock, which runs along
+  // with the wall clock, and an update never arrives before its time: the least delayed update seen so far gives the
+  // offset between the two, so it only ever moves back. The leader crossed at their total, which puts the start of the
+  // line at the offset plus that.
+  private timeLine(gaps: { race: CompetitorUpdate; gap: number }[], leaderLaps: number): void {
+    if (!gaps.length) return;
+    const now = performance.now();
+    if (leaderLaps < this.lineLap) { // the results started over
+      this.clockOffset = Infinity;
+      this.reported.clear();
+    }
+    if (leaderLaps !== this.lineLap) {
+      this.lineBegan = now;
+      this.lineClock = parseSeconds(gaps[0].race.total_time) * 1000;
+    }
+    for (const { race } of gaps) {
+      const update = `${race.laps_count}:${race.total_time}`;
+      if (this.reported.get(race.id) === update) continue;
+      this.reported.set(race.id, update);
+      this.clockOffset = Math.min(this.clockOffset, now - parseSeconds(race.total_time) * 1000);
+    }
+    if (Number.isFinite(this.clockOffset)) this.lineElapsed = Math.max(0, this.lineBegan - this.clockOffset - this.lineClock) / 1000;
   }
 
   // A racer who is slower than the previous lap stays where they were until the finish line reaches that spot, which
@@ -195,6 +230,7 @@ export class MassStartTimelineComponent implements AfterViewInit, DoCheck, OnDes
     const labelEvery = LABEL_STEPS.find((s) => s * pxPerSecond >= LABEL_PX * this.unit) ?? LABEL_STEPS[LABEL_STEPS.length - 1];
     const lineEvery = pxPerSecond >= MIN_LINE_PX * this.unit ? 1 : labelEvery;
     const offset = (s: number) => s * pxPerSecond;
+    this.fineOffsets = pxPerSecond / 10 >= MIN_LINE_PX * this.unit ? Array.from({ length: FINE_SECONDS * 10 + 1 }, (_, i) => (i / 10) * pxPerSecond).filter((_, i) => i % 10) : [];
     const ticks: Tick[] = [];
     for (let s = 0; s <= TIMELINE_SECONDS; s += lineEvery) {
       // both ends are always labelled, the ones between where the labels fit

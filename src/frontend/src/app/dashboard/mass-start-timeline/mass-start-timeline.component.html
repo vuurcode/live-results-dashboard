@@ -10,8 +10,11 @@
     @for (t of ticks; track t.seconds) {
       <span class="timeline-grid-line" [class.timeline-grid-major]="t.label" aria-hidden="true" [style.right.px]="t.offset"></span>
     }
+    @for (o of fineOffsets; track o) {
+      <span class="timeline-grid-fine" aria-hidden="true" [style.right.px]="o"></span>
+    }
     @for (lap of lineKeys; track lap) {
-      <span class="timeline-finish" aria-hidden="true" [class.timeline-finish-done]="lineDone" [style.--from.px]="lineFromPx" [style.--travel.px]="width" [style.--slide.s]="lineSeconds"></span>
+      <span class="timeline-finish" aria-hidden="true" [class.timeline-finish-done]="lineDone" [style.--from.px]="lineFromPx" [style.--travel.px]="width" [style.--slide.s]="lineSeconds" [style.--elapsed.s]="lineElapsed"></span>
     }
     @for (p of placed; track p.race.id + ':' + p.race.laps_count) {
       <div
