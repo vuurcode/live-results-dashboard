@@ -1,14 +1,10 @@
 name: Deploy
 
 # Started by hand. Rolls the existing DigitalOcean app out again, which pulls the image that the Publish workflow
-# pushed to the GitHub Container Registry. The app, its settings and its image are configured on DigitalOcean.
+# pushed to the GitHub Container Registry. The app, its settings and its image are configured on DigitalOcean;
+# the secrets DIGITALOCEAN_ACCESS_TOKEN and DIGITALOCEAN_APP_NAME name the account access and the app.
 on:
   workflow_dispatch:
-    inputs:
-      app_name:
-        description: Name of the App Platform app to deploy
-        required: true
-        type: string
 
 permissions: {}
 
@@ -23,6 +19,6 @@ jobs:
       - uses: digitalocean/app_action/deploy@cc55bc9b848d25f9c1c9f831cf843fbab3fbfb15 # v2.0.11
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          app_name: ${{ inputs.app_name }}
+          app_name: ${{ secrets.DIGITALOCEAN_APP_NAME }}
           print_build_logs: true
           print_deploy_logs: true

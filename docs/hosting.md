@@ -20,4 +20,4 @@ The backend listens on `127.0.0.1:5000` inside the container. The page and the A
 
 ## Deploying
 
-The `Deploy` workflow runs by hand only (Actions, Deploy, Run workflow) and takes the name of the App Platform app. It uses [digitalocean/app_action](https://github.com/digitalocean/app_action) to deploy the app as it is configured on DigitalOcean again, which pulls the image that the `Publish` workflow pushed to the GitHub Container Registry. It needs a repository secret `DIGITALOCEAN_ACCESS_TOKEN`: a DigitalOcean personal access token that may deploy apps.
+The `Deploy` workflow runs by hand only (Actions, Deploy, Run workflow). It uses [digitalocean/app_action](https://github.com/digitalocean/app_action) to deploy the app as it is configured on DigitalOcean again, which pulls the image that the `Publish` workflow pushed to the GitHub Container Registry. It needs two repository secrets: `DIGITALOCEAN_ACCESS_TOKEN`, a DigitalOcean personal access token that may deploy apps, and `DIGITALOCEAN_APP_NAME`, the name of the App Platform app.
