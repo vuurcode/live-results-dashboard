@@ -274,7 +274,8 @@
   &.lap-badge-slow   { background-color: $tint-slow-bg; color: $tint-slow-fg; }
   &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
   &.timed-compact-partial { background-color: #e9ecef; color: #212529; } // the first lap has no previous lap to differ from: light grey while the diff colours are on
-  // the newest lap stands out: a ring that a snake draws around the badge counter-clockwise, once, when the lap appears;
+  // the newest lap stands out: a ring that a snake draws around the badge counter-clockwise, once, when the lap arrives
+  // (a badge that is merely rendered, such as when a distance is unfolded, shows the finished ring);
   // a first lap shorter than a full lap keeps its ring, as it shows where the distance starts on the oval
   &.timed-compact-latest[class*='lap-badge-'],
   &.timed-compact-start-ring[class*='lap-badge-'] {
@@ -294,10 +295,11 @@
       mask-composite: exclude; // only the padding box stays: the ring
       -webkit-mask-composite: xor;
       pointer-events: none;
-      animation: snakeAround 1.4s ease-in-out both;
+      --snake-angle: var(--arc);
     }
+    &.timed-snake-fresh::after { animation: snakeAround 1.4s ease-in-out both; }
     @media (prefers-reduced-motion: reduce) {
-      &::after { animation: none; --snake-angle: var(--arc); }
+      &.timed-snake-fresh::after { animation: none; }
     }
   }
   &.timed-flash-update[class*='lap-badge-'] { animation: none; }

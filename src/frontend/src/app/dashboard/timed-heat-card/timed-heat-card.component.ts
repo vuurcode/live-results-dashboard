@@ -103,6 +103,11 @@ export class TimedHeatCardComponent {
     return t * t * (3 - 2 * t);
   }
 
+  /** True while the snake around the lap that just arrived is drawing; a lap that was already there when the card was rendered has none. */
+  protected snakeFresh(race: CompetitorUpdate): boolean {
+    return this.lapProgress(race) < 1;
+  }
+
   /** True while the snake around the final lap is drawing and the total counts up; the result's watermark then waits. */
   protected settling(race: CompetitorUpdate): boolean {
     return (race.lap_times?.length ?? 0) >= this.lapSchedule.length && this.lapProgress(race) < 1;

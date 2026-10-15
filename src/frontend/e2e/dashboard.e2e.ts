@@ -145,6 +145,42 @@ test.describe('live heat', () => {
   });
 });
 
+test.describe('snake around the newest lap', () => {
+  // one fixed card: which card comes first changes as the others get their first lap
+  let racer = '';
+  const live = (page: Page) => page.locator('.timed-competitor-card', { hasText: racer }).first();
+  const snake = (page: Page) => live(page).locator('.timed-compact-latest').evaluate((b) => getComputedStyle(b, '::after').animationName);
+
+  test('is drawn when the lap arrives, and not again when the distance is unfolded', async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // the ring belongs to the coloured badges
+    await restartReplay(request, 'e2e-multi');
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await page.goto('/?competitionId=e2e-multi');
+    const first = page.locator('[data-live] .timed-card-live:has(.timed-compact-badge) .timed-comp-name').first();
+    await expect(first).toBeVisible({ timeout: 20_000 });
+    racer = ((await first.textContent()) ?? '').replace(/live/i, '').trim();
+    const laps = () => live(page).locator('.timed-compact-badge').count();
+    const lapCount = await laps();
+    await expect.poll(laps, { timeout: 20_000 }).toBeGreaterThan(lapCount);
+    await expect.poll(() => snake(page), { timeout: 2_000 }).toMatch(/snakeAround$/); // Angular scopes the keyframes name
+
+    const header = page.locator('[data-live]').locator('xpath=ancestor::c-accordion-item').locator('.accordion-button').first();
+    // fold and unfold in a quiet moment: no lap arrives meanwhile, so any snake would be one replayed by the unfolding
+    for (let attempt = 0; ; attempt++) {
+      const before = await laps();
+      await page.waitForTimeout(1600); // the snake takes 1.4s
+      await header.click();
+      await header.click();
+      await expect(live(page).locator('.timed-compact-latest')).toBeVisible();
+      if ((await laps()) === before) break;
+      expect(attempt, 'a quiet moment to unfold in').toBeLessThan(5);
+    }
+    expect(await snake(page)).toBe('none');
+    // the ring itself is still there, in its finished state
+    expect(await live(page).locator('.timed-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
+  });
+});
+
 test.describe('mass start', () => {
   const names = (page: Page) => page.locator('.race-item-laps .race-name-fixed');
 
