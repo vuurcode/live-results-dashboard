@@ -364,7 +364,7 @@ test('the competition picker replaces the event name, venue first, start time on
   await expect(page.getByRole('heading', { level: 1 })).toHaveClass(/visually-hidden/);
   const labels = await select.locator('option').allTextContents();
   const running = labels.find((l) => l.includes('E2E Timed Event'))!;
-  expect(running.trim()).toMatch(/^\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Timed Event \(Mock Ice Rink\)$/);
+  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Timed Event \(Mock Ice Rink\)$/);
 });
 
 test('only one settings group is open at a time, and the options are toggles', async ({ page, request }) => {

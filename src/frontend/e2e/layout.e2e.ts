@@ -147,7 +147,7 @@ test.describe('lane columns on narrow screens', () => {
 });
 
 test.describe('settings panel and tooltips', () => {
-  test('the settings button is as tall as the competition picker, and the settings are listed below each other', async ({ page }) => {
+  test('the settings button is as tall as the competition picker, and the settings are in two columns', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 700 });
     await page.goto('/?competitionId=e2e-timed');
     await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
@@ -155,7 +155,16 @@ test.describe('settings panel and tooltips', () => {
     expect(await h(page.locator('button.topbar-group-btn').first())).toBe(await h(page.locator('#competitionSelect')));
     const tops = await page.locator('.settings-panel .setting-group:visible').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     expect(tops.length).toBeGreaterThan(2);
-    expect(new Set(tops).size).toBe(tops.length); // one per row
+    expect(new Set(tops).size).toBeLessThan(tops.length); // wide screens: settings share rows
+    expect(tops.filter((t) => t === tops[0]).length).toBe(2); // two per row
+  });
+
+  test('on a narrow screen the settings are listed below each other', async ({ page }) => {
+    await page.setViewportSize({ width: 400, height: 700 });
+    await page.goto('/?competitionId=e2e-timed');
+    await page.getByRole('button', { name: /Display/ }).click();
+    const tops = await page.locator('.settings-panel .setting-group:visible').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+    expect(new Set(tops).size).toBe(tops.length);
   });
 
   test('the help text is always shown under its setting and fits inside the panel', async ({ page }) => {

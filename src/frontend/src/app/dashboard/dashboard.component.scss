@@ -196,6 +196,15 @@
   display: flex;
   flex-direction: column; // the settings below each other
   gap: 0.35rem;
+  // wide screens: two columns of settings
+  @media (min-width: 768px) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 0.35rem 1.5rem;
+    width: min(100%, 52rem);
+    .setting-collapse { grid-column: 1 / -1; }
+  }
   padding: 0.75rem 1rem 1rem;
   background: #11161b;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -209,6 +218,7 @@
     margin: 0 !important;
     gap: 0.25rem 0.5rem;
     min-height: 2.25rem;
+    padding-top: 0.6rem;
   }
   // The help text is always shown under its setting, in the usual white box: nothing opens or moves on hover.
   .setting-popover {
