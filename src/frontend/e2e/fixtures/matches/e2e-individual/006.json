@@ -1,6 +1,6 @@
 {
- "id": "e2e-timed-event",
- "name": "E2E Timed Event",
+ "id": "e2e-individual-event",
+ "name": "E2E Individual Event",
  "isInternational": false,
  "distances": [
   {
@@ -94,9 +94,22 @@
      "remark": "",
      "invalidReason": "",
      "status": 1,
-     "time": null,
+     "time": "00:01:22.0000000",
      "personalRecord": null,
-     "laps": []
+     "laps": [
+      {
+       "time": "00:00:18.0000000",
+       "lapTime": "00:00:18.0000000"
+      },
+      {
+       "time": "00:00:50.0000000",
+       "lapTime": "00:00:32.0000000"
+      },
+      {
+       "time": "00:01:22.0000000",
+       "lapTime": "00:00:32.0000000"
+      }
+     ]
     },
     {
      "id": "r4",
@@ -115,9 +128,22 @@
      "remark": "",
      "invalidReason": "",
      "status": 1,
-     "time": null,
+     "time": "00:01:24.5000000",
      "personalRecord": null,
-     "laps": []
+     "laps": [
+      {
+       "time": "00:00:18.5000000",
+       "lapTime": "00:00:18.5000000"
+      },
+      {
+       "time": "00:00:51.5000000",
+       "lapTime": "00:00:33.0000000"
+      },
+      {
+       "time": "00:01:24.5000000",
+       "lapTime": "00:00:33.0000000"
+      }
+     ]
     }
    ]
   }

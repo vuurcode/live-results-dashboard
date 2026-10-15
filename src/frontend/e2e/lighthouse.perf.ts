@@ -7,12 +7,12 @@ import { MOCK_URL, WEB_PORT } from './env';
 // localhost, so the data source adds no delay. Lighthouse itself simulates a slow phone (mobile) or a desktop. It reports and
 // saves the full HTML report in test-results/; it asserts nothing, because the scores vary from machine to machine.
 const DEBUG_PORT = 9333;
-const URL = `http://localhost:${WEB_PORT}/?competitionId=e2e-timed`;
+const URL = `http://localhost:${WEB_PORT}/?competitionId=e2e-individual`;
 
 for (const formFactor of ['mobile', 'desktop'] as const) {
   test(`lighthouse ${formFactor}`, async ({ request }) => {
     test.setTimeout(180_000);
-    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-timed' } });
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-individual' } });
     const browser = await chromium.launch({ args: [`--remote-debugging-port=${DEBUG_PORT}`] });
     try {
       const { default: lighthouse } = await import('lighthouse');

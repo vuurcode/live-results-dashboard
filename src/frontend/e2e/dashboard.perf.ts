@@ -18,7 +18,7 @@ const DEFAULT_MAX_SHIFT = 0.1;
 
 interface Sample { longTasks: number[]; layoutShift: number; frames: number; worstFrameMs: number }
 
-for (const profile of PROFILES) for (const competition of ['e2e-timed', 'e2e-lanes', 'e2e-mass']) {
+for (const profile of PROFILES) for (const competition of ['e2e-individual', 'e2e-lanes', 'e2e-mass']) {
   test(`${profile.name} ${competition}: stays smooth while the replay plays (${profile.cpuSlowdown}x slower CPU)`, async ({ browser, request }) => {
     const context = await browser.newContext({ baseURL: `http://localhost:${WEB_PORT}`, viewport: profile.viewport, isMobile: profile.mobile, hasTouch: profile.mobile, deviceScaleFactor: profile.mobile ? 3 : 1 });
     const page = await context.newPage();
@@ -47,7 +47,7 @@ for (const profile of PROFILES) for (const competition of ['e2e-timed', 'e2e-lan
     const metrics = async () => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]));
 
     await page.goto(`/?competitionId=${competition}`);
-    await expect(page.locator('.timed-competitor-card, .race-item-laps').first()).toBeVisible();
+    await expect(page.locator('.individual-competitor-card, .race-item-laps').first()).toBeVisible();
     const before = await metrics();
     await page.evaluate(() => { const p = (window as unknown as { __perf: Sample }).__perf; p.longTasks.length = 0; p.layoutShift = 0; p.frames = 0; p.worstFrameMs = 0; });
     await page.waitForTimeout(MEASURE_MS);

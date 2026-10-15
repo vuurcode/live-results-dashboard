@@ -23,9 +23,9 @@ test(`${MINUTES} minutes of updates leave memory, DOM nodes and listeners flat`,
     return { heapMB: +(m['JSHeapUsedSize'] / 1e6).toFixed(1), nodes: m['Nodes'], listeners: m['JSEventListeners'] };
   };
 
-  await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-timed' } });
-  await page.goto('/?competitionId=e2e-timed');
-  await expect(page.locator('.timed-competitor-card').first()).toBeVisible();
+  await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-individual' } });
+  await page.goto('/?competitionId=e2e-individual');
+  await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
 
   const samples: { minute: number; heapMB: number; nodes: number; listeners: number }[] = [];
   const start = Date.now();
@@ -34,7 +34,7 @@ test(`${MINUTES} minutes of updates leave memory, DOM nodes and listeners flat`,
   while (Date.now() - start < MINUTES * 60_000) {
     await page.waitForTimeout(1000);
     if (Date.now() - lastRestart >= RESTART_MS) {
-      await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-timed' } });
+      await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-individual' } });
       lastRestart = Date.now();
     }
     if (Date.now() - lastSample >= SAMPLE_MS) {

@@ -40,7 +40,7 @@ export default defineConfig({
         BACKEND_LISTEN_ADDR: `:${BACKEND_PORT}`,
         BACKEND_LIVE_RESULTS_BASE_URL: MOCK_URL,
         BACKEND_LIVE_RESULTS_INTERVAL: '0.5',
-        BACKEND_DEFAULT_COMPETITION_ID: 'e2e-timed',
+        BACKEND_DEFAULT_COMPETITION_ID: 'e2e-individual',
         BACKEND_IDLE_GRACE_SECONDS: '0.5',
         BACKEND_MAX_CLIENTS_PER_IP: '1000', // every test page connects from this one address
         BACKEND_CONNECTS_PER_MINUTE: '100000',

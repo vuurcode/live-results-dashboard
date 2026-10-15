@@ -10,7 +10,7 @@ test.describe('large screens', () => {
   ] as const) {
     test(`${width}px wide: root font size scales to ${font}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1080 });
-      await page.goto('/?competitionId=e2e-timed');
+      await page.goto('/?competitionId=e2e-individual');
       const px = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
       expect(px).toBeCloseTo(font, 1);
     });
@@ -19,11 +19,11 @@ test.describe('large screens', () => {
   test('4K: card names and the watermark stay inside their card', async ({ page }) => {
     await page.setViewportSize({ width: 3840, height: 2160 });
     await page.goto('/?competitionId=e2e-pairs');
-    await expect(page.locator('.timed-watermark').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('.individual-watermark').first()).toBeVisible({ timeout: 15_000 });
     const overflowing = await page.evaluate(() =>
-      [...document.querySelectorAll('.timed-competitor-card')].filter((card) => {
+      [...document.querySelectorAll('.individual-competitor-card')].filter((card) => {
         const c = card.getBoundingClientRect();
-        return [...card.querySelectorAll('.timed-watermark, .timed-card-name, .fw-semibold')].some((el) => {
+        return [...card.querySelectorAll('.individual-watermark, .individual-card-name, .fw-semibold')].some((el) => {
           const r = el.getBoundingClientRect();
           return r.left < c.left - 1 || r.right > c.right + 1;
         });
@@ -36,9 +36,9 @@ test.describe('large screens', () => {
 test.describe('pinned titles', () => {
   test('the top bar and the open distance title stay visible while the list scrolls', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 260 });
-    await page.goto('/?competitionId=e2e-timed');
+    await page.goto('/?competitionId=e2e-individual');
     const header = page.locator('.accordion-header').first();
-    await expect(page.locator('.timed-heat-row').first()).toBeAttached();
+    await expect(page.locator('.individual-heat-row').first()).toBeAttached();
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await page.waitForTimeout(300);
     const { barBottom, headerTop, headerBottom, scrollY } = await page.evaluate(() => ({
@@ -55,11 +55,11 @@ test.describe('pinned titles', () => {
   });
 
   test('the pinned distance title shrinks while it is stuck', async ({ page, request }) => {
-    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-timed' } }); // a replay that has run on would leave no live distance to unfold
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-individual' } }); // a replay that has run on would leave no live distance to unfold
     await page.setViewportSize({ width: 1280, height: 260 });
-    await page.goto('/?competitionId=e2e-timed');
+    await page.goto('/?competitionId=e2e-individual');
     const button = page.locator('.accordion-header .accordion-button').first();
-    await expect(page.locator('.timed-heat-row').first()).toBeAttached();
+    await expect(page.locator('.individual-heat-row').first()).toBeAttached();
     // The one-off scroll to the live race may still be under way, and the height of the title depends on where the page is:
     // compare the title at the top of the page with the title at the bottom, both reached at once, until the page has settled.
     await expect.poll(async () => {
@@ -81,6 +81,7 @@ test.describe('pinned titles', () => {
     await page.goto('/?competitionId=e2e-mass');
     const strip = page.locator('.groups-strip').first();
     await expect(strip).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(1500); // the badges settle on their lines
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await page.waitForTimeout(300);
     const box = (await strip.boundingBox())!;
@@ -90,31 +91,37 @@ test.describe('pinned titles', () => {
   });
 });
 
-test.describe('mass start group cards', () => {
+test.describe('mass start timeline', () => {
   for (const width of [390, 1280, 3840]) {
-    test(`${width}px: cards are readable, equal and never cut off`, async ({ page, request }) => {
+    test(`${width}px: the racers sit on one axis, leader at the right, never overlapping or cut off`, async ({ page, request }) => {
       await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
       await page.waitForTimeout(800);
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-mass');
-      const cards = page.locator('.groups-strip .group-strip-card');
-      await expect(cards.first()).toBeVisible({ timeout: 15_000 });
-      const { widths, rem, cut } = await page.evaluate(() => {
-        const strip = document.querySelector('.groups-strip') as HTMLElement;
-        const cs = [...strip.querySelectorAll('.group-strip-card')] as HTMLElement[];
-        const stripBox = strip.getBoundingClientRect();
-        return {
-          widths: cs.map((c) => c.getBoundingClientRect().width),
-          rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
-          // a card may be scrolled out of view, but must never be clipped without the strip being scrollable
-          cut: strip.scrollWidth > strip.clientWidth && getComputedStyle(strip).overflowX === 'hidden' && stripBox.width > 0,
-        };
+      const racers = page.locator('.mass-timeline .timeline-racer');
+      await expect(racers.first()).toBeVisible({ timeout: 15_000 });
+      await page.waitForTimeout(600); // the badges slide into place
+      const { boxes, lane } = await page.evaluate(() => {
+        const l = document.querySelector('.mass-timeline')!.getBoundingClientRect();
+        const bs = [...document.querySelectorAll('.mass-timeline .timeline-racer')].map((e) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.x, y: r.y, w: r.width, h: r.height };
+        });
+        return { boxes: bs, lane: { x: l.x, right: l.right, bottom: l.bottom } };
       });
-      for (const w of widths) {
-        expect(w).toBeGreaterThanOrEqual(11 * rem - 1);
-        expect(w).toBeLessThanOrEqual(22 * rem + 1);
+      expect(boxes.length).toBeGreaterThan(1);
+      expect(Math.abs(boxes[0].x + boxes[0].w - lane.right)).toBeLessThanOrEqual(1); // the leader is at the right edge
+      for (const b of boxes) {
+        expect(b.x).toBeGreaterThanOrEqual(lane.x - 1);
+        expect(b.y + b.h).toBeLessThanOrEqual(lane.bottom + 1);
       }
-      expect(cut).toBe(false);
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i], c = boxes[j];
+          const overlap = a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h;
+          expect(overlap, `racers ${i} and ${j} overlap: ${JSON.stringify(boxes)}`).toBe(false);
+        }
+      }
     });
   }
 });
@@ -122,10 +129,10 @@ test.describe('mass start group cards', () => {
 test('racing competitor card titles have the same height with or without badges', async ({ page, request }) => {
   await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
   await page.goto('/?competitionId=e2e-pairs');
-  await expect(page.locator('.timed-comp-header').first()).toBeVisible();
-  await expect(page.locator('.timed-comp-header .timed-split-badge').first()).toBeVisible(); // some titles carry a badge
+  await expect(page.locator('.individual-comp-header').first()).toBeVisible();
+  await expect(page.locator('.individual-comp-header .individual-split-badge').first()).toBeVisible(); // some titles carry a badge
   const heights = await page.evaluate(() =>
-    [...document.querySelectorAll('.timed-comp-header-merged')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
+    [...document.querySelectorAll('.individual-comp-header-merged')].map((h) => Math.round(h.getBoundingClientRect().height * 10) / 10),
   );
   expect(heights.length).toBeGreaterThan(1);
   expect([...new Set(heights)], String(heights)).toHaveLength(1);
@@ -137,7 +144,7 @@ test.describe('lane columns on narrow screens', () => {
       await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
       await page.setViewportSize({ width, height: 800 });
       await page.goto('/?competitionId=e2e-pairs');
-      const cards = page.locator('.timed-heat-row').first().locator('.timed-competitor-card');
+      const cards = page.locator('.individual-heat-row').first().locator('.individual-competitor-card');
       await expect(cards).toHaveCount(2);
       // measured in one go: the page may be scrolling to the live race
       const [ay, by] = await cards.evaluateAll(els => els.map(e => e.getBoundingClientRect().top));
@@ -149,7 +156,7 @@ test.describe('lane columns on narrow screens', () => {
 test.describe('settings panel and tooltips', () => {
   test('the settings button is as tall as the competition picker, and the settings are in two columns', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 700 });
-    await page.goto('/?competitionId=e2e-timed');
+    await page.goto('/?competitionId=e2e-individual');
     await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
     const h = (loc: ReturnType<typeof page.locator>) => loc.evaluate((e) => Math.round(e.getBoundingClientRect().height));
     expect(await h(page.locator('button.topbar-group-btn').first())).toBe(await h(page.locator('#competitionSelect')));
@@ -161,7 +168,7 @@ test.describe('settings panel and tooltips', () => {
 
   test('on a narrow screen the settings are listed below each other', async ({ page }) => {
     await page.setViewportSize({ width: 400, height: 700 });
-    await page.goto('/?competitionId=e2e-timed');
+    await page.goto('/?competitionId=e2e-individual');
     await page.getByRole('button', { name: /Display/ }).click();
     const tops = await page.locator('.settings-panel .setting-group:visible').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     expect(new Set(tops).size).toBe(tops.length);
@@ -170,7 +177,7 @@ test.describe('settings panel and tooltips', () => {
   test('the help text is always shown under its setting and fits inside the panel', async ({ page }) => {
     for (const width of [1280, 320]) {
       await page.setViewportSize({ width, height: 700 });
-      await page.goto('/?competitionId=e2e-timed');
+      await page.goto('/?competitionId=e2e-individual');
       await page.getByRole('button', { name: /^Display/ }).click();
       const bodies = page.locator('.settings-panel .setting-popover-body:visible');
       await expect(bodies.first()).toBeVisible(); // without hovering anything
@@ -186,9 +193,9 @@ test.describe('settings panel and tooltips', () => {
   });
 
   test('a lap badge has a tooltip with distance, lap time and total time on three rows', async ({ page, request }) => {
-    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-timed' } });
-    await page.goto('/?competitionId=e2e-timed');
-    const badge = page.locator('.timed-compact-badge').first();
+    await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-individual' } });
+    await page.goto('/?competitionId=e2e-individual');
+    const badge = page.locator('.individual-compact-badge').first();
     await expect(badge).toBeVisible({ timeout: 30000 });
     const title = await badge.getAttribute('title');
     expect(title!.split('\n')).toHaveLength(3);
@@ -203,23 +210,23 @@ test.describe('empty lane sets on narrow screens', () => {
     test(`${width}px: the yellow/blue lanes of heat 1 are ${hidden ? 'hidden' : 'kept'}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-lanes');
-      const heat1 = page.locator('.timed-heat-row').first();
-      await expect(heat1.locator('.timed-lane-col')).toHaveCount(4);
-      await expect(heat1.locator('.timed-lane-col.lane-set-empty')).toHaveCount(2);
-      const visible = await heat1.locator('.timed-lane-col').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().width > 0).length);
+      const heat1 = page.locator('.individual-heat-row').first();
+      await expect(heat1.locator('.individual-lane-col')).toHaveCount(4);
+      await expect(heat1.locator('.individual-lane-col.lane-set-empty')).toHaveCount(2);
+      const visible = await heat1.locator('.individual-lane-col').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().width > 0).length);
       expect(visible).toBe(hidden ? 2 : 4);
-      const bgs = await heat1.locator('.timed-heat-lane-bg:visible').count(); // the heat label's colour bars follow too
+      const bgs = await heat1.locator('.individual-heat-lane-bg:visible').count(); // the heat label's colour bars follow too
       expect(bgs).toBe(width >= 1280 ? 4 : 0); // (the label itself is hidden on narrow screens)
       // the full heat keeps all four lanes
-      await expect(page.locator('.timed-heat-row').nth(1).locator('.timed-lane-col.lane-set-empty')).toHaveCount(0);
+      await expect(page.locator('.individual-heat-row').nth(1).locator('.individual-lane-col.lane-set-empty')).toHaveCount(0);
     });
   }
 });
 
 test('unfolding a distance does not change the height of its heats halfway', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/?competitionId=e2e-timed');
-  await expect(page.locator('.timed-compact-badge').nth(5)).toBeVisible({ timeout: 30000 });
+  await page.goto('/?competitionId=e2e-individual');
+  await expect(page.locator('.individual-compact-badge').nth(5)).toBeVisible({ timeout: 30000 });
   const button = page.locator('.accordion-button').first();
   if ((await button.getAttribute('aria-expanded')) === 'true') await button.click();
   await expect(page.locator('.accordion-collapse.collapse:not(.show)').first()).toBeAttached();
@@ -227,7 +234,7 @@ test('unfolding a distance does not change the height of its heats halfway', asy
   await button.click();
   const heights = new Set<number>();
   for (let i = 0; i < 14; i++) {
-    const h = await page.evaluate(() => Math.round(document.querySelector('.accordion-collapse .timed-heat-row')!.getBoundingClientRect().height));
+    const h = await page.evaluate(() => Math.round(document.querySelector('.accordion-collapse .individual-heat-row')!.getBoundingClientRect().height));
     if (h > 0) heights.add(h); // (0 = not yet unfolded)
     await page.waitForTimeout(40);
   }
@@ -240,15 +247,15 @@ test.describe('card side padding', () => {
       await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-pairs' } });
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-pairs');
-      await expect(page.locator('.timed-compact-final').first()).toBeVisible({ timeout: 30000 });
-      await expect(page.locator('.timed-pb-current').first()).toBeVisible({ timeout: 30000 });
+      await expect(page.locator('.individual-compact-final').first()).toBeVisible({ timeout: 30000 });
+      await expect(page.locator('.individual-pb-current').first()).toBeVisible({ timeout: 30000 });
       const edges = await page.evaluate(() =>
-        [...document.querySelectorAll('.timed-competitor-card:not(.timed-lane-placeholder)')].map((card) => {
+        [...document.querySelectorAll('.individual-competitor-card:not(.individual-lane-placeholder)')].map((card) => {
           const c = card.getBoundingClientRect();
           const left = (sel: string) => { const e = card.querySelector(sel); return e ? e.getBoundingClientRect().left - c.left : null; };
           const right = (sel: string) => { const e = card.querySelector(sel); return e ? c.right - e.getBoundingClientRect().right : null; };
-          const ownLine = !!card.querySelector('.timed-compact-final.timed-compact-own-line'); // a total on a row of its own is centred
-          return { name: left('.timed-comp-name'), firstBadge: left('.timed-compact-lap'), total: ownLine ? null : right('.timed-compact-final'), pb: right('.timed-pb-current') };
+          const ownLine = !!card.querySelector('.individual-compact-final.individual-compact-own-line'); // a total on a row of its own is centred
+          return { name: left('.individual-comp-name'), firstBadge: left('.individual-compact-lap'), total: ownLine ? null : right('.individual-compact-final'), pb: right('.individual-pb-current') };
         }),
       );
       for (const e of edges) {
@@ -260,12 +267,45 @@ test.describe('card side padding', () => {
 });
 
 test('a click outside the settings folds them away, a click inside does not', async ({ page }) => {
-  await page.goto('/?competitionId=e2e-timed');
+  await page.goto('/?competitionId=e2e-individual');
   const display = page.getByRole('button', { name: /^Display/ });
   await display.click();
   await expect(display).toHaveAttribute('aria-expanded', 'true');
   await page.locator('.settings-panel').click({ position: { x: 5, y: 5 } });
   await expect(display).toHaveAttribute('aria-expanded', 'true');
-  await page.locator('.disclaimer-bar').click();
+  await page.locator('main').click({ position: { x: 5, y: 5 } });
   await expect(display).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('on a short screen the open settings stay inside the viewport and scroll to their last card', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.goto('/?competitionId=e2e-mass');
+  await page.getByRole('button', { name: /^Display/ }).click();
+  const panel = page.locator('.settings-panel');
+  await expect(panel).toBeVisible();
+  const box = (await panel.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(600 + 1);
+  await panel.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  const lastCard = (await panel.locator('.setting-popover').last().boundingBox())!;
+  expect(lastCard.y + lastCard.height).toBeLessThanOrEqual(600 + 1);
+});
+
+test('the settings sections are columns on wide screens and below each other on narrow ones', async ({ page }) => {
+  for (const [width, wide] of [[1440, true], [400, false]] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/?competitionId=e2e-mass');
+    await page.getByRole('button', { name: /^Display/ }).click();
+    await expect(page.locator('.settings-section')).toHaveCount(3);
+    const boxes = await page.locator('.settings-section').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
+    expect(boxes).toHaveLength(3);
+    for (let i = 1; i < boxes.length; i++) {
+      if (wide) {
+        expect(boxes[i].x).toBeGreaterThanOrEqual(boxes[i - 1].x + boxes[i - 1].w - 1);
+        expect(Math.abs(boxes[i].y - boxes[0].y)).toBeLessThanOrEqual(1);
+      } else {
+        expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i - 1].y + boxes[i - 1].h - 1);
+        expect(Math.abs(boxes[i].x - boxes[0].x)).toBeLessThanOrEqual(1);
+      }
+    }
+  }
 });

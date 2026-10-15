@@ -17,14 +17,14 @@ test.describe('Reconnecting', () => {
       });
       drop = () => void ws.close();
     });
-    await page.goto('/?competitionId=e2e-timed');
-    await expect(page.locator('.timed-competitor-card').first()).toBeVisible();
+    await page.goto('/?competitionId=e2e-individual');
+    await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
     expect(received[0]).toContain('distance_meta');
 
     // another follower keeps the room open, as the room is closed once nobody follows it
     const other = await page.context().newPage();
-    await other.goto('/?competitionId=e2e-timed');
-    await expect(other.locator('.timed-competitor-card').first()).toBeVisible();
+    await other.goto('/?competitionId=e2e-individual');
+    await expect(other.locator('.individual-competitor-card').first()).toBeVisible();
 
     drop?.();
     await expect.poll(() => urls.length, { timeout: 10_000 }).toBe(2);
@@ -35,6 +35,6 @@ test.describe('Reconnecting', () => {
     expect(received[1]).not.toContain('distance_meta');
     expect(received[1]).not.toContain('event_name');
     expect(received[1].length).toBeLessThan(received[0].length); // only the updates that came meanwhile
-    await expect(page.locator('.timed-competitor-card').first()).toBeVisible();
+    await expect(page.locator('.individual-competitor-card').first()).toBeVisible();
   });
 });

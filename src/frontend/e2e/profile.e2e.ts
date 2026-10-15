@@ -3,7 +3,7 @@ import { test } from '@playwright/test';
 // Profiling run, only with PROFILE=1 (PROFILE=1 npx playwright test e2e/profile.e2e.ts): prints DOM size, heap, script / layout time and long tasks for each fixture while it replays.
 test.skip(!process.env['PROFILE'], 'set PROFILE=1 to profile');
 
-for (const id of ['e2e-timed', 'e2e-pairs', 'e2e-mass', 'e2e-lanes', 'e2e-multi']) {
+for (const id of ['e2e-individual', 'e2e-pairs', 'e2e-mass', 'e2e-lanes', 'e2e-multi']) {
   test(`profile ${id}`, async ({ page }) => {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Performance.enable');

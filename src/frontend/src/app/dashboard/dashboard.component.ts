@@ -10,8 +10,8 @@ import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, Compet
 import { Observable, combineLatest, concat, filter, from, map, merge, of, startWith, switchMap, take, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
-import { GroupStripCardComponent } from './group-strip-card/group-strip-card.component';
-import { TimedHeatCardComponent } from './timed-heat-card/timed-heat-card.component';
+import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
+import { IndividualHeatCardComponent } from './individual-heat-card/individual-heat-card.component';
 import { MassStartRaceRowComponent } from './mass-start-race-row/mass-start-race-row.component';
 import {
   AccordionModule,
@@ -23,9 +23,9 @@ import {
 } from '@coreui/angular';
 import { FormsModule } from '@angular/forms';
 import {
-  timedDistanceLapSchedule as timedDistanceLapScheduleUtil,
-  timedDistanceTotalLaps as timedDistanceTotalLapsUtil,
-  timedRaceComplete as timedRaceCompleteUtil,
+  individualDistanceLapSchedule as individualDistanceLapScheduleUtil,
+  individualDistanceTotalLaps as individualDistanceTotalLapsUtil,
+  individualRaceComplete as individualRaceCompleteUtil,
   mergeHeatGroups,
   trimmedRaces as trimmedRacesUtil,
   heatGroupLaneColors as heatGroupLaneColorsUtil,
@@ -48,8 +48,8 @@ import { raceListAnimation, raceListKey } from './dashboard.animations';
     SharedModule,
     FormsModule,
     TranslatePipe,
-    GroupStripCardComponent,
-    TimedHeatCardComponent,
+    MassStartTimelineComponent,
+    IndividualHeatCardComponent,
     MassStartRaceRowComponent,
   ],
   templateUrl: './dashboard.component.html',
@@ -71,13 +71,12 @@ export class DashboardComponent implements OnInit {
   protected errors$: Observable<string[]>;
   /** Why the page has no results to show (instead of the loading skeleton), or null while it is just connecting. */
   protected emptyNotice$!: Observable<EmptyNotice | null>;
-  protected displayedGroups$: Observable<Map<string, StandingsGroup[]>>;
 
   protected initialLiveId: string | null = null;
   protected liveEventNumber: number | null = null;
-  protected selectedRaceId: string | null = null;
+  /** Mass start competitors the viewer follows; several can be selected at once. A new set on every change, for the OnPush rows. */
+  protected selectedRaceIds: ReadonlySet<string> = new Set();
   protected displaySettingsOpen = false;
-  protected massStartSettingsOpen = false;
   protected activeHeatKey: { distanceId: string; label: string } | null = null;
 
   private readonly scroller = new SettledScroller(() => this.settings.animations.value);
@@ -114,17 +113,24 @@ export class DashboardComponent implements OnInit {
     if (id) window.location.search = `?competitionId=${encodeURIComponent(id)}`;
   }
 
-  /** Only one settings group is open at a time. */
-  protected toggleSettingsGroup(group: 'display' | 'massStart'): void {
-    const open = group === 'display' ? !this.displaySettingsOpen : !this.massStartSettingsOpen;
-    this.displaySettingsOpen = group === 'display' && open;
-    this.massStartSettingsOpen = group === 'massStart' && open;
+  /** Opens or folds away the settings panel. */
+  protected toggleSettings(): void {
+    this.displaySettingsOpen = !this.displaySettingsOpen;
+    this.publishTopbarBottom();
+  }
+
+  /** The settings panel hangs under the top bar, which is lower than its pinned spot while the page is near the top: the panel's height limit is the room left below the bar. */
+  @HostListener('window:scroll')
+  @HostListener('window:resize')
+  protected publishTopbarBottom(): void {
+    const bar: HTMLElement | null = this.host.nativeElement.querySelector('.topbar');
+    if (bar) this.host.nativeElement.style.setProperty('--topbar-bottom', `${Math.max(0, bar.getBoundingClientRect().bottom)}px`);
   }
 
   /** A click anywhere outside the settings buttons and panels folds them away. */
   @HostListener('document:click', ['$event'])
   protected closeSettingsOnOutsideClick(event: MouseEvent): void {
-    if (!this.displaySettingsOpen && !this.massStartSettingsOpen) return;
+    if (!this.displaySettingsOpen) return;
     if (event.composedPath().some((el) => el instanceof Element && el.classList.contains('topbar-settings-group'))) return;
     this.closeSettings();
   }
@@ -133,7 +139,6 @@ export class DashboardComponent implements OnInit {
   @HostListener('document:keydown.escape')
   protected closeSettings(): void {
     this.displaySettingsOpen = false;
-    this.massStartSettingsOpen = false;
   }
 
   protected isTodayCompetition(competitions: TodayCompetition[], id: string): boolean {
@@ -141,7 +146,9 @@ export class DashboardComponent implements OnInit {
   }
 
   protected selectRace(id: string): void {
-    this.selectedRaceId = this.selectedRaceId === id ? null : id;
+    const next = new Set(this.selectedRaceIds);
+    if (!next.delete(id)) next.add(id);
+    this.selectedRaceIds = next;
   }
 
   protected setGroupThreshold(event: Event): void {
@@ -170,15 +177,15 @@ export class DashboardComponent implements OnInit {
    * so the example text would lag behind. They have no `inputType`; typing does and is applied on `change`, so a
    * half-typed "0." is not overwritten.
    */
-  protected stepLapVariance(event: Event, timed: boolean): void {
+  protected stepLapVariance(event: Event, individual: boolean): void {
     if ((event as InputEvent).inputType) return;
-    if (timed) this.setLapVarianceTimed(event);
+    if (individual) this.setLapVarianceIndividual(event);
     else this.setLapVariance(event);
   }
 
-  protected setLapVarianceTimed(event: Event): void {
+  protected setLapVarianceIndividual(event: Event): void {
     const val = parseNumber((event.target as HTMLInputElement).value);
-    if (val !== undefined) this.settings.lapVarianceTimed.set(val);
+    if (val !== undefined) this.settings.lapVarianceIndividual.set(val);
   }
 
   protected setColorScheme(event: Event): void {
@@ -195,10 +202,6 @@ export class DashboardComponent implements OnInit {
 
   protected setCompactColors(event: Event): void {
     this.settings.compactColors.set((event.target as HTMLInputElement).checked);
-  }
-
-  protected setShowLapTimes(event: Event): void {
-    this.settings.showMassStartLapTimes.set((event.target as HTMLInputElement).checked);
   }
 
   /** Switches off the Angular animations (the reordering of rows and the folding of groups) with the setting. */
@@ -241,7 +244,6 @@ export class DashboardComponent implements OnInit {
     ]).pipe(
       map(([feed, status, waitedLong]) => emptyNotice(feed, status.status, waitedLong)),
     );
-    this.displayedGroups$ = this.dataService.displayedGroups$;
     this.hasMassStart$ = this.dataService.processedData$.pipe(
       map(distances => !!distances?.some(d => d.isMassStart))
     );
@@ -314,8 +316,8 @@ export class DashboardComponent implements OnInit {
   }
 
   protected raceListKey = raceListKey;
-  protected readonly timedDistanceLapSchedule = timedDistanceLapScheduleUtil;
-  protected readonly timedDistanceTotalLaps = timedDistanceTotalLapsUtil;
+  protected readonly individualDistanceLapSchedule = individualDistanceLapScheduleUtil;
+  protected readonly individualDistanceTotalLaps = individualDistanceTotalLapsUtil;
   protected readonly trimmedRaces = trimmedRacesUtil;
   protected readonly heatGroupLaneColors = heatGroupLaneColorsUtil;
 
@@ -369,28 +371,28 @@ export class DashboardComponent implements OnInit {
     this.autoFollow.restart();
   }
 
-/** True when a timed race counts as complete: all laps done OR has an invalid_reason. */
-  private timedRaceComplete(race: CompetitorUpdate, distanceMeters: number): boolean {
-    return timedRaceCompleteUtil(race, distanceMeters);
+/** True when a individual race race counts as complete: all laps done OR has an invalid_reason. */
+  private individualRaceComplete(race: CompetitorUpdate, distanceMeters: number): boolean {
+    return individualRaceCompleteUtil(race, distanceMeters);
   }
 
-  /** Number of completed races in a timed distance. */
-  protected timedCompletedCount(distance: ProcessedDistance): number {
+  /** Number of completed races in a individual race distance. */
+  protected individualCompletedCount(distance: ProcessedDistance): number {
     if (!distance.distanceMeters) return 0;
-    return distance.processedRaces.filter(r => this.timedRaceComplete(r, distance.distanceMeters!)).length;
+    return distance.processedRaces.filter(r => this.individualRaceComplete(r, distance.distanceMeters!)).length;
   }
 
-  /** True when all races in a timed distance are complete (finished or invalid). */
-  private isTimedDistanceDone(distance: ProcessedDistance): boolean {
+  /** True when all races in a individual race distance are complete (finished or invalid). */
+  private isIndividualDistanceDone(distance: ProcessedDistance): boolean {
     const total = distance.processedRaces.length;
     if (!distance.distanceMeters || total === 0) return false;
-    return this.timedCompletedCount(distance) === total;
+    return this.individualCompletedCount(distance) === total;
   }
 
   /** True when the distance should show the Done badge. */
   protected isDistanceDone(distance: ProcessedDistance): boolean {
     if (this.liveEventNumber !== null && distance.eventNumber < this.liveEventNumber) return true;
-    if (!distance.isMassStart) return this.isTimedDistanceDone(distance);
+    if (!distance.isMassStart) return this.isIndividualDistanceDone(distance);
     return false;
   }
 }

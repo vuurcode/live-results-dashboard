@@ -9,7 +9,7 @@ $four-lanes-min: 1280px;
 // The note laid over the top of a competitor card (a PB's diff, or a remark such as TRC); the font size differs per kind
 @mixin card-watermark($font-size) {
   position: absolute;
-  top: 0.35rem; // in the top right corner of the card title (see .timed-comp-title)
+  top: 0.35rem; // in the top right corner of the card title (see .individual-comp-title)
   right: 0.6rem;
   @media (min-width: $four-lanes-min) { // four lanes in a row: dead centre of what it is placed against
     top: 50%;

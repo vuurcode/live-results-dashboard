@@ -1,67 +1,70 @@
 <div
-  class="race-item race-item-laps d-flex align-items-center p-2 mb-1 rounded"
+  class="race-item race-item-laps mass-card"
   [attr.data-race-id]="race.id"
   [attr.data-finished-label]="race.finished_rank != null ? ('finished' | translate) : null"
   [class.flash-update]="isRecentUpdate(race.lastUpdated)"
   [class.pos-up]="race.position_change === 'up'"
   [class.pos-down]="race.position_change === 'down'"
   [class.race-finished]="race.finished_rank != null"
-  [class.race-selected]="selectedRaceId === race.id"
+  [class.race-selected]="selectedRaceIds.has(race.id)"
   (click)="raceSelect.emit(race.id)"
   role="button"
   tabindex="0"
-  [attr.aria-pressed]="selectedRaceId === race.id"
+  [attr.aria-pressed]="selectedRaceIds.has(race.id)"
   (keydown.enter)="raceSelect.emit(race.id)"
   (keydown.space)="$event.preventDefault(); raceSelect.emit(race.id)"
 >
-  <div class="race-item-left d-flex align-items-center gap-2">
+  <div class="mass-card-head">
     <span class="rank-label text-muted">{{ ordinalSuffix(raceIdx + 1)[0] }}<sup class="rank-sup">{{ ordinalSuffix(raceIdx + 1)[1] }}</sup></span>
     <c-badge class="start-num-badge badge-black">{{ race.start_number }}</c-badge>
     <span class="race-name-fixed">{{ race.name }}</span>
     @if (isRaceLeader(race, distance)) {
-      <c-badge color="success" style="font-size:0.7em">{{ 'badgeLeader' | translate }}</c-badge>
+      <c-badge color="success" class="mass-leader-badge">{{ 'badgeLeader' | translate }}</c-badge>
     }
+    <span class="mass-card-result">
+      @if (race.finished_rank != null) {
+        @let finishGap = massFinishGapFromLeader(race, distance);
+        @if (finishGap) {
+          <c-badge class="mass-finish-gap-badge">{{ splitFormattedTime(finishGap)[0] }}<small class="time-decimal">{{ splitFormattedTime(finishGap)[1] }}</small></c-badge>
+        }
+        @if (race.formatted_total_time) {
+          <span class="race-time">{{ splitFormattedTime(race.formatted_total_time)[0] }}<small class="time-decimal">{{ splitFormattedTime(race.formatted_total_time)[1] }}</small></span>
+        }
+      } @else if (race.gap_to_above) {
+        <span class="standings-gap-label">{{ race.gap_to_above }}</span>
+      } @else if (race.formatted_total_time) {
+        <span class="race-time">{{ splitFormattedTime(race.formatted_total_time)[0] }}<small class="time-decimal">{{ splitFormattedTime(race.formatted_total_time)[1] }}</small></span>
+      } @else {
+        <span class="individual-pending">·</span>
+      }
+    </span>
   </div>
-  <!-- Centre column: lap time badges (toggled by setting) always in strip, counter after -->
-  <div class="lap-times-strip">
-    @if (showLapTimes) {
+  <!-- Body: the lap times as badges wrapping over rows, each with its lap number above, and the laps still to go -->
+  <div class="mass-card-body">
+    <div class="lap-times-strip">
       @for (lt of race.lap_times; track $index; let i = $index; let last = $last; let count = $count) {
-        <span class="lap-time-badge {{ lapBadgeColor(race.lap_times, i) }}"
-          [class.lap-badge-latest]="last"
-          [class.lap-badge-prev]="i === count - 2"
-          [class.lap-badge-old]="i < count - 2"
-          [attr.data-lap]="last ? race.laps_count : null">
-          {{ splitLapTime(lt)[0] }}<small class="lap-time-decimal">{{ (splitLapTime(lt)[1] || '').replace('.', '') }}</small>
+        <span class="mass-lap">
+          <span class="mass-lap-no">{{ i + 1 }}</span>
+          <span class="lap-time-badge {{ lapBadgeColor(race.lap_times, i) }}"
+            [class.lap-badge-latest]="last"
+            [attr.data-lap]="last ? race.laps_count : null">
+            {{ splitLapTime(lt)[0] }}<small class="lap-time-decimal">{{ (splitLapTime(lt)[1] || '').replace('.', '') }}</small>
+          </span>
         </span>
       }
-      <!-- Pulsing placeholders for pending laps -->
+      <!-- Pulsing placeholders for the laps to come -->
       @if (distance.totalLaps) {
         @for (_ of [].constructor(pendingLapCount(race, distance.totalLaps)); track $index; let i = $index) {
-          <span class="lap-time-badge lap-time-placeholder" [attr.data-pending]="i"> -</span>
+          <span class="mass-lap" aria-hidden="true">
+            <span class="mass-lap-no">{{ race.lap_times.length + i + 1 }}</span>
+            <span class="lap-time-badge lap-time-placeholder" [attr.data-pending]="i"> -</span>
+          </span>
         }
       }
-    }
-    <!-- Lap counter: remaining laps after this round -->
+    </div>
     @if (distance.totalLaps && race.finished_rank == null) {
       @let remaining = distance.totalLaps - race.laps_count - 1;
       <span class="laps-counter-text" [innerHTML]="ts.html(remaining === 1 ? 'moreLapAfterRound' : 'moreLapsAfterRound', { n: remaining })"></span>
-    }
-  </div>
-  <div class="d-flex align-items-center gap-2">
-    @if (race.finished_rank != null) {
-      @let finishGap = massFinishGapFromLeader(race, distance);
-      @if (finishGap) {
-        <c-badge class="mass-finish-gap-badge">{{ splitFormattedTime(finishGap)[0] }}<small class="time-decimal">{{ splitFormattedTime(finishGap)[1] }}</small></c-badge>
-      }
-      @if (race.formatted_total_time) {
-        <span class="race-time">{{ splitFormattedTime(race.formatted_total_time)[0] }}<small class="time-decimal">{{ splitFormattedTime(race.formatted_total_time)[1] }}</small></span>
-      }
-    } @else if (race.gap_to_above) {
-      <span class="standings-gap-label">{{ race.gap_to_above }}</span>
-    } @else if (race.formatted_total_time) {
-      <span class="race-time">{{ splitFormattedTime(race.formatted_total_time)[0] }}<small class="time-decimal">{{ splitFormattedTime(race.formatted_total_time)[1] }}</small></span>
-    } @else {
-      <span class="timed-pending">·</span>
     }
   </div>
 </div>

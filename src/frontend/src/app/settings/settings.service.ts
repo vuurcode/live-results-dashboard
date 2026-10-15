@@ -77,8 +77,8 @@ export class SettingsService {
   /** Percentage a mass start lap may differ from the previous before its badge changes colour. */
   readonly lapVariance = new Setting('lapVariancePct', 5, parseInteger, (v) => Math.max(0, Math.round(v)));
   /** Long track has its own threshold: its laps are far more even, so it takes one decimal. */
-  readonly lapVarianceTimed = new Setting('lapVariancePctTimed', 0.5, parseNumber, (v) => Math.max(0, Math.round(v * 10) / 10));
-  readonly showMassStartLapTimes = new Setting('showMassStartLapTimes', false, parseFlag);
+  // the storage key stays as saved by earlier visits
+  readonly lapVarianceIndividual = new Setting('lapVariancePctTimed', 0.5, parseNumber, (v) => Math.max(0, Math.round(v * 10) / 10));
   /** Compact long track badges coloured by variance against the previous lap, like mass start. */
   readonly compactColors = new Setting('compactColors', true, parseFlag);
   /** Times show thousandths; hundredths when off. */

@@ -5,6 +5,8 @@ export interface Translations {
   // Topbar buttons
   displaySettings: string;
   massStartSettings: string;
+  generalSettings: string;
+  individualRaceSettings: string;
   // Follow setting
   todayCompetitionsLabel: string;
   noCompetitionOption: string;
@@ -22,7 +24,8 @@ export interface Translations {
   thousandthsLabel: string;
   hundredthsLabel: string;
   thousandthsPopoverTitle: string;
-  thousandthsPopoverBody: string;
+  thousandthsOnBody: string;
+  thousandthsOffBody: string;
   compactColorsLabel: string;
   compactColorsPopoverTitle: string;
   compactColorsPopoverBody: string;
@@ -50,21 +53,16 @@ export interface Translations {
   followPopoverBody: string;
   // Max gap setting
   maxGapLabel: string;
-  maxGapPopoverTitle: string;
+  timelineLabel: string;
   maxGapPopoverBody: string;
   // Max groups setting
   maxGroupsLabel: string;
-  maxGroupsPopoverTitle: string;
   maxGroupsPopoverBody: string;
   // Lap variance setting
   lapDeltaLabel: string;
   lapVariancePopoverTitle: string;
   lapVariancePopoverBody: string;
   lapVariancePopoverExample: string;
-  // Lap times setting
-  lapTimesLabel: string;
-  showLapTimesPopoverTitle: string;
-  showLapTimesPopoverBody: string;
   // Badges
   badgeLive: string;
   badgeDone: string;
@@ -83,7 +81,7 @@ export interface Translations {
   lapCompleted: string;
   finished: string;
   finishLabel: string;
-  // Timed personal best label and remarks
+  // Individual personal best label and remarks
   pbCurrentLabel: string;
   pbPreviousLabel: string;
   remarkNewPb: string;

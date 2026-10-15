@@ -32,6 +32,28 @@ test.describe('competition selection', () => {
     expect(sockets).toBe(0);
   });
 
+  test('on a small screen the hint sits below the picker', async ({ page }) => {
+    await page.setViewportSize({ width: 400, height: 800 });
+    await page.goto('/');
+    const select = (await page.locator('#competitionSelect').boundingBox())!;
+    const hint = (await page.locator('.competition-hint').boundingBox())!;
+    expect(hint.y).toBeGreaterThanOrEqual(select.y + select.height);
+    expect(hint.x + hint.width).toBeLessThanOrEqual(400);
+    const cog = (await page.getByRole('button', { name: /^Display/ }).boundingBox())!;
+    expect(Math.abs(cog.y + cog.height / 2 - (select.y + select.height / 2))).toBeLessThanOrEqual(3);
+    expect(Math.abs(cog.height - select.height)).toBeLessThanOrEqual(1);
+  });
+
+  test('the unofficial results notice shows only while a match with results is shown', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('.disclaimer-bar')).toHaveCount(0);
+    await page.goto('/?competitionId=e2e-notlive');
+    await expect(page.getByRole('status').filter({ hasText: 'not live yet' })).toBeVisible();
+    await expect(page.locator('.disclaimer-bar')).toHaveCount(0);
+    await page.goto('/?competitionId=e2e-individual');
+    await expect(page.locator('.disclaimer-bar')).toBeVisible();
+  });
+
   test('says so when there are no competitions to pick from', async ({ page }) => {
     await page.route('**/api/competitions/today', (route) => route.fulfill({ json: [] }));
     await page.goto('/');
@@ -53,16 +75,16 @@ test.describe('competition selection', () => {
   });
 
   test('asks for the competition list again when the backend hints that it changed', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
+    await restartReplay(request, 'e2e-individual');
     const entry = (live: boolean) => ({
-      id: 'e2e-timed', code: 'c', name: 'Match', start: '2026-10-24T10:00:00Z', allowToSendLive: true, live, venue: { code: 'V', name: 'Venue', city: 'City' },
+      id: 'e2e-individual', code: 'c', name: 'Match', start: '2026-10-24T10:00:00Z', allowToSendLive: true, live, venue: { code: 'V', name: 'Venue', city: 'City' },
     });
     let live = false;
     let requests = 0;
     await page.route('**/api/competitions/today', (route) => { requests++; return route.fulfill({ json: [entry(live)] }); });
     let toPage: { send: (message: string) => void } | undefined;
     await page.routeWebSocket(/\/ws/, (ws) => { ws.connectToServer(); toPage = ws; });
-    await page.goto('/?competitionId=e2e-timed');
+    await page.goto('/?competitionId=e2e-individual');
     const option = page.locator('#competitionSelect option:not([disabled])');
     await expect(option).toContainText('⚪');
     expect(requests).toBe(1);
@@ -75,45 +97,45 @@ test.describe('competition selection', () => {
   });
 
   test('two viewers of one competition both get its data', async ({ browser, request }) => {
-    await restartReplay(request, 'e2e-timed');
+    await restartReplay(request, 'e2e-individual');
     const [a, b] = await Promise.all([browser.newPage(), browser.newPage()]);
-    await Promise.all([a.goto('/?competitionId=e2e-timed'), b.goto('/?competitionId=e2e-timed')]);
+    await Promise.all([a.goto('/?competitionId=e2e-individual'), b.goto('/?competitionId=e2e-individual')]);
     for (const page of [a, b]) {
-      await expect(page.locator('.topbar-title')).toHaveText('E2E Timed Event');
-      await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor A' })).toBeVisible();
+      await expect(page.locator('.topbar-title')).toHaveText('E2E Individual Event');
+      await expect(page.locator('.individual-competitor-card', { hasText: 'Competitor A' })).toBeVisible();
     }
     await Promise.all([a.close(), b.close()]);
   });
 });
 
-test.describe('timed distance', () => {
+test.describe('individual race distance', () => {
   test('shows every heat and competitor, and fills in lap times as they arrive', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
-    await page.goto('/?competitionId=e2e-timed');
+    await restartReplay(request, 'e2e-individual');
+    await page.goto('/?competitionId=e2e-individual');
 
-    await expect(page.locator('.timed-heat-row')).toHaveCount(2);
+    await expect(page.locator('.individual-heat-row')).toHaveCount(2);
     for (const name of ['Competitor A', 'Competitor B', 'Competitor C', 'Competitor D']) {
-      await expect(page.locator('.timed-competitor-card', { hasText: name })).toBeVisible();
+      await expect(page.locator('.individual-competitor-card', { hasText: name })).toBeVisible();
     }
     // category and club code sit small below the name
-    await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor A' }).locator('.timed-comp-meta')).toHaveText(/\S/);
+    await expect(page.locator('.individual-competitor-card', { hasText: 'Competitor A' }).locator('.individual-comp-meta')).toHaveText(/\S/);
     // 4 competitors x 3 laps (200 / 600 / 1000 m) once the whole replay has played
-    await expect(page.locator('.timed-compact-badge')).toHaveCount(12);
+    await expect(page.locator('.individual-compact-badge')).toHaveCount(12);
     await expect(page.locator('.compact-dist').filter({ hasText: '1000m' })).toHaveCount(4);
   });
 
   test('cards keep their height while lap times arrive, apart from the title growing at the finish', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
-    await page.goto('/?competitionId=e2e-timed');
-    await expect(page.locator('.timed-compact-body').first()).toBeVisible();
+    await restartReplay(request, 'e2e-individual');
+    await page.goto('/?competitionId=e2e-individual');
+    await expect(page.locator('.individual-compact-body').first()).toBeVisible();
 
     const heights = new Map<number, Set<string>>();
     let badges = 0;
     let sawEmpty = false;
     for (let i = 0; i < 200 && badges < 12; i++) {
       const sample = await page.evaluate(() => ({
-        badges: document.querySelectorAll('.timed-compact-badge').length,
-        heights: [...document.querySelectorAll('.timed-competitor-card')].map((c) => c.getBoundingClientRect().height.toFixed(1)),
+        badges: document.querySelectorAll('.individual-compact-badge').length,
+        heights: [...document.querySelectorAll('.individual-competitor-card')].map((c) => c.getBoundingClientRect().height.toFixed(1)),
       }));
       badges = sample.badges;
       sawEmpty ||= sample.badges < 12;
@@ -136,40 +158,40 @@ test.describe('live heat', () => {
     await page.goto('/?competitionId=e2e-multi');
     const live = page.locator('[data-live]');
     await expect(live).toHaveCount(1);
-    const cards = live.locator('.timed-competitor-card:not(.timed-lane-placeholder)');
-    await expect(page.locator('.timed-card-live').first()).toBeVisible({ timeout: 20_000 });
+    const cards = live.locator('.individual-competitor-card:not(.individual-lane-placeholder)');
+    await expect(page.locator('.individual-card-live').first()).toBeVisible({ timeout: 20_000 });
     await expect(live).toHaveCSS('border-top-width', '0px'); // the row itself carries no border
-    for (const card of await page.locator('.timed-card-live').all()) {
+    for (const card of await page.locator('.individual-card-live').all()) {
       await expect(card).toHaveCSS('border-top-color', 'rgb(220, 53, 69)'); // the colour fades in
     }
     const states = await cards.evaluateAll((els) => els.map((c) => ({
-      live: c.classList.contains('timed-card-live'),
+      live: c.classList.contains('individual-card-live'),
       border: getComputedStyle(c).borderTopColor,
-      other: ['race-finished', 'timed-card-pr', 'timed-card-record', 'timed-card-red', 'timed-card-orange'].some((k) => c.classList.contains(k)),
-      badge: !!c.querySelector('.timed-comp-live'),
+      other: ['race-finished', 'individual-card-pr', 'individual-card-record', 'individual-card-red', 'individual-card-orange'].some((k) => c.classList.contains(k)),
+      badge: !!c.querySelector('.individual-comp-live'),
     })));
     expect(states.some((s) => s.live)).toBe(true);
     for (const s of states) {
       expect(s.live, JSON.stringify(s)).toBe(!s.other && s.badge);
       if (s.live) expect(s.border).toBe('rgb(220, 53, 69)');
     }
-    expect(await page.locator('.timed-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
+    expect(await page.locator('.individual-card-live').evaluateAll((els) => els.every((c) => c.closest('[data-live]')))).toBe(true);
   });
 
   test('the total counts up to the new time when a lap arrives, not before', async ({ page, request }) => {
     await restartReplay(request, 'e2e-multi');
     await page.setViewportSize({ width: 1400, height: 1000 });
     await page.goto('/?competitionId=e2e-multi');
-    const card = page.locator('[data-live] .timed-card-live:has(.timed-compact-badge)').first();
-    const total = card.locator('.timed-compact-final .race-time');
+    const card = page.locator('[data-live] .individual-card-live:has(.individual-compact-badge)').first();
+    const total = card.locator('.individual-compact-final .race-time');
     await expect(total).toBeVisible({ timeout: 20_000 });
-    const laps = () => card.locator('.timed-compact-badge').count();
+    const laps = () => card.locator('.individual-compact-badge').count();
     const lapCount = await laps();
     // record every text the total takes from here on, so the count-up is seen whatever the polling moment
     await card.evaluate((c) => {
       const seen: string[] = [];
       (window as unknown as { __totals: string[] }).__totals = seen;
-      const el = c.querySelector('.timed-compact-final .race-time')!;
+      const el = c.querySelector('.individual-compact-final .race-time')!;
       new MutationObserver(() => seen.push(el.textContent ?? '')).observe(el, { subtree: true, characterData: true, childList: true });
     });
     await expect.poll(laps, { timeout: 20_000 }).toBeGreaterThan(lapCount);
@@ -183,18 +205,18 @@ test.describe('live heat', () => {
 test.describe('snake around the newest lap', () => {
   // one fixed card: which card comes first changes as the others get their first lap
   let racer = '';
-  const live = (page: Page) => page.locator('.timed-competitor-card', { hasText: racer }).first();
-  const snake = (page: Page) => live(page).locator('.timed-compact-latest').evaluate((b) => getComputedStyle(b, '::after').animationName);
+  const live = (page: Page) => page.locator('.individual-competitor-card', { hasText: racer }).first();
+  const snake = (page: Page) => live(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').animationName);
 
   test('is drawn when the lap arrives, and not again when the distance is unfolded', async ({ page, request }) => {
     await page.addInitScript(() => localStorage.setItem('compactColors', 'true')); // the ring belongs to the coloured badges
     await restartReplay(request, 'e2e-multi');
     await page.setViewportSize({ width: 1400, height: 1000 });
     await page.goto('/?competitionId=e2e-multi');
-    const first = page.locator('[data-live] .timed-card-live:has(.timed-compact-badge) .timed-comp-name').first();
+    const first = page.locator('[data-live] .individual-card-live:has(.individual-compact-badge) .individual-comp-name').first();
     await expect(first).toBeVisible({ timeout: 20_000 });
     racer = ((await first.textContent()) ?? '').replace(/live/i, '').trim();
-    const laps = () => live(page).locator('.timed-compact-badge').count();
+    const laps = () => live(page).locator('.individual-compact-badge').count();
     const lapCount = await laps();
     await expect.poll(laps, { timeout: 20_000 }).toBeGreaterThan(lapCount);
     await expect.poll(() => snake(page), { timeout: 2_000 }).toMatch(/snakeAround$/); // Angular scopes the keyframes name
@@ -206,20 +228,20 @@ test.describe('snake around the newest lap', () => {
       await page.waitForTimeout(1600); // the snake takes 1.4s
       await header.click();
       await header.click();
-      await expect(live(page).locator('.timed-compact-latest')).toBeVisible();
+      await expect(live(page).locator('.individual-compact-latest')).toBeVisible();
       if ((await laps()) === before) break;
       expect(attempt, 'a quiet moment to unfold in').toBeLessThan(5);
     }
     expect(await snake(page)).toBe('none');
     // the ring itself is still there, in its finished state
-    expect(await live(page).locator('.timed-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
+    expect(await live(page).locator('.individual-compact-latest').evaluate((b) => getComputedStyle(b, '::after').content)).toBe('""');
   });
 });
 
 test.describe('dark mode setting', () => {
   test('follows the browser by default; On and Off override it and persist', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.goto('/?competitionId=e2e-timed');
+    await page.goto('/?competitionId=e2e-individual');
     const theme = () => page.locator('html').getAttribute('data-coreui-theme');
     await expect.poll(theme).toBe('dark');
 
@@ -257,11 +279,11 @@ test.describe('animations setting', () => {
     await expect(page.locator('html')).toHaveAttribute('data-animations', 'off');
     expect(await page.evaluate(() => localStorage.getItem('animations'))).toBe('false');
 
-    const badges = () => page.locator('[data-live] .timed-card-live .timed-compact-badge').count();
+    const badges = () => page.locator('[data-live] .individual-card-live .individual-compact-badge').count();
     await expect.poll(badges, { timeout: 20_000 }).toBeGreaterThan(0);
     const before = await badges();
     await expect.poll(badges, { timeout: 20_000 }).toBeGreaterThan(before);
-    await expect(page.locator('.timed-snake-fresh')).toHaveCount(0);
+    await expect(page.locator('.individual-snake-fresh')).toHaveCount(0);
 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-animations', 'off');
@@ -272,36 +294,36 @@ test.describe('mass start', () => {
   const names = (page: Page) => page.locator('.race-item-laps .race-name-fixed');
 
   test('cards show the lap times as badges with their distance above, and the total time so far', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
-    await page.goto('/?competitionId=e2e-timed');
-    await expect(page.locator('.timed-compact-body').first()).toBeVisible();
-    await expect(page.locator('.timed-compact-body .timed-compact-badge').first()).toBeVisible();
-    await expect(page.locator('.timed-compact-body').first()).toContainText(/\d+m/); // each badge has its distance above it
+    await restartReplay(request, 'e2e-individual');
+    await page.goto('/?competitionId=e2e-individual');
+    await expect(page.locator('.individual-compact-body').first()).toBeVisible();
+    await expect(page.locator('.individual-compact-body .individual-compact-badge').first()).toBeVisible();
+    await expect(page.locator('.individual-compact-body').first()).toContainText(/\d+m/); // each badge has its distance above it
 
-    await expect(page.locator('.timed-compact-latest').first()).toBeVisible();
+    await expect(page.locator('.individual-compact-latest').first()).toBeVisible();
     // finished cards keep this layout too, and end with the total time so far
-    await expect(page.locator('.timed-compact-final').first()).toBeVisible({ timeout: 30000 });
-    await expect(page.locator('.timed-compact-lap .compact-dist').first()).toBeVisible();
+    await expect(page.locator('.individual-compact-final').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('.individual-compact-lap .compact-dist').first()).toBeVisible();
     // the distance reached so far sits above the total until the final lap is done
-    await expect(page.locator('.timed-compact-final .compact-reached').first()).toBeAttached();
+    await expect(page.locator('.individual-compact-final .compact-reached').first()).toBeAttached();
   });
 
   test('lap colours (on by default) colour the compact badges by variance against the previous lap', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
-    await page.goto('/?competitionId=e2e-timed');
+    await restartReplay(request, 'e2e-individual');
+    await page.goto('/?competitionId=e2e-individual');
     await page.getByRole('button', { name: /^Display/ }).click(); // the settings start closed
     const toggle = page.getByRole('switch', { name: 'Lap time diff colours' });
     await expect(toggle).toBeChecked();
-    await expect(page.locator('.timed-compact-badge').first()).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('.individual-compact-badge').first()).toBeVisible({ timeout: 30000 });
     await toggle.uncheck();
-    await expect(page.locator('.timed-compact-badge[class*="lap-badge-"]')).toHaveCount(0);
+    await expect(page.locator('.individual-compact-badge[class*="lap-badge-"]')).toHaveCount(0);
     await toggle.check();
-    await expect(page.locator('.timed-compact-badge.lap-badge-normal').first()).toBeVisible();
+    await expect(page.locator('.individual-compact-badge.lap-badge-normal').first()).toBeVisible();
     // 1000 m opens with a 200 m lap: that lap and the next have nothing fair to differ from (light grey), the third is coloured
-    const lapBadge = (n: number) => page.locator(`.timed-compact-lap:nth-child(${n}) .timed-compact-badge`).first();
-    await expect(lapBadge(2)).toHaveClass(/timed-compact-partial/);
+    const lapBadge = (n: number) => page.locator(`.individual-compact-lap:nth-child(${n}) .individual-compact-badge`).first();
+    await expect(lapBadge(2)).toHaveClass(/individual-compact-partial/);
     await expect(lapBadge(3)).toBeVisible({ timeout: 30000 });
-    await expect(lapBadge(3)).not.toHaveClass(/timed-compact-partial/);
+    await expect(lapBadge(3)).not.toHaveClass(/individual-compact-partial/);
     // the Lap delta threshold is configurable here too, and only while the colours are on
     const threshold = page.getByLabel('Lap time diff threshold');
     await expect(threshold).toBeVisible();
@@ -343,46 +365,61 @@ test.describe('mass start', () => {
     await row.click();
     await expect(row).not.toHaveClass(/race-selected/);
   });
+
+  test('several competitors can be selected at once', async ({ page, request }) => {
+    await restartReplay(request, 'e2e-mass');
+    await page.goto('/?competitionId=e2e-mass');
+    await expect(page.locator('.race-item-laps.race-finished')).toHaveCount(4);
+
+    const f = page.locator('.race-item-laps', { hasText: 'Competitor F' });
+    const other = page.locator('.race-item-laps').filter({ hasNotText: 'Competitor F' }).first();
+    await f.click();
+    await other.click();
+    await expect(f).toHaveClass(/race-selected/);
+    await expect(other).toHaveClass(/race-selected/);
+    await f.click();
+    await expect(f).not.toHaveClass(/race-selected/);
+    await expect(other).toHaveClass(/race-selected/);
+  });
 });
 
 test('lists the competitions of today and opens the chosen one', async ({ page }) => {
-  await page.goto('/?competitionId=e2e-timed');
+  await page.goto('/?competitionId=e2e-individual');
   const select = page.getByLabel('Competitions today');
   await expect(select.locator('option')).toHaveCount(6); // the six fixture competitions; the mock's other-day and other-venue entries are filtered out
-  await expect(select).toHaveValue('e2e-timed');
+  await expect(select).toHaveValue('e2e-individual');
   await select.selectOption('e2e-mass');
   await page.waitForURL(/competitionId=e2e-mass/);
   await expect(page.getByLabel('Competitions today')).toHaveValue('e2e-mass');
 });
 
 test('the competition picker replaces the event name, venue first, start time only before the start', async ({ page }) => {
-  await page.goto('/?competitionId=e2e-timed');
+  await page.goto('/?competitionId=e2e-individual');
   const select = page.getByLabel('Competitions today');
   await expect(select).toBeVisible();
   // the event name is still the page heading, but visually hidden because the picker shows it
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Timed Event');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Individual Event');
   await expect(page.getByRole('heading', { level: 1 })).toHaveClass(/visually-hidden/);
   const labels = await select.locator('option').allTextContents();
-  const running = labels.find((l) => l.includes('E2E Timed Event'))!;
-  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Timed Event \(Mock Ice Rink\)$/);
+  const running = labels.find((l) => l.includes('E2E Individual Event'))!;
+  expect(running.trim()).toMatch(/^(🔴 |⚪ )?\d{2}:\d{2}( - \d{2}:\d{2})? · E2E Individual Event \(Mock Ice Rink\)$/);
 });
 
-test('only one settings group is open at a time, and the options are toggles', async ({ page, request }) => {
+test('one settings panel holds the general and individual race settings and, in a mass start match, the mass start ones under their own headings', async ({ page, request }) => {
   await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-mass' } });
   await page.goto('/?competitionId=e2e-mass');
   const display = page.getByRole('button', { name: /^Display/ });
-  const massStart = page.getByRole('button', { name: /^Mass Start/ });
   await expect(display).toHaveAttribute('aria-expanded', 'false'); // closed on load
+  await expect(page.getByRole('button', { name: /^Mass Start/ })).toHaveCount(0);
   await display.click();
   await expect(display).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toBeVisible();
+  await expect(page.locator('.settings-heading')).toHaveText(['General', 'Individual race', 'Mass start']);
+});
 
-  await massStart.click();
-  await expect(massStart).toHaveAttribute('aria-expanded', 'true');
-  await expect(display).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toHaveCount(0);
-  await expect(page.getByRole('switch', { name: 'Lap times' })).toBeVisible();
-
-  await display.click();
-  await expect(massStart).toHaveAttribute('aria-expanded', 'false');
+test('without a mass start the settings panel has no mass start section', async ({ page }) => {
+  await page.goto('/?competitionId=e2e-individual');
+  await page.getByRole('button', { name: /^Display/ }).click();
+  await expect(page.getByRole('switch', { name: 'Auto-follow on updates' })).toBeVisible();
+  await expect(page.locator('.settings-heading')).toHaveText(['General', 'Individual race']);
 });

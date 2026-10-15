@@ -12,8 +12,8 @@ describe('SettingsService', () => {
     expect(s.groupThreshold.value).toBe(2);
     expect(s.maxGroups.value).toBe(4);
     expect(s.lapVariance.value).toBe(5);
-    expect(s.lapVarianceTimed.value).toBe(0.5);
-    expect([s.showMassStartLapTimes.value, s.compactColors.value, s.showThousandths.value, s.follow.value]).toEqual([false, true, true, true]);
+    expect(s.lapVarianceIndividual.value).toBe(0.5);
+    expect([s.compactColors.value, s.showThousandths.value, s.follow.value]).toEqual([true, true, true]);
   });
 
   it('keeps what is set across page loads', () => {
@@ -30,8 +30,8 @@ describe('SettingsService', () => {
     s.groupThreshold.set(99);
     s.maxGroups.set(-3);
     s.lapVariance.set(2.6);
-    s.lapVarianceTimed.set(0.26);
-    expect([s.groupThreshold.value, s.maxGroups.value, s.lapVariance.value, s.lapVarianceTimed.value]).toEqual([10, 0, 3, 0.3]);
+    s.lapVarianceIndividual.set(0.26);
+    expect([s.groupThreshold.value, s.maxGroups.value, s.lapVariance.value, s.lapVarianceIndividual.value]).toEqual([10, 0, 3, 0.3]);
   });
 
   it('falls back to the default for unusable stored values', () => {

@@ -2,10 +2,10 @@ import { formatDurationSeconds, parseSeconds } from './time.util';
 
 /**
  * Returns the ordered list of cumulative distances (in metres) at which a lap
- * is expected for a timed distance, derived from first_lap % 400.
+ * is expected for a individual race distance, derived from first_lap % 400.
  * e.g. distanceMeters=1000 -> [200, 600, 1000]; distanceMeters=100 -> [100]
  */
-export function timedDistanceLapSchedule(distanceMeters: number): number[] {
+export function individualDistanceLapSchedule(distanceMeters: number): number[] {
   const firstLap = distanceMeters % 400 || 400;
   const laps: number[] = [firstLap];
   let cumulative = firstLap;
@@ -16,20 +16,20 @@ export function timedDistanceLapSchedule(distanceMeters: number): number[] {
   return laps;
 }
 
-/** Total number of expected laps for a timed distance. */
-export function timedDistanceTotalLaps(distanceMeters: number): number {
-  return timedDistanceLapSchedule(distanceMeters).length;
+/** Total number of expected laps for a individual race distance. */
+export function individualDistanceTotalLaps(distanceMeters: number): number {
+  return individualDistanceLapSchedule(distanceMeters).length;
 }
 
 /**
- * Where a timed distance starts on the 400m oval, in degrees back from its finish line (1m = 0.9 degrees; 360 is the
+ * Where a individual race distance starts on the 400m oval, in degrees back from its finish line (1m = 0.9 degrees; 360 is the
  * finish line itself). Read from the track diagram: the 100m and 500m start 100m before the finish, the 3000m and 5000m
  * 200m, the 1500m 300m. The 1000m starts on the opposite straight and finishes in the middle of the other one, 200m on.
  */
 const START_DEGREES: Record<number, number> = { 100: 90, 500: 90, 1000: 180, 1500: 270, 3000: 180, 5000: 180, 10000: 360 };
 
-/** Start of a timed distance in degrees back from its finish; a distance not listed follows from the length of its first lap. */
-export function timedStartDegrees(distanceMeters: number): number {
+/** Start of a individual race distance in degrees back from its finish; a distance not listed follows from the length of its first lap. */
+export function individualStartDegrees(distanceMeters: number): number {
   return START_DEGREES[distanceMeters] ?? ((distanceMeters % 400) || 400) * 0.9;
 }
 
@@ -41,23 +41,23 @@ export function timedStartDegrees(distanceMeters: number): number {
  * square one), and so are the starts that follow from it: 45 degrees (1500m) and 315 degrees (3000m, 5000m) on the top straight, 225 degrees (100m, 500m) on the bottom one,
  * and 0 degrees (1000m). A snake never starts or stops inside a turn.
  */
-export function timedFinishAngle(distanceMeters: number): number {
+export function individualFinishAngle(distanceMeters: number): number {
   return distanceMeters === 1000 ? 180 : 135;
 }
 
-export interface TimedRace {
+export interface IndividualRace {
   laps_count: number;
   invalid_reason: string | null;
 }
 
-/** True when the competitor has completed all laps for the timed distance. */
-export function isTimedFinished(race: TimedRace, distanceMeters: number): boolean {
-  return race.laps_count >= timedDistanceTotalLaps(distanceMeters);
+/** True when the competitor has completed all laps for the individual race distance. */
+export function isIndividualFinished(race: IndividualRace, distanceMeters: number): boolean {
+  return race.laps_count >= individualDistanceTotalLaps(distanceMeters);
 }
 
-/** True when a timed race counts as complete: all laps done OR has an invalid_reason. */
-export function timedRaceComplete(race: TimedRace, distanceMeters: number): boolean {
-  return !!race.invalid_reason || isTimedFinished(race, distanceMeters);
+/** True when a individual race race counts as complete: all laps done OR has an invalid_reason. */
+export function individualRaceComplete(race: IndividualRace, distanceMeters: number): boolean {
+  return !!race.invalid_reason || isIndividualFinished(race, distanceMeters);
 }
 
 export interface HeatGroupLike<T> {
@@ -128,17 +128,17 @@ export function heatGroupLaneColors<T extends { lane: string }>(
 
 /**
  * Compares the competitor's total time against their personal best once the
- * final lap of a timed distance is complete. Returns the sign (`faster` when
+ * final lap of a individual race distance is complete. Returns the sign (`faster` when
  * the current time beats the PR) and a 3-decimal absolute diff string, or
  * null if comparison is not applicable.
  */
-export function timedPrComparison(
+export function individualPrComparison(
   personalRecord: string | null,
   totalTime: string,
-  race: TimedRace,
+  race: IndividualRace,
   distanceMeters: number,
 ): { faster: boolean; diff: string } | null {
-  if (!personalRecord || !totalTime || !isTimedFinished(race, distanceMeters)) return null;
+  if (!personalRecord || !totalTime || !isIndividualFinished(race, distanceMeters)) return null;
   const prSecs = parseSeconds(personalRecord);
   const totalSecs = parseSeconds(totalTime);
   const diff = Math.abs(prSecs - totalSecs);

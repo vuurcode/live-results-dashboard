@@ -21,8 +21,7 @@ export class MassStartRaceRowComponent {
   @Input({ required: true }) race!: CompetitorUpdate;
   @Input({ required: true }) distance!: ProcessedDistance;
   @Input() raceIdx = 0;
-  @Input() selectedRaceId: string | null = null;
-  @Input() showLapTimes = false;
+  @Input() selectedRaceIds: ReadonlySet<string> = new Set();
   @Input() lapVarianceThreshold = 0;
 
   @Output() readonly raceSelect = new EventEmitter<string>();

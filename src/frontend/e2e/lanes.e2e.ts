@@ -10,7 +10,7 @@ test.describe('four lanes in a row', () => {
     test(`${width}px: a full heat shows ${perRow} cards per row, each readable`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto('/?competitionId=e2e-lanes');
-      const cards = page.locator('.timed-heat-row').nth(1).locator('.timed-competitor-card:not(.timed-lane-placeholder)');
+      const cards = page.locator('.individual-heat-row').nth(1).locator('.individual-competitor-card:not(.individual-lane-placeholder)');
       await expect(cards).toHaveCount(4);
       const boxes = await cards.evaluateAll((els) => els.map((e) => {
         const r = e.getBoundingClientRect();
@@ -29,7 +29,7 @@ test.describe('card watermark placement', () => {
   // the note stamps in (grows to its place) once the final lap has settled: measure it when that has finished
   async function stamped(card: import('@playwright/test').Locator, pseudo?: '::before') {
     await expect.poll(() => card.evaluate((c, ps) => {
-      const el = ps ? c.querySelector('.timed-comp-title')! : c.querySelector('.timed-watermark')!;
+      const el = ps ? c.querySelector('.individual-comp-title')! : c.querySelector('.individual-watermark')!;
       return getComputedStyle(el, ps ?? null).scale;
     }, pseudo), { timeout: 15_000 }).toBe('none');
   }
@@ -39,12 +39,12 @@ test.describe('card watermark placement', () => {
   async function pbPlacement(page: import('@playwright/test').Page, width: number): Promise<Placement> {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/?competitionId=e2e-pairs');
-    const card = page.locator('.timed-competitor-card', { hasText: 'Competitor A' });
-    await expect(card.locator('.timed-watermark')).toBeVisible({ timeout: 15_000 });
+    const card = page.locator('.individual-competitor-card', { hasText: 'Competitor A' });
+    await expect(card.locator('.individual-watermark')).toBeVisible({ timeout: 15_000 });
     await stamped(card);
     return card.evaluate((c) => {
-      const t = c.querySelector('.timed-comp-title')!.getBoundingClientRect();
-      const w = c.querySelector('.timed-watermark')!.getBoundingClientRect();
+      const t = c.querySelector('.individual-comp-title')!.getBoundingClientRect();
+      const w = c.querySelector('.individual-watermark')!.getBoundingClientRect();
       return { dx: (w.left + w.width / 2 - (t.left + t.width / 2)) / t.width, dy: w.top + w.height / 2 - (t.top + t.height / 2), rightGap: (t.right - w.right) / t.width, topGap: w.top - t.top };
     });
   }
@@ -53,11 +53,11 @@ test.describe('card watermark placement', () => {
   async function noTimePlacement(page: import('@playwright/test').Page, width: number) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/?competitionId=e2e-pairs');
-    const card = page.locator('.timed-competitor-card.timed-card-no-time', { hasText: 'Competitor B' });
+    const card = page.locator('.individual-competitor-card.individual-card-no-time', { hasText: 'Competitor B' });
     await expect(card).toBeVisible({ timeout: 15_000 });
     await stamped(card, '::before');
     return card.evaluate((c) => {
-      const cs = getComputedStyle(c.querySelector('.timed-comp-title')!, '::before');
+      const cs = getComputedStyle(c.querySelector('.individual-comp-title')!, '::before');
       const r = c.getBoundingClientRect();
       return { left: cs.left, right: cs.right, top: cs.top, cardWidth: r.width, cardHeight: r.height };
     });
@@ -105,18 +105,18 @@ test.describe('card content', () => {
   test('the category is named in full, with the club code in brackets behind it', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/?competitionId=e2e-pairs');
-    await expect(page.locator('.timed-competitor-card', { hasText: 'Competitor A' }).locator('.timed-comp-meta')).toHaveText('Women Juniors A1 (IFX)');
+    await expect(page.locator('.individual-competitor-card', { hasText: 'Competitor A' }).locator('.individual-comp-meta')).toHaveText('Women Juniors A1 (IFX)');
   });
 
   test('a total time that does not fit on the row of the lap badges is centred on the next row', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 });
-    await page.goto('/?competitionId=e2e-timed');
-    const final = page.locator('.timed-compact-final.timed-compact-own-line').first();
+    await page.goto('/?competitionId=e2e-individual');
+    const final = page.locator('.individual-compact-final.individual-compact-own-line').first();
     await expect(final).toBeVisible();
     const { offset, bodyWidth, rowGap } = await final.evaluate((f) => {
-      const body = f.closest('.timed-compact-body')!.getBoundingClientRect();
+      const body = f.closest('.individual-compact-body')!.getBoundingClientRect();
       const r = f.getBoundingClientRect();
-      const lastLap = [...f.closest('.timed-compact-body')!.querySelectorAll('.timed-compact-lap')].pop()!.getBoundingClientRect();
+      const lastLap = [...f.closest('.individual-compact-body')!.querySelectorAll('.individual-compact-lap')].pop()!.getBoundingClientRect();
       return { offset: r.left + r.width / 2 - (body.left + body.width / 2), bodyWidth: body.width, rowGap: r.top - lastLap.bottom };
     });
     expect(Math.abs(offset)).toBeLessThan(bodyWidth * 0.03);
@@ -136,9 +136,9 @@ test.describe('record cards', () => {
       ['Competitor F', 'Track Record\n(Women Juniors A1)'],
     ];
     for (const [name, watermark] of expected) {
-      const card = page.locator('.timed-competitor-card', { hasText: name });
-      await expect(card.locator('.timed-comp-title')).toHaveAttribute('data-watermark', watermark, { timeout: 15_000 });
-      await expect(card.locator('.timed-compact-final .timed-lap-time').first()).toHaveCSS('background-color', 'rgb(111, 66, 193)');
+      const card = page.locator('.individual-competitor-card', { hasText: name });
+      await expect(card.locator('.individual-comp-title')).toHaveAttribute('data-watermark', watermark, { timeout: 15_000 });
+      await expect(card.locator('.individual-compact-final .individual-lap-time').first()).toHaveCSS('background-color', 'rgb(111, 66, 193)');
     }
   });
 });
@@ -148,13 +148,13 @@ test.describe('cards on one row', () => {
     test(`${width}px: the cards of a row, and their titles, are as tall as the tallest`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto('/?competitionId=e2e-lanes');
-      const cards = page.locator('.timed-heat-row').nth(1).locator('.timed-competitor-card:not(.timed-lane-placeholder)');
+      const cards = page.locator('.individual-heat-row').nth(1).locator('.individual-competitor-card:not(.individual-lane-placeholder)');
       await expect(cards).toHaveCount(4);
       const boxes = await cards.evaluateAll((els) => els.map((e) => ({
         top: Math.round(e.getBoundingClientRect().top),
         card: Math.round(e.getBoundingClientRect().height),
-        title: Math.round(e.querySelector('.timed-comp-title')!.getBoundingClientRect().height),
-        header: Math.round(e.querySelector('.timed-comp-header')!.getBoundingClientRect().height),
+        title: Math.round(e.querySelector('.individual-comp-title')!.getBoundingClientRect().height),
+        header: Math.round(e.querySelector('.individual-comp-header')!.getBoundingClientRect().height),
       })));
       for (const top of new Set(boxes.map((b) => b.top))) {
         const row = boxes.filter((b) => b.top === top);
@@ -170,8 +170,8 @@ test.describe('card content is never clipped', () => {
   for (const width of [320, 800, 1400]) {
     test(`${width}px: a card is tall enough for its title and its body, also while the total wraps to its own line`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
-      await page.goto('/?competitionId=e2e-timed');
-      const cards = page.locator('.timed-competitor-card:not(.timed-lane-placeholder)');
+      await page.goto('/?competitionId=e2e-individual');
+      const cards = page.locator('.individual-competitor-card:not(.individual-lane-placeholder)');
       await expect(cards).toHaveCount(4);
       const clipped = await cards.evaluateAll((els) => els.filter((c) => {
         const content = [...c.children].reduce((sum, child) => sum + child.getBoundingClientRect().height, 0);
@@ -180,4 +180,15 @@ test.describe('card content is never clipped', () => {
       expect(clipped).toBe(0);
     });
   }
+});
+
+test('a finished race shows no rings around its laps, a running one keeps them on all its laps', async ({ page }) => {
+  await page.goto('/?competitionId=e2e-lanes');
+  const ring = (card: import('@playwright/test').Locator) =>
+    card.locator('.individual-compact-ringed:not(.individual-compact-start-ring)').evaluateAll((els) => els.map((el) => getComputedStyle(el, '::after').opacity));
+  const finished = page.locator('.individual-competitor-card.race-finished').first();
+  await expect(finished).toBeVisible();
+  await expect.poll(async () => (await ring(finished)).every((o) => o === '0')).toBe(true);
+  const running = page.locator('.individual-competitor-card:not(.race-finished):has(.individual-compact-latest)').first();
+  if (await running.count()) expect((await ring(running)).every((o) => o === '1')).toBe(true);
 });

@@ -1,0 +1,24 @@
+<div #lane class="mass-timeline" role="group" [attr.aria-label]="'timelineLabel' | translate" [style.height.rem]="rows * rowRem">
+  @for (p of placed; track p.race.id) {
+    <div
+      class="timeline-racer race-item-group"
+      [class.timeline-leader]="$first"
+      [class.flash-update]="isRecentUpdate(p.race.lastUpdated)"
+      [class.race-selected]="selectedRaceIds.has(p.race.id)"
+      [style.right.px]="p.offset"
+      [style.top.rem]="p.row * rowRem"
+      (click)="select(p.race.id)"
+      role="button"
+      tabindex="0"
+      [attr.aria-pressed]="selectedRaceIds.has(p.race.id)"
+      (keydown.enter)="select(p.race.id)"
+      (keydown.space)="$event.preventDefault(); select(p.race.id)"
+    >
+      <c-badge class="start-num-badge badge-black" style="font-size:0.75em">{{ p.race.start_number }}</c-badge>
+      <span class="timeline-name">{{ p.race.name }}</span>
+      @if (p.gapText) {
+        <span class="timeline-gap">{{ p.gapText }}</span>
+      }
+    </div>
+  }
+</div>

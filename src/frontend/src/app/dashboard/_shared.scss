@@ -126,6 +126,32 @@
   }
 }
 
+// The ring around a lap badge that a snake draws counter-clockwise, once, when the lap arrives (.individual-snake-fresh).
+@mixin lap-ring {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    padding: 2px; // the ring's thickness
+    border-radius: calc(0.25rem + 2px);
+    // The ring is the oval: the finish line is at --ring-from (degrees clockwise from the top), and a lap covers the share of the ring
+    // --lap-fraction (half for a 200m first lap) back from there. It is drawn from the lap's start to the finish, counter-clockwise,
+    // the way skaters go round.
+    --arc: calc(360deg * var(--lap-fraction, 1));
+    background: conic-gradient(from var(--ring-from, 0deg), transparent calc(var(--arc) - var(--snake-angle)), var(--lr-ring) 0 var(--arc), transparent 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude; // only the padding box stays: the ring
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+    --snake-angle: var(--arc);
+  }
+  &.individual-snake-fresh::after { animation: snakeAround 1.4s ease-in-out both; }
+  @media (prefers-reduced-motion: reduce) {
+    &.individual-snake-fresh::after { animation: none; }
+  }
+}
+
 /* Smaller lap time badges to reduce visual weight */
 .lap-time-badge {
   display: inline-flex;
@@ -154,7 +180,7 @@
   }
   // earlier laps keep their full colours: fading them would drop the text below 4.5:1
 
-  /* Decimal as smaller subtext on the baseline, like the decimals of the timed splits */
+  /* Decimal as smaller subtext on the baseline, like the decimals of the individual race splits */
   .lap-time-decimal {
     font-size: 0.72em;
     margin-left: 0.04ch;
@@ -188,10 +214,10 @@
   filter: none !important;
   position: relative;
 }
-.timed-competitor-card {
+.individual-competitor-card {
   width: 100%;
   min-width: 0;
-  grid-row: 1 / span 2; // see .timed-competitors-row
+  grid-row: 1 / span 2; // see .individual-competitors-row
   display: grid;
   grid-template-rows: subgrid;
   grid-template-columns: minmax(0, 1fr);
@@ -206,7 +232,7 @@
     outline: 2px solid var(--lr-select) !important;
     outline-offset: -2px;
   }
-  &.timed-lane-placeholder {
+  &.individual-lane-placeholder {
     border-color: transparent;
     background: transparent;
     cursor: default;
@@ -214,22 +240,22 @@
   }
   // The watermarks are placed against the title: top right, and dead centre with four lanes in a row. A card without a time
   // (fall, disqualified, ...) has it placed against the whole card instead, so in the four lane view it is centred on the card.
-  .timed-comp-title { position: relative; }
-  &.timed-card-no-time .timed-comp-title { @media (min-width: $four-lanes-min) { position: static; } }
-  .timed-watermark {
+  .individual-comp-title { position: relative; }
+  &.individual-card-no-time .individual-comp-title { @media (min-width: $four-lanes-min) { position: static; } }
+  .individual-watermark {
     @include card-watermark(clamp(0.8rem, calc(4.5vw / var(--card-lanes, 1)), 1.4rem));
-    &.timed-watermark-slower, &.timed-watermark-pr { // dead centre of the title, at every width
+    &.individual-watermark-slower, &.individual-watermark-pr { // dead centre of the title, at every width
       top: 50%;
       right: auto;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-6deg);
     }
-    &.timed-watermark-slower { color: var(--lr-slower-text); } // orange
-    &.timed-watermark-pr { color: var(--lr-accent-text); } // purple, 4.7:1 on white (0.80 gave 4.2:1)
-    .timed-watermark-text { font-size: 0.6em; } // the label is smaller than the diff below it
-    .timed-watermark-decimal { font-size: 0.65em; }
+    &.individual-watermark-slower { color: var(--lr-slower-text); } // orange
+    &.individual-watermark-pr { color: var(--lr-accent-text); } // purple, 4.7:1 on white (0.80 gave 4.2:1)
+    .individual-watermark-text { font-size: 0.6em; } // the label is smaller than the diff below it
+    .individual-watermark-decimal { font-size: 0.65em; }
   }
-  .timed-comp-title[data-watermark]::before {
+  .individual-comp-title[data-watermark]::before {
     @include card-watermark(clamp(0.7rem, calc(3.5vw / var(--card-lanes, 1)), 1.2rem));
     content: attr(data-watermark);
     overflow-wrap: anywhere;
@@ -237,71 +263,57 @@
   }
   // The result's note stamps in once the snake around the final lap has finished and the total has counted up: it grows
   // from larger and transparent to its place and colour. `scale` is a property of its own, so the placement transforms stay.
-  .timed-watermark, .timed-comp-title[data-watermark]::before {
+  .individual-watermark, .individual-comp-title[data-watermark]::before {
     transition: opacity 0.9s ease-out, scale 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2);
     @media (prefers-reduced-motion: reduce) { transition: none; }
   }
-  &.timed-card-settling {
-    .timed-watermark, .timed-comp-title[data-watermark]::before { opacity: 0; scale: 1.8; }
+  &.individual-card-settling {
+    .individual-watermark, .individual-comp-title[data-watermark]::before { opacity: 0; scale: 1.8; }
   }
   // a card of the live heat that is still racing: a thick red border; the inner outline thickens it without changing the card height
-  &.timed-card-live { border-color: var(--lr-live); outline: 2px solid var(--lr-live); outline-offset: -3px; }
-  &.timed-card-pr {
+  &.individual-card-live { border-color: var(--lr-live); outline: 2px solid var(--lr-live); outline-offset: -3px; }
+  &.individual-card-pr {
     border: 2px solid var(--lr-accent);
-    .timed-comp-title::before { color: var(--lr-accent-text); }
+    .individual-comp-title::before { color: var(--lr-accent-text); }
   }
-  &.timed-card-record {
+  &.individual-card-record {
     border: 4px solid var(--lr-accent);
     animation: recordRainbow 2s linear infinite;
-    .timed-comp-title::before { animation: recordRainbowText 2s linear infinite; }
+    .individual-comp-title::before { animation: recordRainbowText 2s linear infinite; }
   }
   // DQ / DNF / Fall etc. are marked by the border, watermark and badge, not by fading the card:
   // the old card-wide opacity 0.7 made every badge and grey label on these cards fail contrast.
-  &.timed-card-red {
+  &.individual-card-red {
     border: 2px solid var(--lr-fall);
-    .timed-comp-title::before { color: var(--lr-fall-text); }
+    .individual-comp-title::before { color: var(--lr-fall-text); }
   }
-  &.timed-card-orange {
+  &.individual-card-orange {
     border: 2px solid var(--lr-warn);
-    .timed-comp-title::before { color: var(--lr-warn-text); }
+    .individual-comp-title::before { color: var(--lr-warn-text); }
   }
 }
-.timed-split-badge.timed-compact-badge {
+.individual-split-badge.individual-compact-badge {
   &.lap-badge-normal { background-color: $tint-normal-bg; color: $tint-normal-fg; } // beats the plain badge rule above
   &.lap-badge-slow   { background-color: $tint-slow-bg; color: $tint-slow-fg; }
   &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
-  &.timed-compact-partial { background-color: var(--lr-neutral-bg); color: var(--lr-neutral-fg); } // the first lap has no previous lap to differ from: light grey while the diff colours are on
-  // the newest lap stands out: a ring that a snake draws around the badge counter-clockwise, once, when the lap arrives
+  &.individual-compact-partial { background-color: var(--lr-neutral-bg); color: var(--lr-neutral-fg); } // the first lap has no previous lap to differ from: light grey while the diff colours are on
+  // every lap of a running race has a ring that a snake draws around the badge counter-clockwise, once, when the lap arrives
   // (a badge that is merely rendered, such as when a distance is unfolded, shows the finished ring);
   // a first lap shorter than a full lap keeps its ring, as it shows where the distance starts on the oval
-  &.timed-compact-latest[class*='lap-badge-'],
-  &.timed-compact-start-ring[class*='lap-badge-'] {
-    position: relative;
-    &::after {
-      content: '';
-      position: absolute;
-      inset: -2px;
-      padding: 2px; // the ring's thickness
-      border-radius: calc(0.25rem + 2px);
-      // The ring is the oval: the finish line is at --ring-from (degrees clockwise from the top), and a lap covers the share of the ring
-      // --lap-fraction (half for a 200m first lap) back from there. It is drawn from the lap's start to the finish, counter-clockwise,
-      // the way skaters go round.
-      --arc: calc(360deg * var(--lap-fraction, 1));
-      background: conic-gradient(from var(--ring-from, 0deg), transparent calc(var(--arc) - var(--snake-angle)), var(--lr-ring) 0 var(--arc), transparent 0);
-      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      mask-composite: exclude; // only the padding box stays: the ring
-      -webkit-mask-composite: xor;
-      pointer-events: none;
-      --snake-angle: var(--arc);
-    }
-    &.timed-snake-fresh::after { animation: snakeAround 1.4s ease-in-out both; }
-    @media (prefers-reduced-motion: reduce) {
-      &.timed-snake-fresh::after { animation: none; }
-    }
+  &.individual-compact-ringed[class*='lap-badge-'],
+  &.individual-compact-start-ring[class*='lap-badge-'] {
+    @include lap-ring;
   }
-  &.timed-flash-update[class*='lap-badge-'] { animation: none; }
+  &.individual-flash-update[class*='lap-badge-'] { animation: none; }
 }
-.timed-compact-final .timed-lap-time {
+// once the race is finished the rings of its laps fade away after the last snake has been drawn, so a done heat shows no ring
+// (a card rendered finished never has it); the ring itself fades, not the card, which keeps its contrast
+.race-finished .individual-compact-ringed:not(.individual-compact-start-ring)[class*='lap-badge-']::after {
+  opacity: 0;
+  transition: opacity 0.6s ease-out 1.5s;
+  @media (prefers-reduced-motion: reduce) { transition: none; }
+}
+.individual-compact-final .individual-lap-time {
   // the total as a badge, also while the race runs (light grey, like the placeholder), the same size as the final one
   background-color: var(--lr-neutral-bg);
   color: var(--lr-neutral-fg);
@@ -310,7 +322,7 @@
   font-size: 1.5rem; // the result: much bigger than the lap badges
   .race-time, .time-decimal { color: inherit; }
 }
-.timed-split-badge .time-decimal {
+.individual-split-badge .time-decimal {
   font-size: 0.8em; /* smaller decimal inside the split badge, still legible */
   color: inherit; /* same colour as the badge text: no opacity, which would drop the contrast */
 }
@@ -333,7 +345,7 @@
   .time-decimal { color: #212529 !important; opacity: 0.9; }
 }
 
-.timed-ghost-hidden { visibility: hidden; } // keeps the room of the placeholders
+.individual-ghost-hidden { visibility: hidden; } // keeps the room of the placeholders
 // ===== TIME STYLING =====
 .race-time {
   font-variant-numeric: tabular-nums;
@@ -342,13 +354,6 @@
 .time-decimal {
   font-size: 0.78em;
   color: var(--lr-text-small); // 9:1 on white, still 4.9:1 on the green update flash after finished rows dim to 85% (CoreUI's translucent secondary colour gave 3.7:1)
-}
-.group-strip-card {
-  // Cards share the row evenly, but never get too narrow to read a name nor wider than a card needs;
-  // when they do not all fit, the strip scrolls sideways instead of cutting cards off.
-  flex: 1 1 0;
-  min-width: 11rem;
-  max-width: 22rem;
 }
 
 // Keyboard focus for selectable competitor rows

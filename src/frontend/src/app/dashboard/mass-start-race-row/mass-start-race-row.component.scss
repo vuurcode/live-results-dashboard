@@ -1,60 +1,88 @@
 @use '../tokens' as *;
 @use '../shared';
 
-// Mass-start row with lap badges
+// Mass start competitor: a card like those of the individual races, with the lap times as badges below the name
+:host { display: block; }
 .race-item-laps {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.35rem;
+  height: 100%;
+  padding: 0.5rem 0.6rem;
   border: 1px solid var(--lr-line-soft);
+  border-radius: 0.5rem;
   cursor: pointer;
   transition: outline 0.1s, background-color 0.1s;
-  gap: 0.5rem;
   &:hover {
     background-color: var(--lr-tint-hover);
   }
+  // hovering hints that a card can be selected (to follow that competitor): its border pulses in the selection colour
+  &:hover:not(.race-selected) {
+    border-color: var(--lr-select);
+    animation: select-hint 1.1s ease-in-out infinite;
+    @media (prefers-reduced-motion: reduce) { animation: none; }
+  }
+  > * { position: relative; z-index: 1; } // above the finished watermark
+  &.race-finished::before { // dead centre of the card, behind its content
+    right: auto;
+    left: 62%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+  }
 }
-// Left column: fixed width so all badge strips start at the same horizontal offset
-.race-item-left {
-  flex: 0 1 16rem; // shrinks on narrow screens so the row never exceeds the viewport
-  min-width: 7rem;
-  overflow: hidden;
+.mass-card-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  min-width: 0;
 }
-// Competitor name: truncate beyond fixed width
+// Competitor name: the rest of the line, truncated when it does not fit
 .race-name-fixed {
+  flex: 1 1 0;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 10rem;
+  font-weight: 600;
 }
-// Lap counter: pinned at a fixed right offset so it never shifts with time text width
+.mass-leader-badge { font-size: 0.7em; }
+.mass-card-result {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.mass-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1 1 auto;
+}
+// The lap times wrap over rows, so the card never scrolls sideways
+.lap-times-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.25rem 0.3rem;
+}
+.mass-lap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.mass-lap-no {
+  font-size: 0.65rem;
+  line-height: 1;
+  color: var(--lr-text-small);
+}
+// Remaining laps, below the badges
 .laps-counter-text {
-  position: absolute;
-  right: 9rem;
-  top: 50%;
-  transform: translateY(-50%);
   font-size: 0.75rem;
   font-family: monospace;
   font-variant-numeric: tabular-nums;
   color: var(--lr-text-small);
   white-space: nowrap;
   line-height: 1;
-}
-// Scrollable strip of lap time badges — centred
-.lap-times-strip {
-  /* Left-align badges so they start at a fixed offset (vertical alignment across rows) */
-  display: flex;
-  align-items: center;
-  justify-content: flex-start; /* align badges to the left edge of the centre column */
-  gap: 0.12rem; /* very small gap - single whitespace feel */
-  flex: 1 1 0;
-  min-width: 0;
-  overflow-x: auto;
-  padding: 0 0.75rem 0 0.9rem; /* ensure consistent left offset from name column */
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
 }
 
 /* Placeholder badge — identical sizing to real lap-time-badge so width/height competition exactly */
@@ -95,4 +123,9 @@
   font-style: italic;
   color: var(--lr-text-small); // CoreUI's translucent secondary colour gave 3.7:1
   white-space: nowrap;
+}
+
+@keyframes select-hint {
+  0%, 100% { border-color: color-mix(in srgb, var(--lr-select) 35%, transparent); box-shadow: 0 0 0 0 transparent; }
+  50% { border-color: var(--lr-select); box-shadow: 0 0 0 2px var(--lr-select-bg); }
 }

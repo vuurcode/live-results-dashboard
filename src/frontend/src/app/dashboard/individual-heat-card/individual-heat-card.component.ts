@@ -6,20 +6,20 @@ import { parseSeconds, sameHundredths, formatDurationSeconds, truncateLapTime, s
 import { isNeverLive, GHOST_HIDING_CODES, NO_TIME_CODES, RaceCode, RECORD_CODES, RECORD_PRIORITY } from '../../results/race-codes';
 import { categoryName } from '../../results/category.util';
 import { lapBadgeColor } from '../../results/lap-color.util';
-import { isTimedFinished, timedStartDegrees, timedFinishAngle, timedRaceComplete, timedPrComparison as timedPrComparisonUtil } from '../../results/heats.util';
+import { isIndividualFinished, individualStartDegrees, individualFinishAngle, individualRaceComplete, individualPrComparison as individualPrComparisonUtil } from '../../results/heats.util';
 
 /** The usual lane colours by slot, for lanes no competitor has shown a colour for yet. */
 const DEFAULT_LANE_ORDER = ['white', 'red', 'yellow', 'blue'];
 
 @Component({
-  selector: 'app-timed-heat-card',
+  selector: 'app-individual-heat-card',
   standalone: true,
   imports: [BadgeModule],
-  templateUrl: './timed-heat-card.component.html',
-  styleUrls: ['./timed-heat-card.component.scss'],
+  templateUrl: './individual-heat-card.component.html',
+  styleUrls: ['./individual-heat-card.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TimedHeatCardComponent {
+export class IndividualHeatCardComponent {
   protected ts = inject(TranslateService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private cdr = inject(ChangeDetectorRef);
@@ -75,7 +75,8 @@ export class TimedHeatCardComponent {
   /** Notes a race whose lap just arrived: its total counts up to the new time while the snake around that lap is drawn. */
   private noteLapArrivals(before: (CompetitorUpdate | null)[], after: (CompetitorUpdate | null)[]): void {
     const total = this.lapSchedule.length;
-    if (!total || !this.animate || this.reducedMotion.matches) return;
+    // a card in a folded distance is not seen: unfolding it later shows the finished laps without a snake
+    if (!total || !this.animate || this.reducedMotion.matches || !this.host.nativeElement.getClientRects().length) return;
     for (const race of after) {
       const laps = race?.lap_times?.length ?? 0;
       if (!race || race.invalid_reason || laps > total) continue;
@@ -131,7 +132,7 @@ export class TimedHeatCardComponent {
     inject(DestroyRef).onDestroy(() => this.observer?.disconnect());
     // The grid is only measured when the body appears or is resized, not on every render
     afterEveryRender(() => {
-      const body = this.host.nativeElement.querySelector('.timed-compact-body');
+      const body = this.host.nativeElement.querySelector('.individual-compact-body');
       if (!body || body === this.observed) return;
       this.observer ??= new ResizeObserver(() => this.measureColumns());
       if (this.observed) this.observer.unobserve(this.observed);
@@ -168,7 +169,7 @@ export class TimedHeatCardComponent {
   protected isSplitFlashing = (lastUpdated: number | undefined): boolean => isRecentUpdate(lastUpdated, Date.now(), this.SPLIT_FLASH_MS);
   protected splitFormattedTime = splitFormattedTime;
   protected truncateLapTime = truncateLapTime;
-  protected isTimedFinished = isTimedFinished;
+  protected isIndividualFinished = isIndividualFinished;
 
   private readonly REMARK_KEY_MAP: Record<string, TranslationKey> = {
     [RaceCode.PersonalRecord]: 'remarkNewPb',
@@ -189,7 +190,7 @@ export class TimedHeatCardComponent {
    * formatted string (e.g. "1:23.456"), summing individual split lap_times.
    * Returns null if the lap has not been completed yet.
    */
-  protected timedCumulativeTime(race: CompetitorUpdate, lapIndex: number): string | null {
+  protected individualCumulativeTime(race: CompetitorUpdate, lapIndex: number): string | null {
     if (!race.lap_times || race.lap_times.length <= lapIndex) return null;
     let total = 0;
     for (let i = 0; i <= lapIndex; i++) {
@@ -219,14 +220,14 @@ export class TimedHeatCardComponent {
   }
 
   /** Full description for a remark or invalid_reason code, or null if unknown. */
-  protected timedLabelTitle(code: string | null): string | null {
+  protected individualLabelTitle(code: string | null): string | null {
     if (!code) return null;
     const key = this.REMARK_KEY_MAP[code.toUpperCase()];
     return key ? this.ts.t(key) : null;
   }
 
-  /** Color variant for a timed card based on invalid_reason/remark values. */
-  protected timedCardVariant(race: CompetitorUpdate): 'pr' | 'record' | 'red' | 'orange' | null {
+  /** Color variant for a individual race card based on invalid_reason/remark values. */
+  protected individualCardVariant(race: CompetitorUpdate): 'pr' | 'record' | 'red' | 'orange' | null {
     if (race.invalid_reason) {
       return race.invalid_reason.toUpperCase() === RaceCode.Disqualified ? 'red' : 'orange';
     }
@@ -247,12 +248,12 @@ export class TimedHeatCardComponent {
 
   /** The live tag goes on the cards of the live heat, except for competitors who did not start or withdrew, and those whose result is in. */
   protected showLive(race: CompetitorUpdate): boolean {
-    return this.active && !isNeverLive(race) && !(this.distanceMeters != null && timedRaceComplete(race, this.distanceMeters));
+    return this.active && !isNeverLive(race) && !(this.distanceMeters != null && individualRaceComplete(race, this.distanceMeters));
   }
 
   /** A live card has the live border, unless the card already has a border of its own (a personal best, a record, a fall ...). */
   protected liveBorder(race: CompetitorUpdate): boolean {
-    return this.showLive(race) && this.timedCardVariant(race) === null;
+    return this.showLive(race) && this.individualCardVariant(race) === null;
   }
 
   /** True for a race that did not start, was disqualified or withdrew: its placeholder badges are not shown (their room is kept). */
@@ -264,9 +265,9 @@ export class TimedHeatCardComponent {
   /** Watermark text: invalid_reason takes priority over remark; resolved via label map.
    *  PR remarks are rendered as a DOM overlay instead (returns null).
    *  Records (WR, NR, TR, TRC, in that order) get priority; TRC is a track record that names its category in full on a second line. */
-  protected timedWatermarkText(race: CompetitorUpdate): string | null {
+  protected individualWatermarkText(race: CompetitorUpdate): string | null {
     if (race.invalid_reason) {
-      return this.timedLabelTitle(race.invalid_reason) ?? race.invalid_reason;
+      return this.individualLabelTitle(race.invalid_reason) ?? race.invalid_reason;
     }
     const parts = this.markingCodes(race.remark);
     if (!parts.length) return null;
@@ -275,7 +276,7 @@ export class TimedHeatCardComponent {
     // records come first, the most significant one wins
     const recordCode = RECORD_PRIORITY.find(v => parts.includes(v));
     if (recordCode) {
-      const label = this.timedLabelTitle(recordCode) ?? recordCode;
+      const label = this.individualLabelTitle(recordCode) ?? recordCode;
       if (recordCode === RaceCode.TrackRecordCourse && race.category) {
         return `${label}\n(${this.categoryFullName(race.category)})`;
       }
@@ -284,7 +285,7 @@ export class TimedHeatCardComponent {
     // Other non-PR remark
     const firstNonPr = parts.find(v => v !== RaceCode.PersonalRecord);
     if (firstNonPr) {
-      return this.timedLabelTitle(firstNonPr) ?? firstNonPr;
+      return this.individualLabelTitle(firstNonPr) ?? firstNonPr;
     }
     return null;
   }
@@ -293,10 +294,10 @@ export class TimedHeatCardComponent {
   protected compactTotalTime(race: CompetitorUpdate): string | null {
     if (race.invalid_reason || !race.lap_times?.length) return null;
     const progress = this.lapProgress(race);
-    const final = this.timedCumulativeTime(race, race.lap_times.length - 1)!;
+    const final = this.individualCumulativeTime(race, race.lap_times.length - 1)!;
     if (progress >= 1) return final;
     // the previous total counts up to the new time by the moment the snake has finished
-    const previous = race.lap_times.length > 1 ? parseSeconds(this.timedCumulativeTime(race, race.lap_times.length - 2)!) : 0;
+    const previous = race.lap_times.length > 1 ? parseSeconds(this.individualCumulativeTime(race, race.lap_times.length - 2)!) : 0;
     return formatDurationSeconds(previous + (parseSeconds(final) - previous) * progress);
   }
 
@@ -306,8 +307,8 @@ export class TimedHeatCardComponent {
    */
   protected decimals(race: CompetitorUpdate): 2 | 3 {
     if (this.showThousandths) return 3;
-    if (this.distanceMeters == null || !race.personal_record || !race.lap_times?.length || !isTimedFinished(race, this.distanceMeters)) return 2;
-    const total = this.timedCumulativeTime(race, race.lap_times.length - 1);
+    if (this.distanceMeters == null || !race.personal_record || !race.lap_times?.length || !isIndividualFinished(race, this.distanceMeters)) return 2;
+    const total = this.individualCumulativeTime(race, race.lap_times.length - 1);
     if (!total) return 2;
     return sameHundredths(total, race.personal_record) ? 3 : 2;
   }
@@ -341,7 +342,7 @@ export class TimedHeatCardComponent {
 
   /** Tooltip of a compact lap badge: three rows - distance, lap time, total time. */
   protected compactBadgeTitle(race: CompetitorUpdate, i: number): string {
-    const total = this.timedCumulativeTime(race, i);
+    const total = this.individualCumulativeTime(race, i);
     return [
       `${this.ts.t('tooltipDistance')}: ${this.lapSchedule[i]}m`,
       `${this.ts.t('tooltipLapTime')}: ${truncateLapTime(race.lap_times[i], 2)}`,
@@ -367,23 +368,23 @@ export class TimedHeatCardComponent {
 
   /** Where the finish line is on a lap badge's ring, in degrees clockwise from the top. */
   protected get ringFinish(): string {
-    return `${this.distanceMeters == null ? 0 : timedFinishAngle(this.distanceMeters)}deg`;
+    return `${this.distanceMeters == null ? 0 : individualFinishAngle(this.distanceMeters)}deg`;
   }
 
   /** Share of the ring the snake draws for lap i: the first lap from where the distance starts on the oval, the others all the way round. */
   protected lapFraction(i: number): number {
     if (i > 0 || this.distanceMeters == null) return 1;
-    return Math.min(1, timedStartDegrees(this.distanceMeters) / 360);
+    return Math.min(1, individualStartDegrees(this.distanceMeters) / 360);
   }
 
   /** True once the final lap is done. */
   protected compactDone(race: CompetitorUpdate): boolean {
-    return this.distanceMeters != null && isTimedFinished(race, this.distanceMeters) && this.totalLaps(race) === race.lap_times.length;
+    return this.distanceMeters != null && isIndividualFinished(race, this.distanceMeters) && this.totalLaps(race) === race.lap_times.length;
   }
 
   /** True once the skater has finished faster than the personal best shown on the card. */
   protected isPbImproved(race: CompetitorUpdate): boolean {
-    return !!this.distanceMeters && !!this.timedPrComparison(race, this.distanceMeters)?.faster;
+    return !!this.distanceMeters && !!this.individualPrComparison(race, this.distanceMeters)?.faster;
   }
 
   /** Badge text: the upstream code `PR` is shown as the local term (PB in English, PR in Dutch); other codes are international. */
@@ -394,20 +395,20 @@ export class TimedHeatCardComponent {
   /** CSS class for the remark badge (PR and the records → purple, else orange). */
   protected remarkBadgeClass(remark: string): string {
     const v = remark.toUpperCase();
-    return (v === RaceCode.PersonalRecord || RECORD_CODES.has(v)) ? 'timed-badge-purple' : 'timed-badge-orange';
+    return (v === RaceCode.PersonalRecord || RECORD_CODES.has(v)) ? 'individual-badge-purple' : 'individual-badge-orange';
   }
 
   /** CSS class for the invalid_reason badge (DQ → red, else orange). */
   protected invalidBadgeClass(reason: string): string {
-    return reason.toUpperCase() === RaceCode.Disqualified ? 'timed-badge-red' : 'timed-badge-orange';
+    return reason.toUpperCase() === RaceCode.Disqualified ? 'individual-badge-red' : 'individual-badge-orange';
   }
 
   /**
    * Compares the competitor's total time against their personal best once
-   * the final lap of a timed distance is complete. Returns the sign and
+   * the final lap of a individual race distance is complete. Returns the sign and
    * 3-decimal diff string, or null if comparison is not applicable.
    */
-  protected timedPrComparison(race: CompetitorUpdate, distanceMeters: number): { faster: boolean; diff: string } | null {
-    return timedPrComparisonUtil(race.personal_record, race.total_time, race, distanceMeters);
+  protected individualPrComparison(race: CompetitorUpdate, distanceMeters: number): { faster: boolean; diff: string } | null {
+    return individualPrComparisonUtil(race.personal_record, race.total_time, race, distanceMeters);
   }
 }

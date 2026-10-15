@@ -1,6 +1,9 @@
 <div class="d-flex flex-column min-vh-100">
-  <!-- ===== DISCLAIMER ===== -->
-  <section class="disclaimer-bar" [attr.aria-label]="'disclaimerLabel' | translate"><p class="mb-0">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</p></section>
+  <!-- ===== DISCLAIMER: only once results of a match in progress are shown ===== -->
+  @let feedState = dataService.feed$ | async;
+  @if ((sortedDistances$ | async)?.length && feedState?.state !== 'not_live') {
+    <section class="disclaimer-bar" [attr.aria-label]="'disclaimerLabel' | translate"><p class="mb-0">{{ 'disclaimer' | translate }} {{ 'disclaimerOwnership' | translate }}</p></section>
+  }
   <!-- ===== TOP BAR ===== -->
   <header class="topbar text-white px-2 px-md-4 py-2 d-flex flex-wrap align-items-center gap-2 gap-md-3">
     <img class="topbar-logo" src="icon.png" alt="" [attr.title]="'pageTitle' | translate" width="32" height="32" />
@@ -35,193 +38,174 @@
     <div class="topbar-settings ms-auto d-flex flex-wrap align-items-center gap-2">
       <!-- Display settings (collapsible) -->
       <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettingsGroup('display')" [attr.aria-expanded]="displaySettingsOpen" [attr.aria-label]="'displaySettings' | translate" [attr.title]="'displaySettings' | translate">
+        <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettings()" [attr.aria-expanded]="displaySettingsOpen" [attr.aria-label]="'displaySettings' | translate" [attr.title]="'displaySettings' | translate">
           <span class="topbar-group-text">{{ 'displaySettings' | translate }}</span><svg class="topbar-group-cog" viewBox="0 0 16 16" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" focusable="false"><path fill-rule="evenodd" d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.86z"/></svg> <span class="topbar-group-arrow" [class.open]="displaySettingsOpen">▾</span>
         </button>
         @if (displaySettingsOpen) {
           <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'displaySettings' | translate">
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
-              <div class="form-check form-switch"><input
-                id="followInput"
-                type="checkbox"
-                class="form-check-input" role="switch"
-                [checked]="settings.follow.value"
-                (change)="setFollow($event)"
-              /></div>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
-              </div>
-            </div>
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
-              <select
-                id="colorSchemeInput"
-                class="form-select form-select-sm scheme-select"
-                (change)="setColorScheme($event)"
-              >
-                <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
-                <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
-                <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
-              </select>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
-              </div>
-            </div>
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
-              <div class="form-check form-switch"><input
-                id="animationsInput"
-                type="checkbox"
-                class="form-check-input" role="switch"
-                [checked]="settings.animations.value"
-                (change)="setAnimations($event)"
-              /></div>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
-              </div>
-            </div>
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
-              <div class="form-check form-switch">
-                <input
-                  id="thousandthsInput"
-                  type="checkbox"
-                  class="form-check-input" role="switch"
-                  [checked]="settings.showThousandths.value"
-                  (change)="setShowThousandths($event)"
-                />
-              </div>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('thousandthsPopoverBody')"></div>
-              </div>
-            </div>
-            <div class="setting-group ms-2">
-              <label class="small text-nowrap mb-0 setting-label" for="compactColorsInput">{{ 'compactColorsLabel' | translate }}</label>
-              <div class="form-check form-switch">
-                <input
-                  id="compactColorsInput"
-                  type="checkbox"
-                  class="form-check-input" role="switch"
-                  [checked]="settings.compactColors.value"
-                  (change)="setCompactColors($event)"
-                />
-              </div>
-              <div class="setting-popover">
-                <div class="setting-popover-title">{{ 'compactColorsPopoverTitle' | translate }}</div>
-                <div class="setting-popover-body" [innerHTML]="ts.html('compactColorsPopoverBody')"></div>
-              </div>
-            </div>
-            <div class="setting-collapse" [class.open]="settings.compactColors.value" [attr.inert]="settings.compactColors.value ? null : ''">
-              <div class="setting-collapse-inner">
+            @let withMassStart = (hasMassStart$ | async);
+            <!-- One panel in columns: general, individual race and, in a mass start match, mass start settings -->
+            <section class="settings-section" aria-labelledby="settingsGeneralHeading">
+              <h2 id="settingsGeneralHeading" class="settings-heading">{{ 'generalSettings' | translate }}</h2>
               <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="lapVarianceTimedInput">{{ 'lapDeltaLabel' | translate }}</label>
-                <div class="input-group input-group-sm threshold-group">
+                <label class="small text-nowrap mb-0 setting-label" for="followInput">{{ 'followLabel' | translate }}</label>
+                <div class="form-check form-switch"><input
+                  id="followInput"
+                  type="checkbox"
+                  class="form-check-input" role="switch"
+                  [checked]="settings.follow.value"
+                  (change)="setFollow($event)"
+                /></div>
+                <div class="setting-popover">
+                  <div class="setting-popover-title">{{ 'followPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('followPopoverBody')"></div>
+                </div>
+              </div>
+              <div class="setting-group ms-2">
+                <label class="small text-nowrap mb-0 setting-label" for="colorSchemeInput">{{ 'colorSchemeLabel' | translate }}</label>
+                <select
+                  id="colorSchemeInput"
+                  class="form-select form-select-sm scheme-select"
+                  (change)="setColorScheme($event)"
+                >
+                  <option value="auto" [selected]="settings.colorScheme.value === 'auto'">{{ 'colorSchemeAuto' | translate }}</option>
+                  <option value="dark" [selected]="settings.colorScheme.value === 'dark'">{{ 'colorSchemeOn' | translate }}</option>
+                  <option value="light" [selected]="settings.colorScheme.value === 'light'">{{ 'colorSchemeOff' | translate }}</option>
+                </select>
+                <div class="setting-popover">
+                  <div class="setting-popover-title">{{ 'colorSchemePopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('colorSchemePopoverBody')"></div>
+                </div>
+              </div>
+              <div class="setting-group ms-2">
+                <label class="small text-nowrap mb-0 setting-label" for="animationsInput">{{ 'animationsLabel' | translate }}</label>
+                <div class="form-check form-switch"><input
+                  id="animationsInput"
+                  type="checkbox"
+                  class="form-check-input" role="switch"
+                  [checked]="settings.animations.value"
+                  (change)="setAnimations($event)"
+                /></div>
+                <div class="setting-popover">
+                  <div class="setting-popover-title">{{ 'animationsPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('animationsPopoverBody')"></div>
+                </div>
+              </div>
+              <div class="setting-group ms-2">
+                <label class="small text-nowrap mb-0 setting-label" for="thousandthsInput">{{ (settings.showThousandths.value ? 'thousandthsLabel' : 'hundredthsLabel') | translate }}</label>
+                <div class="form-check form-switch">
                   <input
-                    id="lapVarianceTimedInput"
-                    type="number"
-                    min="0" max="50" step="0.1"
-                    class="form-control form-control-sm threshold-input"
-                    [value]="settings.lapVarianceTimed.value"
-                    (change)="setLapVarianceTimed($event)"
-                    (input)="stepLapVariance($event, true)"
+                    id="thousandthsInput"
+                    type="checkbox"
+                    class="form-check-input" role="switch"
+                    [checked]="settings.showThousandths.value"
+                    (change)="setShowThousandths($event)"
                   />
-                  <span class="input-group-text">%</span>
                 </div>
                 <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVarianceTimed.value))"></div>
+                  <div class="setting-popover-title">{{ 'thousandthsPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html(settings.showThousandths.value ? 'thousandthsOnBody' : 'thousandthsOffBody')"></div>
                 </div>
               </div>
+            </section>
+            <section class="settings-section" aria-labelledby="settingsIndividualHeading">
+              <h2 id="settingsIndividualHeading" class="settings-heading">{{ 'individualRaceSettings' | translate }}</h2>
+              <div class="setting-group ms-2">
+                <label class="small text-nowrap mb-0 setting-label" for="compactColorsInput">{{ 'compactColorsLabel' | translate }}</label>
+                <div class="form-check form-switch">
+                  <input
+                    id="compactColorsInput"
+                    type="checkbox"
+                    class="form-check-input" role="switch"
+                    [checked]="settings.compactColors.value"
+                    (change)="setCompactColors($event)"
+                  />
+                </div>
+                <div class="setting-popover">
+                  <div class="setting-popover-title">{{ 'compactColorsPopoverTitle' | translate }}</div>
+                  <div class="setting-popover-body" [innerHTML]="ts.html('compactColorsPopoverBody')"></div>
+                </div>
               </div>
-            </div>
+              <div class="setting-collapse" [class.open]="settings.compactColors.value" [attr.inert]="settings.compactColors.value ? null : ''">
+                <div class="setting-collapse-inner">
+                <div class="setting-group ms-2">
+                  <label class="small text-nowrap mb-0 setting-label" for="lapVarianceIndividualInput">{{ 'lapDeltaLabel' | translate }}</label>
+                  <div class="input-group input-group-sm threshold-group">
+                    <input
+                      id="lapVarianceIndividualInput"
+                      type="number"
+                      min="0" max="50" step="0.1"
+                      class="form-control form-control-sm threshold-input"
+                      [value]="settings.lapVarianceIndividual.value"
+                      (change)="setLapVarianceIndividual($event)"
+                      (input)="stepLapVariance($event, true)"
+                    />
+                    <span class="input-group-text">%</span>
+                  </div>
+                  <div class="setting-popover">
+                    <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
+                    <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
+                    <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVarianceIndividual.value))"></div>
+                  </div>
+                </div>
+                </div>
+              </div>
+            </section>
+            @if (withMassStart) {
+              <section class="settings-section settings-section-mass" aria-labelledby="settingsMassStartHeading">
+                <h2 id="settingsMassStartHeading" class="settings-heading">{{ 'massStartSettings' | translate }}</h2>
+                <div class="setting-group setting-group-pair ms-1">
+                  <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
+                  <div class="input-group input-group-sm threshold-group">
+                    <input
+                      id="groupThresholdInput"
+                      type="number"
+                      min="0" max="10" step="0.5"
+                      class="form-control form-control-sm threshold-input"
+                      [value]="settings.groupThreshold.value"
+                      (change)="setGroupThreshold($event)"
+                    />
+                    <span class="input-group-text">s</span>
+                  </div>
+                  <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
+                  <input
+                    id="maxGroupsInput"
+                    type="number"
+                    min="0" step="1"
+                    class="form-control form-control-sm threshold-input"
+                    [value]="settings.maxGroups.value"
+                    (change)="setMaxGroups($event)"
+                  />
+                  <div class="setting-popover">
+                    <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
+                    <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
+                  </div>
+                </div>
+                <div class="setting-group ms-2">
+                  <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
+                  <div class="input-group input-group-sm threshold-group">
+                    <input
+                      id="lapVarianceInput"
+                      type="number"
+                      min="0" max="50" step="1"
+                      class="form-control form-control-sm threshold-input"
+                      [value]="settings.lapVariance.value"
+                      (change)="setLapVariance($event)"
+                      (input)="stepLapVariance($event, false)"
+                    />
+                    <span class="input-group-text">%</span>
+                  </div>
+                  <div class="setting-popover">
+                    <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
+                    <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
+                    <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
+                  </div>
+                </div>
+              </section>
+            }
           </div>
         }
       </div>
-      <!-- Mass Start settings (collapsible) -->
-      @if (hasMassStart$ | async) {
-        <div class="topbar-settings-group d-flex flex-wrap align-items-center">
-          <button class="btn btn-sm btn-outline-light topbar-group-btn" (click)="toggleSettingsGroup('massStart')" [attr.aria-expanded]="massStartSettingsOpen">
-            {{ 'massStartSettings' | translate }} <span class="topbar-group-arrow" [class.open]="massStartSettingsOpen">▾</span>
-          </button>
-          @if (massStartSettingsOpen) {
-            <div class="topbar-settings-body settings-panel" role="group" [attr.aria-label]="'massStartSettings' | translate">
-              <div class="setting-group ms-1">
-                <label class="small text-nowrap mb-0 setting-label" for="groupThresholdInput">{{ 'maxGapLabel' | translate }}</label>
-                <div class="input-group input-group-sm threshold-group">
-                  <input
-                    id="groupThresholdInput"
-                    type="number"
-                    min="0" max="10" step="0.5"
-                    class="form-control form-control-sm threshold-input"
-                    [value]="settings.groupThreshold.value"
-                    (change)="setGroupThreshold($event)"
-                  />
-                  <span class="input-group-text">s</span>
-                </div>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'maxGapPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('maxGapPopoverBody')"></div>
-                </div>
-              </div>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="maxGroupsInput">{{ 'maxGroupsLabel' | translate }}</label>
-                <input
-                  id="maxGroupsInput"
-                  type="number"
-                  min="0" step="1"
-                  class="form-control form-control-sm threshold-input"
-                  [value]="settings.maxGroups.value"
-                  (change)="setMaxGroups($event)"
-                />
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'maxGroupsPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('maxGroupsPopoverBody')"></div>
-                </div>
-              </div>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="lapVarianceInput">{{ 'lapDeltaLabel' | translate }}</label>
-                <div class="input-group input-group-sm threshold-group">
-                  <input
-                    id="lapVarianceInput"
-                    type="number"
-                    min="0" max="50" step="1"
-                    class="form-control form-control-sm threshold-input"
-                    [value]="settings.lapVariance.value"
-                    (change)="setLapVariance($event)"
-                    (input)="stepLapVariance($event, false)"
-                  />
-                  <span class="input-group-text">%</span>
-                </div>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'lapVariancePopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('lapVariancePopoverBody')"></div>
-                  <div class="setting-popover-body setting-popover-example" [innerHTML]="ts.html('lapVariancePopoverExample', lapExample(settings.lapVariance.value))"></div>
-                </div>
-              </div>
-              <div class="setting-group ms-2">
-                <label class="small text-nowrap mb-0 setting-label" for="showLapTimesInput">{{ 'lapTimesLabel' | translate }}</label>
-                <div class="form-check form-switch"><input
-                  id="showLapTimesInput"
-                  type="checkbox"
-                  class="form-check-input" role="switch"
-                  [checked]="settings.showMassStartLapTimes.value"
-                  (change)="setShowLapTimes($event)"
-                /></div>
-                <div class="setting-popover">
-                  <div class="setting-popover-title">{{ 'showLapTimesPopoverTitle' | translate }}</div>
-                  <div class="setting-popover-body" [innerHTML]="ts.html('showLapTimesPopoverBody')"></div>
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      }
     </div>
   </header>
   <!-- ===== ERRORS ===== -->
@@ -237,13 +221,7 @@
     @if ((sortedDistances$ | async)?.length) {
       @let liveFeed = dataService.feed$ | async;
       @if (liveFeed?.state === 'not_live') {
-        <div class="empty-notice alert alert-warning mt-2" role="status">
-          <h2 class="h6 mb-1">{{ 'feedNotLiveTitle' | translate }}</h2>
-          <p class="mb-0">{{ 'feedNotLiveBody' | translate }}</p>
-          @if (liveFeed?.message) {
-            <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ liveFeed?.message }}</q></p>
-          }
-        </div>
+        <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: { titleKey: 'feedNotLiveTitle', bodyKey: 'feedNotLiveBody', message: liveFeed?.message } }" />
       }
       <c-accordion [alwaysOpen]="true">
         @for (distance of sortedDistances$ | async; track distance.id) {
@@ -273,31 +251,26 @@
               <!-- ===== MASS-START TOP STRIP ===== -->
               @if (distance.isMassStart) {
                 <div [attr.data-distance-body]="distance.id"></div>
-                @let dGroups = (displayedGroups$ | async)?.get(distance.id) ?? [];
-                @if (dGroups.length) {
-                <div class="groups-strip d-flex flex-row-reverse gap-2 mb-3 pb-1">
-                  @for (group of dGroups; track group.groupNumber; let groupIndex = $index) {
-                    <app-group-strip-card
-                      [group]="group"
-                      [groupIndex]="groupIndex"
-                      [anyFinished]="distance.anyFinished"
-                      [selectedRaceId]="selectedRaceId"
-                      (raceSelect)="selectRace($event)"
-                    />
-                  }
+                @if (distance.processedRaces.length) {
+                <div class="groups-strip mb-3 pb-1">
+                  <app-mass-start-timeline
+                    [races]="distance.processedRaces"
+                    [selectedRaceIds]="selectedRaceIds"
+                    (raceSelect)="selectRace($event)"
+                  />
                 </div>
-                } <!-- end @if dGroups.length -->
+                }
               } <!-- end @if distance.isMassStart -->
               <c-row>
                 <!-- TIMED DISTANCE: one plain unstyled row per heat, competitor cards inside -->
                 @if (!distance.isMassStart) {
                   <c-col [xs]="12">
-                    @let lapSchedule = distance.distanceMeters ? timedDistanceLapSchedule(distance.distanceMeters) : [];
+                    @let lapSchedule = distance.distanceMeters ? individualDistanceLapSchedule(distance.distanceMeters) : [];
                     @let heatGroups = mergedHeatGroups(distance);
                     @let laneColors = heatGroupLaneColors(heatGroups);
                     @let maxLanes = distanceMaxLaneCount(heatGroups);
                     @for (displayGroup of heatGroups; track displayGroup.label) {
-                      <app-timed-heat-card
+                      <app-individual-heat-card
                         [label]="displayGroup.label"
                         [races]="displayGroup.races"
                         [maxLanes]="maxLanes"
@@ -309,7 +282,7 @@
                         [colorLaps]="settings.compactColors.value"
                         [showThousandths]="settings.showThousandths.value"
                         [animate]="settings.animations.value"
-                        [lapVarianceThreshold]="settings.lapVarianceTimed.value"
+                        [lapVarianceThreshold]="settings.lapVarianceIndividual.value"
                       />
                     }
                   </c-col>
@@ -317,7 +290,7 @@
                 <!-- MASS-START: full-width standings -->
                 @if (distance.isMassStart) {
                   <c-col [xs]="12">
-                    <div [@raceList]="raceListKey(distance.processedRaces)">
+                    <div class="mass-cards" [@raceList]="raceListKey(distance.processedRaces)">
                       @for (race of distance.processedRaces; track race.id; let raceIdx = $index) {
                         <!-- Group finishing line above each group's first member -->
                         @if (groupForRace(distance, race.id); as grp) {
@@ -337,8 +310,7 @@
                           [race]="race"
                           [distance]="distance"
                           [raceIdx]="raceIdx"
-                          [selectedRaceId]="selectedRaceId"
-                          [showLapTimes]="settings.showMassStartLapTimes.value"
+                          [selectedRaceIds]="selectedRaceIds"
                           [lapVarianceThreshold]="settings.lapVariance.value"
                           (raceSelect)="selectRace($event)"
                         />
@@ -363,13 +335,7 @@
       @let notice = emptyNotice$ | async;
       @if (notice) {
         <!-- Nothing to show: say why instead of loading forever -->
-        <div class="empty-notice alert alert-info" role="status">
-          <h2 class="h6 mb-1">{{ notice.titleKey | translate }}</h2>
-          <p class="mb-0">{{ notice.bodyKey | translate }}</p>
-          @if (notice.message) {
-            <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ notice.message }}</q></p>
-          }
-        </div>
+        <ng-container *ngTemplateOutlet="noticeTpl; context: { $implicit: notice }" />
       } @else {
         <!-- Skeleton placeholder while connecting -->
       @for (i of [1,2,3]; track i) {
@@ -384,3 +350,14 @@
     }
   </main>
 </div>
+
+<!-- One notice for every reason there is nothing (more) to show; the data source's own text is quoted -->
+<ng-template #noticeTpl let-notice>
+  <div class="empty-notice alert mt-2" role="status">
+    <h2 class="h6 mb-1">{{ notice.titleKey | translate }}</h2>
+    <p class="mb-0">{{ notice.bodyKey | translate }}</p>
+    @if (notice.message) {
+      <p class="mb-0 mt-2 small"><span class="text-body-secondary me-1">{{ 'feedSourceMessage' | translate }}</span> <q lang="nl">{{ notice.message }}</q></p>
+    }
+  </div>
+</ng-template>

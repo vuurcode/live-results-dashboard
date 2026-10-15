@@ -99,11 +99,11 @@
 @media (max-width: 767.98px) {
   // Settings drop to their own full-width row and wrap instead of widening the page.
   // The competition picker and the settings share one row; the display settings shrink to a cogwheel.
-  .topbar-settings { flex: 0 0 auto; }
+  .topbar-settings { flex: 0 0 auto; align-self: flex-start; } // level with the picker, not centred against the hint below it
   .topbar-settings-group { max-width: 100%; }
   .topbar-group-text { display: none; }
   .topbar-group-cog { display: inline-block; vertical-align: -0.2em; margin-left: 0; }
-  .topbar-group-btn { min-height: 2rem; }
+  .topbar-group-btn { min-height: 2.5rem; }
 }
 .topbar-competitions-title .topbar-competition-select {
   // white chevron: CoreUI's dark one disappears on the black bar (needs 3:1)
@@ -155,9 +155,16 @@
   option { color: #212529; background-color: #fff; padding: 0.35rem 0.75rem; } // side padding is honoured by Chromium and Firefox popups
 }
 @media (max-width: 767.98px) {
-  .topbar-competitions { flex: 1 1 0; min-width: 0; }
+  .topbar-competitions { flex: 1 1 0; min-width: 0; flex-wrap: wrap; }
+  // small screens: the callout sits below the picker and points up at it
+  .competition-hint {
+    flex: 1 1 100%;
+    white-space: normal;
+    margin-top: 0.35rem;
+    &::before { left: 1.25rem; top: -0.35rem; transform: rotate(45deg); }
+  }
   .topbar-competition-select {
-    width: 100%; max-width: 100%; min-height: 2rem;
+    width: 100%; max-width: 100%; min-height: 2.5rem; // as tall as the settings button beside it
     // long names shrink towards a readable minimum instead of being cut off early
     font-size: clamp(0.75rem, calc(34rem / var(--competition-label-length, 40)), 0.875rem);
   }
@@ -170,18 +177,19 @@
   --cui-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
   background-image: var(--cui-form-select-bg-img);
   width: auto;
-  background-color: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.25);
+  // controls are darker than the cards around them (the help boxes, the panel), with a clear border
+  background-color: #000;
+  border-color: rgba(255,255,255,0.5);
   color: #fff;
   option { color: #212529; background-color: #fff; }
-  &:focus { background-color: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); color: #fff; box-shadow: none; }
+  &:focus { background-color: #000; border-color: #fff; color: #fff; box-shadow: none; }
 }
 .threshold-input {
   width: auto;
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.25);
+  background: #000;
+  border-color: rgba(255,255,255,0.5);
   color: #fff;
-  &:focus { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); color: #fff; box-shadow: none; }
+  &:focus { background: #000; border-color: #fff; color: #fff; box-shadow: none; }
 }
 // Collapsible settings group toggle button
 .topbar-settings-group { display: contents; } // the buttons share one row; each panel opens below it
@@ -193,23 +201,52 @@
   z-index: 5;
   width: min(100%, 26rem);
   display: flex;
-  flex-direction: column; // the settings below each other
-  gap: 0.35rem;
-  // wide screens: two columns of settings
+  flex-direction: column; // the sections (long track, mass start) below each other
+  gap: 0.75rem;
+  // wide screens: the sections side by side as columns
   @media (min-width: 768px) {
+    // the sections are columns of one grid (a heading row and four setting rows), so a card of the
+    // shorter columns spans two rows and is as tall as two cards of the first column
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: stretch;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-rows: auto repeat(4, auto);
     gap: 0.35rem 1.5rem;
-    width: min(100%, 52rem);
+    width: min(100%, 44rem);
+
+    &:has(.settings-section-mass) { width: min(100%, 66rem); }
   }
   padding: 0.75rem 1rem 1rem;
   background: #11161b;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-top: 0;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-  max-height: calc(100vh - var(--topbar-h, 3rem));
+  max-height: calc(100dvh - var(--topbar-bottom, var(--topbar-h, 3rem)));
   overflow-y: auto;
+  .settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    @media (min-width: 768px) {
+      display: grid;
+      grid-row: 1 / span 5;
+      grid-template-rows: subgrid;
+      &:not(:first-child) > :not(.settings-heading) { grid-row: span 2; }
+    }
+  }
+  .settings-section-mass {
+    // below the other sections on narrow screens, set apart by a line
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 0.5rem;
+    @media (min-width: 768px) { border-top: 0; padding-top: 0; }
+  }
+  .settings-heading {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+  }
   .setting-group {
     // the label, the control and its unit share a row; the help text fills the row below, so cards side by side are equally tall
     display: grid;
@@ -222,9 +259,15 @@
     padding-top: 0.6rem;
     flex-shrink: 0; // a tall panel scrolls instead of squeezing the settings over each other
     // the select and the number input are equally large
-    .scheme-select, .threshold-group { width: 11rem; min-height: 2.25rem; font-size: 1rem; max-width: 100%; }
+    .scheme-select, .threshold-group { width: auto; min-height: 2.25rem; font-size: 1rem; max-width: 100%; }
     .threshold-input { min-height: 2.25rem; font-size: 1rem; }
     .setting-label { white-space: normal !important; }
+    // two settings in one card: a row each, then the help of both
+    &.setting-group-pair {
+      grid-template-rows: 2.5rem 2.5rem 1fr;
+      .threshold-group, > .threshold-input { width: 6rem; flex-wrap: nowrap; justify-self: end; align-self: center; }
+      .setting-popover-body { padding-block: 0.15rem; } // both help texts fit in a card as tall as the lap time diff colours one
+    }
   }
   // The help text is always shown under its setting, in the usual white box: nothing opens or moves on hover.
   .setting-popover {
@@ -295,6 +338,8 @@
   border-radius: 0.25rem;
   color: #fff;
   vertical-align: baseline;
+  // badges that are followed by an arrow share one width, so the arrows line up
+  &.popover-badge-key { min-width: 6.5em; text-align: center; }
   &.popover-badge-green  { background: $tint-normal-bg; color: $tint-normal-fg; }
   &.popover-badge-orange { background: $tint-slow-bg; color: $tint-slow-fg; }
   &.popover-badge-purple { background: $tint-fast-bg; color: $tint-fast-fg; }
@@ -366,6 +411,17 @@
 // Small gap between standings groups in the main list
 .standings-group-gap {
   height: 0.6rem;
+}
+
+// The mass start competitors are cards of equal width in centred rows (a lone card of a group sits in the middle);
+// the group and finishing lines take a whole row
+.mass-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  > * { flex: 0 1 min(100%, 22rem); min-width: 0; }
+  > .group-finishing-line, > .finishing-line, > .standings-group-gap { flex: 0 0 100%; }
 }
 
 // Inline finishing-line style used at the top of each group in the standings list
@@ -470,4 +526,13 @@
   text-align: center;
   padding: 0.25rem 1rem;
   border-bottom: 1px solid var(--lr-notice-line);
+}
+
+// Notices shown instead of or above results: the shared notice colours keep them readable in both themes
+.empty-notice.alert {
+  background: var(--lr-notice-bg);
+  color: var(--lr-notice-fg);
+  border-color: var(--lr-notice-line);
+  h2 { font-weight: 600; }
+  .text-body-secondary { color: inherit !important; }
 }

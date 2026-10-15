@@ -1,42 +1,42 @@
 import { describe, it, expect } from 'vitest';
 import {
-  timedDistanceLapSchedule,
-  timedDistanceTotalLaps,
-  isTimedFinished,
-  timedRaceComplete,
+  individualDistanceLapSchedule,
+  individualDistanceTotalLaps,
+  isIndividualFinished,
+  individualRaceComplete,
   mergeHeatGroups,
   trimmedRaces,
   heatGroupLaneColors,
-  timedPrComparison,
+  individualPrComparison,
   massFinishGapFromLeader,
   pendingLapCount,
-  timedStartDegrees,
-  timedFinishAngle,
+  individualStartDegrees,
+  individualFinishAngle,
 } from './heats.util';
 
-describe('timedDistanceLapSchedule / timedDistanceTotalLaps', () => {
+describe('individualDistanceLapSchedule / individualDistanceTotalLaps', () => {
   it('derives laps from distance mod 400', () => {
-    expect(timedDistanceLapSchedule(1000)).toEqual([200, 600, 1000]);
-    expect(timedDistanceLapSchedule(500)).toEqual([100, 500]);
-    expect(timedDistanceLapSchedule(100)).toEqual([100]);
-    expect(timedDistanceLapSchedule(400)).toEqual([400]);
+    expect(individualDistanceLapSchedule(1000)).toEqual([200, 600, 1000]);
+    expect(individualDistanceLapSchedule(500)).toEqual([100, 500]);
+    expect(individualDistanceLapSchedule(100)).toEqual([100]);
+    expect(individualDistanceLapSchedule(400)).toEqual([400]);
   });
 
   it('counts total laps', () => {
-    expect(timedDistanceTotalLaps(1000)).toBe(3);
-    expect(timedDistanceTotalLaps(400)).toBe(1);
+    expect(individualDistanceTotalLaps(1000)).toBe(3);
+    expect(individualDistanceTotalLaps(400)).toBe(1);
   });
 });
 
-describe('isTimedFinished / timedRaceComplete', () => {
+describe('isIndividualFinished / individualRaceComplete', () => {
   it('is finished once laps_count reaches the schedule length', () => {
-    expect(isTimedFinished({ laps_count: 3, invalid_reason: null }, 1000)).toBe(true);
-    expect(isTimedFinished({ laps_count: 2, invalid_reason: null }, 1000)).toBe(false);
+    expect(isIndividualFinished({ laps_count: 3, invalid_reason: null }, 1000)).toBe(true);
+    expect(isIndividualFinished({ laps_count: 2, invalid_reason: null }, 1000)).toBe(false);
   });
 
   it('counts an invalid race as complete regardless of laps_count', () => {
-    expect(timedRaceComplete({ laps_count: 0, invalid_reason: 'DQ' }, 1000)).toBe(true);
-    expect(timedRaceComplete({ laps_count: 0, invalid_reason: null }, 1000)).toBe(false);
+    expect(individualRaceComplete({ laps_count: 0, invalid_reason: 'DQ' }, 1000)).toBe(true);
+    expect(individualRaceComplete({ laps_count: 0, invalid_reason: null }, 1000)).toBe(false);
   });
 });
 
@@ -86,28 +86,28 @@ describe('heatGroupLaneColors', () => {
   });
 });
 
-describe('timedPrComparison', () => {
+describe('individualPrComparison', () => {
   it('returns faster:true with a positive diff when the new time beats the PR', () => {
     const race = { laps_count: 3, invalid_reason: null };
-    const result = timedPrComparison('50.000', '48.500', race, 1000);
+    const result = individualPrComparison('50.000', '48.500', race, 1000);
     expect(result).toEqual({ faster: true, diff: '1.500' });
   });
 
   it('returns faster:false when the new time is slower than or equal to the PR', () => {
     const race = { laps_count: 3, invalid_reason: null };
-    expect(timedPrComparison('48.500', '48.500', race, 1000)).toEqual({ faster: false, diff: '0.000' });
-    expect(timedPrComparison('48.500', '50.000', race, 1000)).toEqual({ faster: false, diff: '1.500' });
+    expect(individualPrComparison('48.500', '48.500', race, 1000)).toEqual({ faster: false, diff: '0.000' });
+    expect(individualPrComparison('48.500', '50.000', race, 1000)).toEqual({ faster: false, diff: '1.500' });
   });
 
   it('returns null before the race is finished', () => {
     const race = { laps_count: 1, invalid_reason: null };
-    expect(timedPrComparison('50.000', '20.000', race, 1000)).toBeNull();
+    expect(individualPrComparison('50.000', '20.000', race, 1000)).toBeNull();
   });
 
   it('returns null when there is no personal record or no total time yet', () => {
     const race = { laps_count: 3, invalid_reason: null };
-    expect(timedPrComparison(null, '48.500', race, 1000)).toBeNull();
-    expect(timedPrComparison('50.000', '', race, 1000)).toBeNull();
+    expect(individualPrComparison(null, '48.500', race, 1000)).toBeNull();
+    expect(individualPrComparison('50.000', '', race, 1000)).toBeNull();
   });
 });
 
@@ -140,18 +140,18 @@ describe('pendingLapCount', () => {
   });
 });
 
-describe('timedStartDegrees', () => {
+describe('individualStartDegrees', () => {
   it('places each distance where it starts on the oval', () => {
-    expect([100, 500, 1000, 1500, 3000, 5000, 10000].map(timedStartDegrees)).toEqual([90, 90, 180, 270, 180, 180, 360]);
+    expect([100, 500, 1000, 1500, 3000, 5000, 10000].map(individualStartDegrees)).toEqual([90, 90, 180, 270, 180, 180, 360]);
   });
   it('derives other distances from the length of their first lap', () => {
-    expect(timedStartDegrees(800)).toBeCloseTo(360); // two full laps: starts at the finish
-    expect(timedStartDegrees(600)).toBeCloseTo(180); // 200m first lap
+    expect(individualStartDegrees(800)).toBeCloseTo(360); // two full laps: starts at the finish
+    expect(individualStartDegrees(600)).toBeCloseTo(180); // 200m first lap
   });
 });
 
-describe('timedFinishAngle', () => {
+describe('individualFinishAngle', () => {
   it('puts the finish on the bottom straight right of the middle, and the 1000m finish in the middle of the bottom', () => {
-    expect([500, 1500, 10000, 1000].map(timedFinishAngle)).toEqual([135, 135, 135, 180]);
+    expect([500, 1500, 10000, 1000].map(individualFinishAngle)).toEqual([135, 135, 135, 180]);
   });
 });

@@ -20,9 +20,9 @@ async function settleTransitions(page: import('@playwright/test').Page) {
 
 test.describe('accessibility', () => {
   for (const [competition, ready, scheme] of [
-    ['e2e-timed', '.timed-compact-done', 'light'], // finished cards show the total time badge
+    ['e2e-individual', '.individual-compact-done', 'light'], // finished cards show the total time badge
     ['e2e-mass', '.race-item-laps.race-finished', 'light'],
-    ['e2e-timed', '.timed-compact-done', 'dark'],
+    ['e2e-individual', '.individual-compact-done', 'dark'],
     ['e2e-mass', '.race-item-laps.race-finished', 'dark'],
   ] as const) {
     test(`${competition} (${scheme}): no axe violations once the replay has finished`, async ({ page, request }) => {
@@ -43,9 +43,9 @@ test.describe('accessibility', () => {
   }
 
   test('the event name is the page heading', async ({ page, request }) => {
-    await restartReplay(request, 'e2e-timed');
-    await page.goto('/?competitionId=e2e-timed');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Timed Event');
+    await restartReplay(request, 'e2e-individual');
+    await page.goto('/?competitionId=e2e-individual');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Individual Event');
   });
 
   test('a competitor row can be selected with the keyboard alone', async ({ page, request }) => {
@@ -67,26 +67,26 @@ test.describe('accessibility', () => {
 for (const scheme of ['light', 'dark'] as const) {
 test(`compact lap badge colours (green, orange, purple, and the latest one) have enough contrast (${scheme})`, async ({ page, request }) => {
   await page.emulateMedia({ colorScheme: scheme });
-  await restartReplay(request, 'e2e-timed');
+  await restartReplay(request, 'e2e-individual');
   await page.addInitScript(() => localStorage.setItem('compactColors', 'true'));
-  await page.goto('/?competitionId=e2e-timed');
-  await expect(page.locator('.timed-compact-badge').nth(3)).toBeVisible({ timeout: 30_000 });
+  await page.goto('/?competitionId=e2e-individual');
+  await expect(page.locator('.individual-compact-badge').nth(3)).toBeVisible({ timeout: 30_000 });
   // force every colour onto real badges, whatever the fixture's lap times happen to be
   await page.evaluate(() => {
     const classes = ['lap-badge-normal', 'lap-badge-slow', 'lap-badge-fast'];
-    document.querySelectorAll('.timed-compact-badge').forEach((b, i) => {
-      b.classList.remove(...classes, 'timed-flash-update');
+    document.querySelectorAll('.individual-compact-badge').forEach((b, i) => {
+      b.classList.remove(...classes, 'individual-flash-update');
       b.classList.add(classes[i % 3]);
     });
   });
-  const { violations } = await new AxeBuilder({ page }).include('.timed-compact-badge').withTags(TAGS).analyze();
+  const { violations } = await new AxeBuilder({ page }).include('.individual-compact-badge').withTags(TAGS).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.html.slice(0, 80)} ${v.nodes[0]?.any[0]?.message}`)).toEqual([]);
 });
 }
 
 test('a collapsed distance stands out from the page and keeps its contrast', async ({ page, request }) => {
-  await restartReplay(request, 'e2e-timed');
-  await page.goto('/?competitionId=e2e-timed');
+  await restartReplay(request, 'e2e-individual');
+  await page.goto('/?competitionId=e2e-individual');
   const header = page.locator('.accordion-button').first();
   await expect(header).toHaveAttribute('aria-expanded', 'true');
   await header.click();
