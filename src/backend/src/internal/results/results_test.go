@@ -70,7 +70,7 @@ func TestProcessMassStart(t *testing.T) {
 	}
 }
 
-func TestProcessTimedHeats(t *testing.T) {
+func TestProcessIndividualHeats(t *testing.T) {
 	a, b := race("1", 2, lap("00:00:20.000", "00:00:20.000")), race("2", 1)
 	a.Lane, a.InvalidReason, a.PersonalRecord = "white", "DQ", "00:00:19.123456"
 	raw := &RawData{Distances: []rawDistance{{ID: "d1", Name: "500 meter", EventNumber: 2, Races: []rawRace{a, b}}}}

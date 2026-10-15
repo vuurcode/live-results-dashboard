@@ -27,7 +27,7 @@ All components:
 ### Data (unit specs: `src/internal/*/*_test.go`)
 - [x] Each fetch is parsed and diffed against the previous state; only changes are broadcast
 - [x] Mass start: a distance with more than two races sharing one heat; the warm-up lap is dropped; total laps come from the title; positions and standings groups are not computed here
-- [x] Timed distance: the first lap counts; the distance comes from the title; races grouped by heat, then time; complete only once every competitor has every expected lap
+- [x] Individual race distance: the first lap counts; the distance comes from the title; races grouped by heat, then time; complete only once every competitor has every expected lap
 - [x] Per competitor: id, start number, name, heat, lane, lap count, total time, formatted time (leading zeros stripped, 3 decimals truncated), laps remaining, finished rank; races that must not show a time (DNS, DQ, WDR) send none, and such a status does not reset the cache
 - [x] While clients are connected the list and its `live` flags are checked every 30 seconds; a change is announced to all clients of all rooms as a `competitions_changed` message (no number, not kept for reconnecting clients), so they can ask for the list again
 - [x] Messages: `status` (`competition_id`, `data_source_url`, `data_source_interval`), `feed_status`, `event_name`, `distance_meta` (per distance, no groups), `competitor_update` (per changed competitor, with `lap_times`, `personal_record`, `invalid_reason`, `remark`, empty strings as `null`)
