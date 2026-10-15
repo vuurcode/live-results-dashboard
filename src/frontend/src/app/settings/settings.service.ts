@@ -82,7 +82,7 @@ export class SettingsService {
   /** Compact long track badges coloured by variance against the previous lap, like mass start. */
   readonly compactColors = new Setting('compactColors', true, parseFlag);
   /** Times show thousandths; hundredths when off. */
-  readonly showThousandths = new Setting('thousandths', true, parseFlag);
+  readonly showThousandths = new Setting('thousandths', false, parseFlag);
   readonly colorScheme = colorSchemeSetting;
   /** Whether things move: laps drawn and counted up, flashes, reordering, folding and scrolling. Off shows every change at once. */
   readonly animations = new Setting('animations', true, parseFlag);

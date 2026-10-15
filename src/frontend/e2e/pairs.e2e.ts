@@ -32,11 +32,11 @@ test.describe('two-lane competition', () => {
     await expect(cardB.getByText('DNF', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
     await expect(cardA.locator('.individual-compact-badge')).toHaveCount(2);
     await expect(cardA.getByText('PB', { exact: true })).toBeVisible();
-    // times are in thousandths by default, hundredths on request
-    await expect(cardA.locator('.individual-compact-final .race-time')).toHaveText(/\.\d{3}$/);
-    await page.getByRole('button', { name: /^Display/ }).click();
-    await page.locator('#thousandthsInput').uncheck();
+    // times are in hundredths by default, thousandths on request
     await expect(cardA.locator('.individual-compact-final .race-time')).toHaveText(/^\d+:?\d*\.\d{2}$/);
+    await page.getByRole('button', { name: /^Display/ }).click();
+    await page.locator('#thousandthsInput').check();
+    await expect(cardA.locator('.individual-compact-final .race-time')).toHaveText(/\.\d{3}$/);
     // the old personal best on the card title is struck through (a line drawn across it) once it has been beaten
     await expect(cardA.locator('.individual-pb-beaten')).toBeVisible();
     await expect

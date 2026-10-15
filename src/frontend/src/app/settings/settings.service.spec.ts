@@ -13,16 +13,16 @@ describe('SettingsService', () => {
     expect(s.maxGroups.value).toBe(4);
     expect(s.lapVariance.value).toBe(5);
     expect(s.lapVarianceIndividual.value).toBe(0.5);
-    expect([s.compactColors.value, s.showThousandths.value, s.follow.value]).toEqual([true, true, true]);
+    expect([s.compactColors.value, s.showThousandths.value, s.follow.value]).toEqual([true, false, true]);
   });
 
   it('keeps what is set across page loads', () => {
     const s = create();
     s.follow.set(false);
-    s.showThousandths.set(false);
+    s.showThousandths.set(true);
     s.maxGroups.set(7);
     const reloaded = create();
-    expect([reloaded.follow.value, reloaded.showThousandths.value, reloaded.maxGroups.value]).toEqual([false, false, 7]);
+    expect([reloaded.follow.value, reloaded.showThousandths.value, reloaded.maxGroups.value]).toEqual([false, true, 7]);
   });
 
   it('clamps what is set', () => {
