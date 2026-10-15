@@ -249,3 +249,115 @@ func TestLaterGeneratedMatchesStayNotLiveLonger(t *testing.T) {
 		t.Fatalf("not-live steps %d, %d, %d: want them to grow per match", a, b, c)
 	}
 }
+
+// In a mass start the lead changes hands a few times, and the field spreads out lap after lap until only a few
+// skaters remain in the lead group.
+func TestGeneratedMassStartChangesLeaderAndSpreadsTheField(t *testing.T) {
+	for _, m := range generatedMatches(maxGeneratedMatches) {
+		for di, d := range m.distances {
+			if d.massLaps == 0 {
+				continue
+			}
+			var doc genDoc
+			if err := json.Unmarshal(m.frames[len(m.frames)-1], &doc); err != nil {
+				t.Fatal(err)
+			}
+			races := doc.Distances[di].Races
+			var leaders []string
+			var firstSpread, lastSpread float64
+			for lap := range d.massLaps {
+				best, worst, name := -1, 0, ""
+				for _, r := range races {
+					ms := clockMillis(t, r.Laps[lap].Time)
+					if best < 0 || ms < best {
+						best, name = ms, r.Competitor.Name
+					}
+					worst = max(worst, ms)
+				}
+				if len(leaders) == 0 || leaders[len(leaders)-1] != name {
+					leaders = append(leaders, name)
+				}
+				if lap == 1 {
+					firstSpread = float64(worst-best) / 1000
+				}
+				lastSpread = float64(worst-best) / 1000
+			}
+			last := d.massLaps - 1
+			bestEnd := -1
+			for _, r := range races {
+				if ms := clockMillis(t, r.Laps[last].Time); bestEnd < 0 || ms < bestEnd {
+					bestEnd = ms
+				}
+			}
+			var close int
+			for _, r := range races {
+				if clockMillis(t, r.Laps[last].Time)-bestEnd <= 10_000 {
+					close++
+				}
+			}
+			if close*10 < len(races)*7 {
+				t.Errorf("%s %s: %d of %d skaters finish within 10 s of the leader, want most of them", m.id, d.name, close, len(races))
+			}
+			if len(leaders)-1 < 3 {
+				t.Errorf("%s %s: the lead changed %d times, want at least 3", m.id, d.name, len(leaders)-1)
+			}
+			if lastSpread < 3*firstSpread {
+				t.Errorf("%s %s: the field spread %.1f s after 2 laps and %.1f s at the end", m.id, d.name, firstSpread, lastSpread)
+			}
+		}
+	}
+}
+
+// A mass start updates one skater at a time, as they pass the line: the leader takes the lap interval for a lap and
+// the others follow at their gaps.
+func TestGeneratedMassStartUpdatesFollowTheGaps(t *testing.T) {
+	s := &server{cfg: config{interval: time.Second, lapInterval: 10 * time.Second}, generated: map[string]*genMatch{}}
+	for _, m := range generatedMatches(maxGeneratedMatches) {
+		s.generated[m.id] = m
+	}
+	var updates int
+	var first, longest time.Duration
+	for _, sm := range mustSamples(t, s, "mock-match-4") {
+		if sm.wait == 0 {
+			continue
+		}
+		if updates == 0 {
+			first = sm.wait
+		}
+		updates++
+		longest = max(longest, sm.wait)
+	}
+	if updates != 20*16 {
+		t.Errorf("%d updates, want one per skater per lap", updates)
+	}
+	if first < 9*time.Second || first > 11*time.Second {
+		t.Errorf("the leader's first lap takes %v, want about 10 s", first)
+	}
+	if longest > 10*time.Second {
+		t.Errorf("%v until the next update, want at most 10 s", longest)
+	}
+}
+
+func TestGeneratedMassStartOpeningTheDayIsLiveFromTheFirstFrame(t *testing.T) {
+	for _, m := range generatedMatches(maxGeneratedMatches) {
+		if m.distances[0].massLaps == 0 {
+			continue
+		}
+		var doc genDoc
+		if err := json.Unmarshal(m.frames[m.notLiveFrames], &doc); err != nil {
+			t.Fatal(err)
+		}
+		if !doc.Distances[0].IsLive {
+			t.Errorf("%s: the mass start is not live in its first frame", m.id)
+		}
+	}
+}
+
+func mustSamples(t *testing.T, s *server, id string) []sample {
+	t.Helper()
+	out, err := s.samples(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
+}

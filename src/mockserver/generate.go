@@ -34,6 +34,17 @@ var (
 	massStartPace = 0.075
 )
 
+// massStartSkill is the pace factor of the skater at a position in the field's strength order. The strongest few
+// are almost equally fast, so the lead changes hands among them on the lap-to-lap noise, while the weaker the
+// skater, the more time is lost every lap, but the field stays within about ten seconds of the leader.
+func massStartSkill(position, lap int) float64 {
+	skill := 1 + 0.00005*math.Pow(float64(position), 2)
+	if position < 3 { // the lead group takes turns at the front, each easing off for a few laps
+		skill += 0.01 * math.Sin(float64(lap)*1.1+float64(position)*2.1)
+	}
+	return skill
+}
+
 type genDistance struct {
 	name     string
 	meters   int
@@ -50,11 +61,22 @@ type genDistance struct {
 	vanish    bool // a race of a later heat briefly disappears from the distance
 }
 
+// massPass times the update of one skater's lap: the leader's laps are a lap interval apart and the others follow at
+// their real gaps behind them, as the timeline's finish line does.
+type massPass struct {
+	lap int
+	gap float64
+}
+
 type genMatch struct {
-	id, name   string
-	venue      genVenue
-	distances  []genDistance
-	frames     [][]byte
+	id, name  string
+	venue     genVenue
+	distances []genDistance
+	frames    [][]byte
+	// massPass is per frame when a mass start skater passes the line: the lap (from 0) and the seconds behind the skater
+	// who was first at that lap, which is what the update is timed on; lap is negative for the frames that are on the
+	// sample interval
+	massPass   []massPass
 	firstNames int // offset into generatedNames, so the matches have different fields
 	// notLiveFrames is how many replay steps the feed answers "not live" before the data comes, so the match list
 	// shows competitions that are not live yet and others that turn live while the page is open
@@ -86,7 +108,7 @@ func generatedMatches(count int) []*genMatch {
 			distances: []genDistance{
 				{name: "1500 meter", meters: 1500, skaters: 8, strayLaps: true, scratches: true, inPlace: true, vanish: true},
 				{name: "3000 meter", meters: 3000, skaters: 6},
-				{name: "Massastart 16 ronden", meters: 6400, skaters: 8, massLaps: 16},
+				{name: "Massastart 16 ronden", meters: 6400, skaters: 20, massLaps: 16},
 			},
 		},
 		{
@@ -102,7 +124,7 @@ func generatedMatches(count int) []*genMatch {
 			id: "mock-match-4", name: "Test Mass Start Cup", firstNames: 36,
 			venue: genVenue{"MK4", "Pretend Skating Hall", "Demostad"},
 			distances: []genDistance{
-				{name: "Massastart 16 ronden", meters: 6400, skaters: 8, massLaps: 16},
+				{name: "Massastart 16 ronden", meters: 6400, skaters: 20, massLaps: 16},
 			},
 		},
 	}
@@ -221,9 +243,13 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 			}
 			zero := "00:00:00"
 			r.Time = &zero
-			for _, l := range segs {
+			for li, l := range segs {
 				// whole milliseconds, so that the lap times add up to the total exactly as the feed prints them
-				r.segments = append(r.segments, math.Round(float64(l)*pace*skill*(0.98+rng.Float64()*0.04)*1000)/1000)
+				lapSkill, noise := skill, 0.98+rng.Float64()*0.04
+				if d.massLaps > 0 {
+					lapSkill, noise = massStartSkill((si*3+di)%d.skaters, li), 0.99+rng.Float64()*0.02
+				}
+				r.segments = append(r.segments, math.Round(float64(l)*pace*lapSkill*noise*1000)/1000)
 			}
 			dd.Races = append(dd.Races, r)
 		}
@@ -231,12 +257,14 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 	}
 
 	var frames [][]byte
+	var massPasses []massPass
 	snapshot := func() {
 		b, err := json.Marshal(doc)
 		if err != nil {
 			panic(err) // the document only holds plain values
 		}
 		frames = append(frames, b)
+		massPasses = append(massPasses, massPass{lap: -1})
 	}
 	// Before the competition is live the feed answers with an error and no data (the first match for two steps, the later ones for minutes).
 	notLive, _ := json.Marshal(map[string]any{
@@ -245,6 +273,11 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 	})
 	for range m.notLiveFrames {
 		frames = append(frames, notLive)
+		massPasses = append(massPasses, massPass{lap: -1})
+	}
+	// a mass start that opens the day is live from the very first frame
+	if len(m.distances) > 0 && m.distances[0].massLaps > 0 {
+		doc.Distances[0].IsLive = true
 	}
 	snapshot()
 
@@ -280,11 +313,16 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 			if d.vanish && n == 0 && len(order) > 2 {
 				vanishRace(dd, heats[order[len(order)-1]], snapshot)
 			}
+			if d.massLaps > 0 {
+				skateMassStart(dd, heats[h], rng, snapshot, func(p massPass) { massPasses[len(massPasses)-1] = p })
+				continue
+			}
 			skate(dd, heats[h], q, rng, snapshot)
 		}
 		dd.IsLive = false
 		snapshot()
 	}
+	m.massPass = massPasses
 	return frames
 }
 
@@ -394,6 +432,45 @@ func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot
 		}
 		rank(dd)
 		snapshot()
+	}
+}
+
+// skateMassStart runs a mass start: a frame announces it, then every skater's lap is a frame of its own, in the order
+// they pass the line. setPass tells when a frame is timed: the skater's lap and gap behind the first skater of that lap.
+func skateMassStart(dd *genDistanceDoc, idx []int, rng *rand.Rand, snapshot func(), setPass func(massPass)) {
+	snapshot()
+	type passing struct {
+		race, lap int
+		at        float64
+	}
+	var passings []passing
+	for _, i := range idx {
+		var total float64
+		for l, seg := range dd.Races[i].segments {
+			total += seg
+			passings = append(passings, passing{race: i, lap: l, at: total})
+		}
+	}
+	sort.SliceStable(passings, func(a, b int) bool { return passings[a].at < passings[b].at })
+	first := map[int]float64{} // per lap: when the first skater passes
+	for _, p := range passings {
+		if _, ok := first[p.lap]; !ok {
+			first[p.lap] = p.at
+		}
+	}
+	for _, p := range passings {
+		r := &dd.Races[p.race]
+		laps := len(r.segments)
+		r.Laps = append(r.Laps, genLap{Time: clock(p.at), LapTime: clock(r.segments[p.lap])})
+		if p.lap == laps-1 {
+			t := clock(p.at)
+			r.Time = &t
+			r.Status = 4
+			r.Remark = remarkFor(p.at < r.prSeconds, rng)
+		}
+		rank(dd)
+		snapshot()
+		setPass(massPass{lap: p.lap, gap: p.at - first[p.lap]})
 	}
 }
 

@@ -11,6 +11,7 @@ It plays a competition back step by step, starting at the first request. The dat
 | --- | --- | --- |
 | `MOCKSERVER_DATA_SAMPLE_DIRECTORY` | `data` | Folder with the recorded samples |
 | `MOCKSERVER_DATA_SAMPLE_INTERVAL` | `5` | Seconds between steps |
+| `MOCKSERVER_DATA_MASS_START_LAP_INTERVAL` | `10` | Seconds the leader of a generated mass start takes for a lap; every skater's lap is an update of its own, at the skater's gap behind the leader; `0` uses the sample interval |
 | `MOCKSERVER_DATA_EXPIRE_AFTER` | `300` | Seconds the last step is held before the replay restarts; `0` never |
 | `MOCKSERVER_DATA_GENERATE` | off | Always add the generated matches |
 | `MOCKSERVER_DATA_GENERATED_MATCHES` | `4` | How many generated matches are served (1 to 4) |

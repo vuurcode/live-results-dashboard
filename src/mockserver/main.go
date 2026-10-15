@@ -20,6 +20,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -42,6 +43,7 @@ var competitionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 type config struct {
 	baseDir     string
 	interval    time.Duration
+	lapInterval time.Duration // how long the leader of a generated mass start takes for a lap, the others follow at their gaps; 0 is the sample interval
 	expireAfter time.Duration // how long the last sample is held before the competition is dropped; 0 never
 	listenAddr  string
 	generate    bool // serve the generated matches next to the sample directory
@@ -49,7 +51,7 @@ type config struct {
 }
 
 func loadConfig() config {
-	cfg := config{baseDir: "data", interval: 5 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080", matches: maxGeneratedMatches}
+	cfg := config{baseDir: "data", interval: 5 * time.Second, lapInterval: 10 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080", matches: maxGeneratedMatches}
 	if v := os.Getenv("MOCKSERVER_DATA_SAMPLE_DIRECTORY"); v != "" {
 		cfg.baseDir = v
 	}
@@ -78,6 +80,13 @@ func loadConfig() config {
 			cfg.interval = time.Duration(f * float64(time.Second))
 		} else {
 			slog.Warn("Ignoring invalid MOCKSERVER_DATA_SAMPLE_INTERVAL", "value", v)
+		}
+	}
+	if v := os.Getenv("MOCKSERVER_DATA_MASS_START_LAP_INTERVAL"); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			cfg.lapInterval = time.Duration(f * float64(time.Second))
+		} else {
+			slog.Warn("Ignoring invalid MOCKSERVER_DATA_MASS_START_LAP_INTERVAL", "value", v)
 		}
 	}
 	if v := os.Getenv("MOCKSERVER_DATA_EXPIRE_AFTER"); v != "" {
@@ -141,6 +150,7 @@ var (
 type sample struct {
 	name string
 	load func() []byte // nil when the sample is unusable
+	wait time.Duration // how long the replay waits before this sample; 0 is the sample interval
 }
 
 // samples lists a competition's replay steps: the generated frames of a generated match, else the
@@ -148,8 +158,15 @@ type sample struct {
 func (s *server) samples(id string) ([]sample, error) {
 	if m, ok := s.generated[id]; ok {
 		out := make([]sample, len(m.frames))
+		lap := cmp.Or(s.cfg.lapInterval, s.cfg.interval)
+		var previous time.Duration // when the previous mass start update is due, from the first one's lap
 		for i, f := range m.frames {
 			out[i] = sample{name: fmt.Sprintf("frame-%03d", i), load: func() []byte { return f }}
+			if p := m.massPass[i]; p.lap >= 0 {
+				due := max(time.Duration(p.lap+1)*lap+time.Duration(p.gap*float64(time.Second)), previous) // never before an earlier update
+				out[i].wait = max(due-previous, time.Millisecond)
+				previous = due
+			}
 		}
 		return out, nil
 	}
@@ -220,7 +237,7 @@ func (s *server) start(id string) (*replay, error) {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(s.cfg.interval):
+			case <-time.After(cmp.Or(files[i].wait, s.cfg.interval)):
 			}
 			if data := files[i].load(); data != nil {
 				r.set(data)
