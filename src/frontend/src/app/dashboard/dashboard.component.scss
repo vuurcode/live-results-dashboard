@@ -1,6 +1,10 @@
 @use 'tokens' as *;
 @use 'shared';
 
+// Room below the last distance. Pinning a title shrinks it and with it a short page; without this room the browser
+// would then clamp the scroll position, which unpins the title again, and the two alternate every frame.
+:host { display: block; padding-bottom: 2rem; }
+
 // Zero-height scroll target placed before each accordion item
 .accordion-scroll-anchor {
   height: 0;
