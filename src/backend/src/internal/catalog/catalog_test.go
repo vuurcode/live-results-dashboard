@@ -448,3 +448,33 @@ func TestWatchTellsWhenTheListChanges(t *testing.T) {
 		t.Fatal("not told that the competition went live")
 	}
 }
+
+func TestLiveStateIsAskedOnceForConcurrentCallers(t *testing.T) {
+	var hits atomic.Int32
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		<-release
+		_, _ = w.Write([]byte(`{"success":true}`))
+	}))
+	t.Cleanup(srv.Close)
+	cfg := config.Config{CatalogTTL: time.Hour, VenueCountry: "NED", VenueDiscipline: "SpeedSkating.LongTrack"}
+	cat, err := New(cfg, source.NewSet(source.Upstream{CatalogURL: srv.URL, DataSourceURL: srv.URL}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan bool, 5)
+	for range 5 {
+		go func() { results <- cat.isLive(context.Background(), "m") }()
+	}
+	time.Sleep(100 * time.Millisecond)
+	close(release)
+	for range 5 {
+		if !<-results {
+			t.Fatal("want live")
+		}
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("data source asked %d times, want 1", hits.Load())
+	}
+}

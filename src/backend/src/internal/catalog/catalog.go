@@ -187,6 +187,7 @@ type Catalog struct {
 
 	liveMu sync.Mutex
 	live   map[string]liveState // what the data source said last, per competition id
+	asking map[string]*liveCall // the requests under way
 
 	mu           sync.Mutex
 	competitions []*competition
@@ -209,6 +210,12 @@ const retryAfterFailure = 30 * time.Second
 // most one request per competition per period however often it is asked for.
 const liveTTL = 30 * time.Second
 
+// liveCall is a request for the live state that callers can wait for.
+type liveCall struct {
+	done chan struct{}
+	live bool
+}
+
 type liveState struct {
 	live bool
 	at   time.Time
@@ -218,7 +225,7 @@ type liveState struct {
 func New(cfg config.Config, set *source.Set, ua UserAgent) (*Catalog, error) {
 	c := &Catalog{
 		set: set, country: cfg.VenueCountry, discipline: cfg.VenueDiscipline, ttl: min(cfg.CatalogTTL, maxCacheAge), retention: cfg.DataRetention,
-		ua: ua, client: &http.Client{}, now: time.Now, live: map[string]liveState{},
+		ua: ua, client: &http.Client{}, now: time.Now, live: map[string]liveState{}, asking: map[string]*liveCall{},
 	}
 	for _, u := range set.Upstreams() {
 		base, err := url.Parse(u.CatalogURL)
@@ -422,19 +429,31 @@ func (c *Catalog) Today(ctx context.Context) ([]*competition, error) {
 }
 
 // isLive asks the data source whether the competition is live: it answers and does not say otherwise. A failed
-// request counts as not live. The answer is reused for liveTTL.
+// request counts as not live. The answer is reused for liveTTL, and callers that arrive while it is being asked share
+// that one request, so the data source sees one request per competition however many callers there are.
 func (c *Catalog) isLive(ctx context.Context, id string) bool {
 	c.liveMu.Lock()
-	st, ok := c.live[id]
-	c.liveMu.Unlock()
-	if ok && c.now().Sub(st.at) < liveTTL {
+	if st, ok := c.live[id]; ok && c.now().Sub(st.at) < liveTTL {
+		c.liveMu.Unlock()
 		return st.live
 	}
-	live := c.probe(ctx, id)
-	c.liveMu.Lock()
-	c.live[id] = liveState{live: live, at: c.now()}
+	if call, ok := c.asking[id]; ok {
+		c.liveMu.Unlock()
+		<-call.done
+		return call.live
+	}
+	call := &liveCall{done: make(chan struct{})}
+	c.asking[id] = call
 	c.liveMu.Unlock()
-	return live
+
+	// the answer is shared by every caller, so one caller disconnecting must not turn it into "not live"
+	call.live = c.probe(context.WithoutCancel(ctx), id)
+	c.liveMu.Lock()
+	c.live[id] = liveState{live: call.live, at: c.now()}
+	delete(c.asking, id)
+	c.liveMu.Unlock()
+	close(call.done)
+	return call.live
 }
 
 func (c *Catalog) probe(ctx context.Context, id string) bool {
@@ -451,6 +470,21 @@ func (c *Catalog) probe(ctx context.Context, id string) bool {
 	return raw.Success == nil || *raw.Success
 }
 
+// forgetLiveExcept drops the answers of competitions that are not in list, so the cache holds no more than the list.
+func (c *Catalog) forgetLiveExcept(list []*competition) {
+	keep := make(map[string]struct{}, len(list))
+	for _, m := range list {
+		keep[m.ID] = struct{}{}
+	}
+	c.liveMu.Lock()
+	defer c.liveMu.Unlock()
+	for id := range c.live {
+		if _, ok := keep[id]; !ok {
+			delete(c.live, id)
+		}
+	}
+}
+
 // listed is a competition of the list with what the data source says about it.
 type listed struct {
 	*competition
@@ -465,6 +499,7 @@ func (c *Catalog) ServeToday(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]listed, len(list))
+	c.forgetLiveExcept(list)
 	var wg sync.WaitGroup
 	for i, m := range list {
 		out[i].competition = m
