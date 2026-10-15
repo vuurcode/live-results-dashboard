@@ -61,11 +61,11 @@ type genDistance struct {
 	vanish    bool // a race of a later heat briefly disappears from the distance
 }
 
-// massPass times the update of one skater's lap: the leader's laps are a lap interval apart and the others follow at
-// their real gaps behind them, as the timeline's finish line does.
+// massPass times the update of one skater's lap: the lap (from 0) and when the skater passes the line, in seconds on the
+// race clock. The replay waits as long as the race clock, so the finish line of the timeline follows the data.
 type massPass struct {
 	lap int
-	gap float64
+	at  float64
 }
 
 type genMatch struct {
@@ -436,7 +436,7 @@ func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot
 }
 
 // skateMassStart runs a mass start: a frame announces it, then every skater's lap is a frame of its own, in the order
-// they pass the line. setPass tells when a frame is timed: the skater's lap and gap behind the first skater of that lap.
+// they pass the line. setPass tells when a frame is timed: the skater's lap and the time on the race clock.
 func skateMassStart(dd *genDistanceDoc, idx []int, rng *rand.Rand, snapshot func(), setPass func(massPass)) {
 	snapshot()
 	type passing struct {
@@ -452,12 +452,6 @@ func skateMassStart(dd *genDistanceDoc, idx []int, rng *rand.Rand, snapshot func
 		}
 	}
 	sort.SliceStable(passings, func(a, b int) bool { return passings[a].at < passings[b].at })
-	first := map[int]float64{} // per lap: when the first skater passes
-	for _, p := range passings {
-		if _, ok := first[p.lap]; !ok {
-			first[p.lap] = p.at
-		}
-	}
 	for _, p := range passings {
 		r := &dd.Races[p.race]
 		laps := len(r.segments)
@@ -470,7 +464,7 @@ func skateMassStart(dd *genDistanceDoc, idx []int, rng *rand.Rand, snapshot func
 		}
 		rank(dd)
 		snapshot()
-		setPass(massPass{lap: p.lap, gap: p.at - first[p.lap]})
+		setPass(massPass{lap: p.lap, at: p.at})
 	}
 }
 

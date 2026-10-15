@@ -43,7 +43,7 @@ var competitionIDRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 type config struct {
 	baseDir     string
 	interval    time.Duration
-	lapInterval time.Duration // how long the leader of a generated mass start takes for a lap, the others follow at their gaps; 0 is the sample interval
+	lapInterval time.Duration // how long the leader of a generated mass start takes for its first lap, the race clock is scaled to it; 0 replays the race clock in real time
 	expireAfter time.Duration // how long the last sample is held before the competition is dropped; 0 never
 	listenAddr  string
 	generate    bool // serve the generated matches next to the sample directory
@@ -51,7 +51,7 @@ type config struct {
 }
 
 func loadConfig() config {
-	cfg := config{baseDir: "data", interval: 5 * time.Second, lapInterval: 10 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080", matches: maxGeneratedMatches}
+	cfg := config{baseDir: "data", interval: 5 * time.Second, expireAfter: 5 * time.Minute, listenAddr: ":8080", matches: maxGeneratedMatches}
 	if v := os.Getenv("MOCKSERVER_DATA_SAMPLE_DIRECTORY"); v != "" {
 		cfg.baseDir = v
 	}
@@ -158,12 +158,15 @@ type sample struct {
 func (s *server) samples(id string) ([]sample, error) {
 	if m, ok := s.generated[id]; ok {
 		out := make([]sample, len(m.frames))
-		lap := cmp.Or(s.cfg.lapInterval, s.cfg.interval)
-		var previous time.Duration // when the previous mass start update is due, from the first one's lap
+		scale := 1.0               // wall seconds per race clock second
+		var previous time.Duration // when the previous mass start update is due
 		for i, f := range m.frames {
 			out[i] = sample{name: fmt.Sprintf("frame-%03d", i), load: func() []byte { return f }}
 			if p := m.massPass[i]; p.lap >= 0 {
-				due := max(time.Duration(p.lap+1)*lap+time.Duration(p.gap*float64(time.Second)), previous) // never before an earlier update
+				if previous == 0 && s.cfg.lapInterval > 0 {
+					scale = s.cfg.lapInterval.Seconds() / p.at // the first update is the leader's first lap
+				}
+				due := max(time.Duration(p.at*scale*float64(time.Second)), previous) // never before an earlier update
 				out[i].wait = max(due-previous, time.Millisecond)
 				previous = due
 			}

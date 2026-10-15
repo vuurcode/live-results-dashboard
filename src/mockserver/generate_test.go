@@ -308,9 +308,9 @@ func TestGeneratedMassStartChangesLeaderAndSpreadsTheField(t *testing.T) {
 	}
 }
 
-// A mass start updates one skater at a time, as they pass the line: the leader takes the lap interval for a lap and
-// the others follow at their gaps.
-func TestGeneratedMassStartUpdatesFollowTheGaps(t *testing.T) {
+// A mass start updates one skater at a time, as they pass the line, on the race clock: in real time, or scaled so that
+// the leader takes the lap interval for the first lap.
+func TestGeneratedMassStartUpdatesFollowTheRaceClock(t *testing.T) {
 	s := &server{cfg: config{interval: time.Second, lapInterval: 10 * time.Second}, generated: map[string]*genMatch{}}
 	for _, m := range generatedMatches(maxGeneratedMatches) {
 		s.generated[m.id] = m
@@ -335,6 +335,29 @@ func TestGeneratedMassStartUpdatesFollowTheGaps(t *testing.T) {
 	}
 	if longest > 10*time.Second {
 		t.Errorf("%v until the next update, want at most 10 s", longest)
+	}
+}
+
+func TestGeneratedMassStartReplaysInRealTimeByDefault(t *testing.T) {
+	s := &server{cfg: config{interval: time.Second}, generated: map[string]*genMatch{}}
+	for _, m := range generatedMatches(maxGeneratedMatches) {
+		s.generated[m.id] = m
+	}
+	var first, total time.Duration
+	for _, sm := range mustSamples(t, s, "mock-match-4") {
+		if sm.wait == 0 {
+			continue
+		}
+		if total == 0 {
+			first = sm.wait
+		}
+		total += sm.wait
+	}
+	if first < 25*time.Second || first > 35*time.Second {
+		t.Errorf("the leader's first lap takes %v, want a real lap of about 30 s", first)
+	}
+	if total < 7*time.Minute {
+		t.Errorf("the race takes %v, want 16 real laps", total)
 	}
 }
 
