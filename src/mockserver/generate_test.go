@@ -245,7 +245,7 @@ func TestLaterGeneratedMatchesStayNotLiveLonger(t *testing.T) {
 		return n
 	}
 	ms := generatedMatches(maxGeneratedMatches)
-	if a, b, c := notLiveSteps(ms[0]), notLiveSteps(ms[1]), notLiveSteps(ms[2]); !(0 < a && a < b && b < c) {
+	if a, b, c := notLiveSteps(ms[0]), notLiveSteps(ms[1]), notLiveSteps(ms[2]); a <= 0 || a >= b || b >= c {
 		t.Fatalf("not-live steps %d, %d, %d: want them to grow per match", a, b, c)
 	}
 }
@@ -289,14 +289,14 @@ func TestGeneratedMassStartChangesLeaderAndSpreadsTheField(t *testing.T) {
 					bestEnd = ms
 				}
 			}
-			var close int
+			var near int
 			for _, r := range races {
 				if clockMillis(t, r.Laps[last].Time)-bestEnd <= 10_000 {
-					close++
+					near++
 				}
 			}
-			if close*10 < len(races)*7 {
-				t.Errorf("%s %s: %d of %d skaters finish within 10 s of the leader, want most of them", m.id, d.name, close, len(races))
+			if near*10 < len(races)*7 {
+				t.Errorf("%s %s: %d of %d skaters finish within 10 s of the leader, want most of them", m.id, d.name, near, len(races))
 			}
 			if len(leaders)-1 < 3 {
 				t.Errorf("%s %s: the lead changed %d times, want at least 3", m.id, d.name, len(leaders)-1)
