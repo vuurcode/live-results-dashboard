@@ -76,7 +76,6 @@ export interface Translations {
   tailOfRace: string;
   groupLabel: string;  // contains {n}
   heatLabel: string;   // contains {n}
-  heatMergedLabel: string; // contains {a} and {b}
   // Race events
   lapCompleted: string;
   finished: string;

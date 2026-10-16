@@ -72,7 +72,6 @@ export const sv: Translations = {
   tailOfRace: 'Eftertruppen',
   groupLabel: 'Grupp {n}',
   heatLabel: 'Heat {n}',
-  heatMergedLabel: 'Heat {a} & {b}',
   lapCompleted: 'Varv avklarat',
   finished: 'I mål',
   finishLabel: 'Mål',

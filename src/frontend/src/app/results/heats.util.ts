@@ -71,39 +71,18 @@ export interface MergedHeatGroup<T> {
 }
 
 /**
- * Merges consecutive heats where the first has only white/red lanes (slots
- * 0/1) and the second has only yellow/blue lanes (slots 2/3) into one row
- * labelled via `mergedLabelFor`; non-competitioning heats are labelled individually
- * via `labelFor`.
+ * One row per heat, labelled via `labelFor`. A heat of at most two skaters is a pair: it takes the first two cards of
+ * its row, so a pair on yellow and blue (or a lone skater on any lane) starts at the first card, not in the lane slots
+ * of its colours, and a lone skater keeps an empty second card. A bigger heat keeps one slot per lane.
  */
-export function mergeHeatGroups<T>(
+export function pairHeatGroups<T>(
   groups: HeatGroupLike<T>[],
   labelFor: (heat: number) => string,
-  mergedLabelFor: (a: number, b: number) => string,
 ): MergedHeatGroup<T>[] {
-  const result: MergedHeatGroup<T>[] = [];
-  let i = 0;
-  while (i < groups.length) {
-    const cur = groups[i];
-    const curHasWR = cur.races[0] !== null || cur.races[1] !== null;
-    const curNoYB = cur.races[2] === null && cur.races[3] === null;
-    if (curHasWR && curNoYB && i + 1 < groups.length) {
-      const nxt = groups[i + 1];
-      const nxtNoWR = nxt.races[0] === null && nxt.races[1] === null;
-      const nxtHasYB = nxt.races[2] !== null || nxt.races[3] !== null;
-      if (nxtNoWR && nxtHasYB) {
-        result.push({
-          label: mergedLabelFor(cur.heat, nxt.heat),
-          races: [cur.races[0], cur.races[1], nxt.races[2], nxt.races[3]],
-        });
-        i += 2;
-        continue;
-      }
-    }
-    result.push({ label: labelFor(cur.heat), races: cur.races });
-    i++;
-  }
-  return result;
+  return groups.map((group) => {
+    const present = group.races.filter((race): race is T => race !== null);
+    return { label: labelFor(group.heat), races: present.length <= 2 ? [present[0] ?? null, present[1] ?? null] : group.races };
+  });
 }
 
 /** Removes trailing null slots from a races array. */

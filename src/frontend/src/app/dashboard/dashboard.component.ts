@@ -26,7 +26,7 @@ import {
   individualDistanceLapSchedule as individualDistanceLapScheduleUtil,
   individualDistanceTotalLaps as individualDistanceTotalLapsUtil,
   individualRaceComplete as individualRaceCompleteUtil,
-  mergeHeatGroups,
+  pairHeatGroups,
   trimmedRaces as trimmedRacesUtil,
   heatGroupLaneColors as heatGroupLaneColorsUtil,
   type MergedHeatGroup,
@@ -348,16 +348,9 @@ export class DashboardComponent implements OnInit {
     return this.ts.t('groupLabel', { n: group.groupNumber });
   }
 
-  /**
-   * Returns heat groups for rendering, merging consecutive heats where the
-   * first has only white/red lanes and the second has only yellow/blue lanes.
-   */
+  /** Returns the heat groups for rendering, one row per heat. */
   protected mergedHeatGroups(distance: ProcessedDistance): { label: string; races: (CompetitorUpdate | null)[] }[] {
-    return mergeHeatGroups(
-      distance.heatGroups,
-      (n) => this.ts.t('heatLabel', { n }),
-      (a, b) => this.ts.t('heatMergedLabel', { a, b }),
-    );
+    return pairHeatGroups(distance.heatGroups, (n) => this.ts.t('heatLabel', { n }));
   }
 
   /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */

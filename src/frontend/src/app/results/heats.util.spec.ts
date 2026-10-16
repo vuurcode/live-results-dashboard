@@ -4,7 +4,7 @@ import {
   individualDistanceTotalLaps,
   isIndividualFinished,
   individualRaceComplete,
-  mergeHeatGroups,
+  pairHeatGroups,
   trimmedRaces,
   heatGroupLaneColors,
   individualPrComparison,
@@ -40,31 +40,30 @@ describe('isIndividualFinished / individualRaceComplete', () => {
   });
 });
 
-describe('mergeHeatGroups', () => {
+describe('pairHeatGroups', () => {
   const labelFor = (h: number) => `Heat ${h}`;
-  const mergedLabelFor = (a: number, b: number) => `Heat ${a} & ${b}`;
 
-  it('merges a white/red-only heat with a following yellow/blue-only heat', () => {
+  it('renders each heat as a row of its own', () => {
     const wr = { heat: 1, races: ['white', 'red', null, null] };
     const yb = { heat: 2, races: [null, null, 'yellow', 'blue'] };
-    const merged = mergeHeatGroups([wr, yb], labelFor, mergedLabelFor);
-    expect(merged).toEqual([{ label: 'Heat 1 & 2', races: ['white', 'red', 'yellow', 'blue'] }]);
-  });
-
-  it('does not merge when the following heat is not yellow/blue-only', () => {
-    const wr = { heat: 1, races: ['white', 'red', null, null] };
-    const full = { heat: 2, races: ['white', 'red', 'yellow', 'blue'] };
-    const merged = mergeHeatGroups([wr, full], labelFor, mergedLabelFor);
-    expect(merged).toEqual([
-      { label: 'Heat 1', races: wr.races },
-      { label: 'Heat 2', races: full.races },
+    expect(pairHeatGroups([wr, yb], labelFor)).toEqual([
+      { label: 'Heat 1', races: ['white', 'red'] },
+      { label: 'Heat 2', races: ['yellow', 'blue'] },
     ]);
   });
 
-  it('leaves the last heat unmerged when there is no following heat', () => {
-    const wr = { heat: 1, races: ['white', 'red', null, null] };
-    const merged = mergeHeatGroups([wr], labelFor, mergedLabelFor);
-    expect(merged).toEqual([{ label: 'Heat 1', races: wr.races }]);
+  it('puts a lone skater on the first card, whichever lane', () => {
+    const groups = [
+      { heat: 1, races: [null, 'red', null, null] },
+      { heat: 2, races: [null, null, null, 'blue'] },
+      { heat: 3, races: [null, null, 'yellow', null] },
+    ];
+    expect(pairHeatGroups(groups, labelFor).map((g) => g.races)).toEqual([['red', null], ['blue', null], ['yellow', null]]);
+  });
+
+  it('keeps one slot per lane for a heat of more than two skaters', () => {
+    const full = { heat: 1, races: ['white', 'red', 'yellow', null] };
+    expect(pairHeatGroups([full], labelFor)).toEqual([{ label: 'Heat 1', races: full.races }]);
   });
 });
 

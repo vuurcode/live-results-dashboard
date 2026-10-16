@@ -72,7 +72,6 @@ export const de: Translations = {
   tailOfRace: 'Ende des Rennens',
   groupLabel: 'Gruppe {n}',
   heatLabel: 'Lauf {n}',
-  heatMergedLabel: 'Lauf {a} & {b}',
   lapCompleted: 'Runde beendet',
   finished: 'Im Ziel',
   finishLabel: 'Ziel',

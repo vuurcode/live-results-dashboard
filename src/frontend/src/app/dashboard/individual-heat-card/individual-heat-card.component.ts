@@ -334,12 +334,6 @@ export class IndividualHeatCardComponent {
     return !!race.invalid_reason || this.splitRemarks(race.remark).length > 0;
   }
 
-  /** True when both lanes of a set (white/red = slots 0 and 1, yellow/blue = 2 and 3) have no competitor in this heat. */
-  protected laneSetEmpty(slot: number): boolean {
-    const first = slot - (slot % 2);
-    return !this.races[first] && !this.races[first + 1];
-  }
-
   /** Tooltip of a compact lap badge: three rows - distance, lap time, total time. */
   protected compactBadgeTitle(race: CompetitorUpdate, i: number): string {
     const total = this.individualCumulativeTime(race, i);

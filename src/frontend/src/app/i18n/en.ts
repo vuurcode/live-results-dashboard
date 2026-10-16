@@ -72,7 +72,6 @@ export const en: Translations = {
   tailOfRace: 'Tail of the race',
   groupLabel: 'Group {n}',
   heatLabel: 'Heat {n}',
-  heatMergedLabel: 'Heat {a} & {b}',
   lapCompleted: 'Lap completed',
   finished: 'Finished',
   finishLabel: 'Finish',

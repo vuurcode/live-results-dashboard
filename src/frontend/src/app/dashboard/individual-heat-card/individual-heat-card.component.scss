@@ -57,10 +57,6 @@
   // as many columns as the widest heat of the distance has lanes, so a distance of two-lane heats uses the full width
   @media (min-width: $four-lanes-min) { --card-lanes: var(--lane-count, 4); grid-template-columns: repeat(var(--lane-count, 4), minmax(0, 1fr)); }
 }
-.individual-lane-col, .individual-heat-lane-bg {
-  // On narrow screens a set of lanes with no competitor in this heat (white/red or yellow/blue) takes no room and shows no colour.
-  @media (max-width: $four-lanes-min - 1px) { &.lane-set-empty { display: none; } }
-}
 .individual-lane-col {
   display: grid;
   grid-row: span 2;

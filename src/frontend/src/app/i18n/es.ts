@@ -72,7 +72,6 @@ export const es: Translations = {
   tailOfRace: 'Cola de carrera',
   groupLabel: 'Grupo {n}',
   heatLabel: 'Serie {n}',
-  heatMergedLabel: 'Serie {a} & {b}',
   lapCompleted: 'Vuelta completada',
   finished: 'En meta',
   finishLabel: 'Meta',

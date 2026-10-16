@@ -72,7 +72,6 @@ export const fr: Translations = {
   tailOfRace: 'Queue de course',
   groupLabel: 'Groupe {n}',
   heatLabel: 'Série {n}',
-  heatMergedLabel: 'Série {a} & {b}',
   lapCompleted: 'Tour terminé',
   finished: 'Arrivé',
   finishLabel: 'Arrivée',

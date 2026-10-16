@@ -203,21 +203,14 @@ test.describe('settings panel and tooltips', () => {
   });
 });
 
-test.describe('empty lane sets on narrow screens', () => {
+test.describe('a heat of two skaters', () => {
   // heat 1 has only white/red, heat 2 has all four lanes
-  for (const [width, hidden] of [[1280, false], [1000, true], [700, true], [400, true]] as const) {
-    test(`${width}px: the yellow/blue lanes of heat 1 are ${hidden ? 'hidden' : 'kept'}`, async ({ page }) => {
+  for (const width of [1280, 700]) {
+    test(`${width}px: is a row of its own with two cards, while the full heat keeps its four lanes`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/?competitionId=e2e-lanes');
-      const heat1 = page.locator('.individual-heat-row').first();
-      await expect(heat1.locator('.individual-lane-col')).toHaveCount(4);
-      await expect(heat1.locator('.individual-lane-col.lane-set-empty')).toHaveCount(2);
-      const visible = await heat1.locator('.individual-lane-col').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().width > 0).length);
-      expect(visible).toBe(hidden ? 2 : 4);
-      const bgs = await heat1.locator('.individual-heat-lane-bg:visible').count(); // the heat label's colour bars follow too
-      expect(bgs).toBe(width >= 1280 ? 4 : 0); // (the label itself is hidden on narrow screens)
-      // the full heat keeps all four lanes
-      await expect(page.locator('.individual-heat-row').nth(1).locator('.individual-lane-col.lane-set-empty')).toHaveCount(0);
+      await expect(page.locator('.individual-heat-row').first().locator('.individual-lane-col')).toHaveCount(2);
+      await expect(page.locator('.individual-heat-row').nth(1).locator('.individual-lane-col')).toHaveCount(4);
     });
   }
 });

@@ -72,7 +72,6 @@ export const nb: Translations = {
   tailOfRace: 'Halen av løpet',
   groupLabel: 'Gruppe {n}',
   heatLabel: 'Heat {n}',
-  heatMergedLabel: 'Heat {a} & {b}',
   lapCompleted: 'Runde fullført',
   finished: 'I mål',
   finishLabel: 'Mål',

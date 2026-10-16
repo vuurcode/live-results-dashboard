@@ -72,7 +72,6 @@ export const it: Translations = {
   tailOfRace: 'Coda della gara',
   groupLabel: 'Gruppo {n}',
   heatLabel: 'Batteria {n}',
-  heatMergedLabel: 'Batteria {a} & {b}',
   lapCompleted: 'Giro completato',
   finished: 'Arrivato',
   finishLabel: 'Traguardo',
