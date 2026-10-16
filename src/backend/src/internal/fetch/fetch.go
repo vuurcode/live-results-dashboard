@@ -3,6 +3,7 @@ package fetch
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,7 +44,15 @@ type Fetcher struct {
 	Record func([]byte)
 
 	wasLive bool // whether the previous reply had a live distance
+
+	// The reply that was processed last, by hash: the replies are large and mostly unchanged between two polls, so a
+	// reply that hashes the same is not decoded, processed or recorded again.
+	last     [sha256.Size]byte
+	haveLast bool
+	feed     feedState
 }
+
+type feedState struct{ state, message string }
 
 func (f *Fetcher) once(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -69,6 +78,12 @@ func (f *Fetcher) once(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	sum := sha256.Sum256(body)
+	if f.haveLast && sum == f.last {
+		// only the feed state needs restoring, for when failures in between had marked the feed unavailable
+		f.Sink.SetFeed(f.feed.state, f.feed.message)
+		return nil
+	}
 	var raw results.RawData
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return fmt.Errorf("decode (content type %q): %w", resp.Header.Get("Content-Type"), err)
@@ -80,11 +95,12 @@ func (f *Fetcher) once(ctx context.Context) error {
 	}
 	f.wasLive = live
 	f.Sink.Apply(results.Process(&raw))
+	f.feed = feedState{"ok", ""}
 	if raw.Success != nil && !*raw.Success {
-		f.Sink.SetFeed("not_live", raw.ErrorMessage)
-	} else {
-		f.Sink.SetFeed("ok", "")
+		f.feed = feedState{"not_live", raw.ErrorMessage}
 	}
+	f.Sink.SetFeed(f.feed.state, f.feed.message)
+	f.last, f.haveLast = sum, true
 	return nil
 }
 
