@@ -95,11 +95,11 @@ func generatedMatches(count int) []*genMatch {
 			id: "mock-match-1", name: "Demo Sprint Day", firstNames: 0, notLiveFrames: 2,
 			venue: genVenue{"MK1", "Demo Ice Rink", "Faketown"},
 			distances: []genDistance{
-				{name: "1000 meter", meters: 1000, skaters: 8, resetHeat: 2, flicker: true, retime: true},
-				{name: "100 meter", meters: 100, skaters: 8},
-				{name: "500 meter", meters: 500, skaters: 8},
-				{name: "5000 meter", meters: 5000, skaters: 8},
-				{name: "10000 meter", meters: 10000, skaters: 8},
+				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, resetHeat: 2, flicker: true, retime: true},
+				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8},
+				{name: "500 meter - fake live results for demo purposes", meters: 500, skaters: 8},
+				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8},
+				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8},
 			},
 		},
 		{
