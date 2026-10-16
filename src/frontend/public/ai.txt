@@ -1,0 +1,3 @@
+# Spawning ai.txt: no use for AI training or datasets.
+User-Agent: *
+Disallow: /

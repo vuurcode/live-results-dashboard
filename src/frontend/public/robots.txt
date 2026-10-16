@@ -1,0 +1,26 @@
+# This is a private experiment, not a site to index or to train on.
+User-agent: *
+Disallow: /
+
+# AI crawlers and AI search/assistant agents, named so that they are covered even by parsers that only look for their own entry.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: CCBot
+User-agent: Bytespider
+User-agent: Amazonbot
+User-agent: meta-externalagent
+User-agent: cohere-ai
+User-agent: Diffbot
+User-agent: FacebookBot
+User-agent: Omgilibot
+User-agent: ImagesiftBot
+Disallow: /
