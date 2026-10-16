@@ -49,7 +49,8 @@ type genDistance struct {
 	name     string
 	meters   int
 	skaters  int
-	massLaps int // > 0: all skaters start together and skate this many laps
+	massLaps int  // > 0: all skaters start together and skate this many laps
+	fourLane bool // heats of four skaters (white, red, yellow, blue) instead of pairs (white, red)
 
 	// Track timing quirks the consumer must survive.
 	resetHeat int  // > 0: this heat is reset after two laps and then skated again from the start
@@ -95,11 +96,12 @@ func generatedMatches(count int) []*genMatch {
 			id: "mock-match-1", name: "Demo Sprint Day", firstNames: 0, notLiveFrames: 2,
 			venue: genVenue{"MK1", "Demo Ice Rink", "Faketown"},
 			distances: []genDistance{
-				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, resetHeat: 2, flicker: true, retime: true},
+				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, fourLane: true, resetHeat: 2, flicker: true, retime: true},
+				{name: "1500 meter - fake live results for demo purposes", meters: 1500, skaters: 8, fourLane: true},
 				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8},
+				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8, fourLane: true},
+				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8, fourLane: true},
 				{name: "500 meter - fake live results for demo purposes", meters: 500, skaters: 8},
-				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8},
-				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8},
 			},
 		},
 		{
@@ -232,8 +234,12 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 			}
 			skill := 0.94 + rng.Float64()*0.12
 			prSeconds := float64(d.meters) * pace * skill * (0.97 + rng.Float64()*0.06)
+			lanes := []string{"white", "red"}
+			if d.fourLane {
+				lanes = []string{"white", "red", "yellow", "blue"}
+			}
 			r := genRace{
-				ID: uuid(rng), Competitor: c, Heat: si/2 + 1, Lane: [2]string{"white", "red"}[si%2],
+				ID: uuid(rng), Competitor: c, Heat: si/len(lanes) + 1, Lane: lanes[si%len(lanes)],
 				PersonalRecord: clock(prSeconds),
 				prSeconds:      prSeconds,
 			}

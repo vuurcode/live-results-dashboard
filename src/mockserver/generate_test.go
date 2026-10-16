@@ -384,3 +384,22 @@ func mustSamples(t *testing.T, s *server, id string) []sample {
 	}
 	return out
 }
+
+// The demo match skates its long distances in heats of four and its sprints (100 and 500 meter) in pairs.
+func TestDemoMatchHasHeatsOfFourExceptTheSprints(t *testing.T) {
+	var doc genDoc
+	if err := json.Unmarshal(generatedMatches(1)[0].frames[0], &doc); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"1000 meter": 4, "1500 meter": 4, "100 meter": 2, "500 meter": 2, "5000 meter": 4, "10000 meter": 4}
+	for _, d := range doc.Distances {
+		lanes := map[string]bool{}
+		for _, r := range d.Races {
+			lanes[r.Lane] = true
+		}
+		key := strings.SplitN(d.Name, " - ", 2)[0]
+		if len(lanes) != want[key] {
+			t.Errorf("%s has %d lanes, want %d", d.Name, len(lanes), want[key])
+		}
+	}
+}
