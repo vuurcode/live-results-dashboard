@@ -51,6 +51,8 @@ type genDistance struct {
 	skaters  int
 	massLaps int  // > 0: all skaters start together and skate this many laps
 	fourLane bool // heats of four skaters (white, red, yellow, blue) instead of pairs (white, red)
+	pbs      int  // > 0: exactly this many skaters finish under their personal record, the rest over it; the other remarks are few
+	record   bool // with pbs: the first of those skaters also sets a track record, the only record of the match
 
 	// Track timing quirks the consumer must survive.
 	resetHeat int  // > 0: this heat is reset after two laps and then skated again from the start
@@ -96,12 +98,12 @@ func generatedMatches(count int) []*genMatch {
 			id: "mock-match-1", name: "Demo Sprint Day", firstNames: 0, notLiveFrames: 2,
 			venue: genVenue{"MK1", "Demo Ice Rink", "Faketown"},
 			distances: []genDistance{
-				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, fourLane: true, resetHeat: 2, flicker: true, retime: true},
-				{name: "1500 meter - fake live results for demo purposes", meters: 1500, skaters: 8, fourLane: true},
-				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8},
-				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8, fourLane: true},
-				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8, fourLane: true},
-				{name: "500 meter - fake live results for demo purposes", meters: 500, skaters: 8},
+				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, fourLane: true, pbs: 2, resetHeat: 2, flicker: true, retime: true},
+				{name: "1500 meter - fake live results for demo purposes", meters: 1500, skaters: 8, fourLane: true, pbs: 1},
+				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8, pbs: 1},
+				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8, fourLane: true, pbs: 2},
+				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8, fourLane: true, pbs: 1},
+				{name: "500 meter - fake live results for demo purposes", meters: 500, skaters: 8, pbs: 2, record: true},
 			},
 		},
 		{
@@ -167,6 +169,8 @@ type genRace struct {
 
 	segments  []float64 // seconds per lap, not serialized
 	prSeconds float64
+	fixed     bool    // the remark was decided up front (see genDistance.pbs)
+	remark    *string // the remark of a fixed race, once it has finished
 }
 
 type genDistanceDoc struct {
@@ -256,6 +260,9 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 					lapSkill, noise = massStartSkill((si*3+di)%d.skaters, li), 0.99+rng.Float64()*0.02
 				}
 				r.segments = append(r.segments, math.Round(float64(l)*pace*lapSkill*noise*1000)/1000)
+			}
+			if d.pbs > 0 {
+				fixRemark(&r, si, d, rng)
 			}
 			dd.Races = append(dd.Races, r)
 		}
@@ -409,7 +416,7 @@ func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot
 				t := clock(total)
 				r.Time = &t
 				r.Status = 4
-				r.Remark = remarkFor(total < r.prSeconds, rng)
+				r.Remark = r.remarkFor(total < r.prSeconds, rng)
 			}
 		}
 		rank(dd)
@@ -469,7 +476,7 @@ func skateMassStart(dd *genDistanceDoc, idx []int, rng *rand.Rand, snapshot func
 			t := clock(p.at)
 			r.Time = &t
 			r.Status = 4
-			r.Remark = remarkFor(p.at < r.prSeconds, rng)
+			r.Remark = r.remarkFor(p.at < r.prSeconds, rng)
 		}
 		rank(dd)
 		snapshot()
@@ -496,6 +503,38 @@ func rank(dd *genDistanceDoc) {
 		p := pos + 1
 		dd.Races[i].Rank = &p
 	}
+}
+
+// fixRemark makes the race at position si of a distance with pbs a personal record or not, by moving its personal record
+// to either side of its total time, and decides its remark: PR for the few that set one, now and then a plain FL or MT for the rest.
+func fixRemark(r *genRace, si int, d genDistance, rng *rand.Rand) {
+	var total float64
+	for _, s := range r.segments {
+		total += s
+	}
+	r.fixed = true
+	if pbSkaters := [...]int{2, 6}; si == pbSkaters[0] || (d.pbs > 1 && si == pbSkaters[1]) {
+		r.prSeconds = total * 1.02
+		remark := "PR"
+		if d.record && si == pbSkaters[0] {
+			remark = "TR TRC PR"
+		}
+		r.remark = &remark
+	} else {
+		r.prSeconds = total * 0.98
+		if other := []string{"", "", "", "FL", "MT"}[rng.IntN(5)]; other != "" {
+			r.remark = &other
+		}
+	}
+	r.PersonalRecord = clock(r.prSeconds)
+}
+
+// remarkFor is the remark of a race that has just finished.
+func (r *genRace) remarkFor(personalRecord bool, rng *rand.Rand) *string {
+	if r.fixed {
+		return r.remark
+	}
+	return remarkFor(personalRecord, rng)
 }
 
 // remarkFor picks the remark of a finished race: a personal record (sometimes also a track record), or one

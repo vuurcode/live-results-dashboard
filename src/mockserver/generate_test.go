@@ -403,3 +403,44 @@ func TestDemoMatchHasHeatsOfFourExceptTheSprints(t *testing.T) {
 		}
 	}
 }
+
+// The demo match has one or two personal records per distance and a single track record, in the 500 meter.
+func TestDemoMatchHasFewPersonalRecordsAndOneTrackRecord(t *testing.T) {
+	var doc genDoc
+	frames := generatedMatches(1)[0].frames
+	if err := json.Unmarshal(frames[len(frames)-1], &doc); err != nil {
+		t.Fatal(err)
+	}
+	records := 0
+	for _, d := range doc.Distances {
+		pbs, faster := 0, 0
+		for _, r := range d.Races {
+			if r.Time != nil && *r.Time < r.PersonalRecord {
+				faster++
+			}
+			if r.Remark == nil {
+				continue
+			}
+			for _, code := range strings.Fields(*r.Remark) {
+				switch code {
+				case "PR":
+					pbs++
+				case "WR", "NR", "TR", "TRC":
+					records++
+					if !strings.HasPrefix(d.Name, "500 meter") {
+						t.Errorf("%s has the record code %s", d.Name, code)
+					}
+				}
+			}
+		}
+		if faster != pbs {
+			t.Errorf("%s: %d skaters finish under their personal record but %d are marked", d.Name, faster, pbs)
+		}
+		if pbs < 1 || pbs > 2 {
+			t.Errorf("%s has %d personal records, want 1 or 2", d.Name, pbs)
+		}
+	}
+	if records == 0 || records > 2 {
+		t.Errorf("%d record codes, want one record remark", records)
+	}
+}
