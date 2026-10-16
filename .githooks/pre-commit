@@ -1,0 +1,36 @@
+#!/bin/sh
+# Runs the lint checks CI runs, for the parts of the repository with staged changes. Tests stay with CI.
+# Enable with: git config core.hooksPath .githooks
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+touched() { printf '%s\n' "$staged" | grep -q "^$1"; }
+
+go_module() {
+	touched "$1" || return 0
+	echo "pre-commit: $1"
+	(
+		cd "$1"
+		test -z "$(gofmt -l .)" || { gofmt -l .; echo "gofmt: files above need formatting" >&2; exit 1; }
+		go vet ./...
+		go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run
+	)
+}
+
+go_module src/backend/src
+go_module src/mockserver
+
+if touched src/frontend/; then
+	echo "pre-commit: src/frontend"
+	(cd src/frontend && npm run lint && npm run typecheck)
+fi
+
+shell=$(printf '%s\n' "$staged" | grep '\.sh$' || true)
+if [ -n "$shell" ] && command -v shellcheck >/dev/null 2>&1; then
+	echo "pre-commit: shellcheck"
+	# shellcheck disable=SC2086
+	shellcheck $shell
+fi

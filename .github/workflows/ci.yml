@@ -97,7 +97,7 @@ jobs:
       - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: prod/Containerfile
-      - run: shellcheck dev-services.sh entrypoint.sh
+      - run: shellcheck dev-services.sh entrypoint.sh .githooks/pre-commit
       - name: zizmor
         # Security audit of the workflows (unpinned actions, template injection, excessive permissions)
         run: pipx run zizmor==1.30.1 --min-severity medium .github
