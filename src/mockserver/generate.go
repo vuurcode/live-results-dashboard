@@ -50,7 +50,7 @@ type genDistance struct {
 	meters   int
 	skaters  int
 	massLaps int  // > 0: all skaters start together and skate this many laps
-	fourLane bool // heats of four skaters (white, red, yellow, blue) instead of pairs (white, red)
+	fourLane bool // the pairs skate on four lanes: white and red, then yellow and blue (instead of always white and red)
 	pbs      int  // > 0: exactly this many skaters finish under their personal record, the rest over it; the other remarks are few
 	record   bool // with pbs: the first of those skaters also sets a track record, the only record of the match
 
@@ -100,9 +100,9 @@ func generatedMatches(count int) []*genMatch {
 			venue: genVenue{"MK1", "Demo Ice Rink", "Faketown"},
 			distances: []genDistance{
 				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, fourLane: true, pbs: 2, resetHeat: 2, flicker: true, retime: true},
-				{name: "1500 meter - fake live results for demo purposes", meters: 1500, skaters: 8, fourLane: true, pbs: 1},
-				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8, fourLane: true, pbs: 2},
-				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8, fourLane: true, pbs: 1},
+				{name: "1500 meter - fake live results for demo purposes", meters: 1500, skaters: 6, fourLane: true, pbs: 1},
+				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 4, fourLane: true, pbs: 1},
+				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 4, fourLane: true, pbs: 1},
 				{name: "500 meter - fake live results for demo purposes", meters: 500, skaters: 8, pbs: 2, record: true},
 				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8, pbs: 1},
 			},
@@ -239,12 +239,13 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 			}
 			skill := 0.94 + rng.Float64()*0.12
 			prSeconds := float64(d.meters) * pace * skill * (0.97 + rng.Float64()*0.06)
-			lanes := []string{"white", "red"}
+			// a heat is a pair; on four lanes the pairs alternate between white and red and yellow and blue
+			lane := []string{"white", "red"}[si%2]
 			if d.fourLane {
-				lanes = []string{"white", "red", "yellow", "blue"}
+				lane = []string{"white", "red", "yellow", "blue"}[si/2%2*2+si%2]
 			}
 			r := genRace{
-				ID: uuid(rng), Competitor: c, Heat: si/len(lanes) + 1, Lane: lanes[si%len(lanes)],
+				ID: uuid(rng), Competitor: c, Heat: si/2 + 1, Lane: lane,
 				PersonalRecord: clock(prSeconds),
 				prSeconds:      prSeconds,
 			}

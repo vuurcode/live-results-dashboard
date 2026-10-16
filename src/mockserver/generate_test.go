@@ -385,21 +385,32 @@ func mustSamples(t *testing.T, s *server, id string) []sample {
 	return out
 }
 
-// The demo match skates its long distances in heats of four and its sprints (100 and 500 meter) in pairs.
-func TestDemoMatchHasHeatsOfFourExceptTheSprints(t *testing.T) {
+// Every heat of the demo match is a pair; its long distances run on four lanes (white and red, then yellow and blue)
+// and have fewer heats than its sprints.
+func TestDemoMatchHeatsArePairs(t *testing.T) {
 	var doc genDoc
 	if err := json.Unmarshal(generatedMatches(1)[0].frames[0], &doc); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]int{"1000 meter": 4, "1500 meter": 4, "100 meter": 2, "500 meter": 2, "5000 meter": 4, "10000 meter": 4}
+	wantHeats := map[string]int{"1000 meter": 4, "1500 meter": 3, "5000 meter": 2, "10000 meter": 2, "500 meter": 4, "100 meter": 4}
+	wantLanes := map[string]int{"1000 meter": 4, "1500 meter": 4, "5000 meter": 4, "10000 meter": 4, "500 meter": 2, "100 meter": 2}
 	for _, d := range doc.Distances {
-		lanes := map[string]bool{}
+		key := strings.SplitN(d.Name, " - ", 2)[0]
+		heats, lanes := map[int]int{}, map[string]bool{}
 		for _, r := range d.Races {
+			heats[r.Heat]++
 			lanes[r.Lane] = true
 		}
-		key := strings.SplitN(d.Name, " - ", 2)[0]
-		if len(lanes) != want[key] {
-			t.Errorf("%s has %d lanes, want %d", d.Name, len(lanes), want[key])
+		for h, n := range heats {
+			if n != 2 {
+				t.Errorf("%s heat %d has %d skaters, want a pair", d.Name, h, n)
+			}
+		}
+		if len(heats) != wantHeats[key] {
+			t.Errorf("%s has %d heats, want %d", d.Name, len(heats), wantHeats[key])
+		}
+		if len(lanes) != wantLanes[key] {
+			t.Errorf("%s has %d lanes, want %d", d.Name, len(lanes), wantLanes[key])
 		}
 	}
 }
