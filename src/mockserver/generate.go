@@ -67,8 +67,9 @@ type genDistance struct {
 // massPass times the update of one skater's lap: the lap (from 0) and when the skater passes the line, in seconds on the
 // race clock. The replay waits as long as the race clock, so the finish line of the timeline follows the data.
 type massPass struct {
-	lap int
-	at  float64
+	lap   int
+	at    float64
+	short bool // a frame that only announces the next heat or distance (never of a mass start, whose frames follow the race clock): the replay waits a fraction of the sample interval for it
 }
 
 type genMatch struct {
@@ -288,11 +289,15 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 		frames = append(frames, notLive)
 		massPasses = append(massPasses, massPass{lap: -1})
 	}
+	shorten := func() { massPasses[len(massPasses)-1].short = true }
 	// the first distance is live from the first frame of data
 	if len(doc.Distances) > 0 {
 		doc.Distances[0].IsLive = true
 	}
 	snapshot()
+	if len(m.distances) > 0 && m.distances[0].massLaps == 0 {
+		shorten()
+	}
 
 	for di := range doc.Distances {
 		dd := &doc.Distances[di]
@@ -330,13 +335,16 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 				skateMassStart(dd, heats[h], rng, snapshot, func(p massPass) { massPasses[len(massPasses)-1] = p })
 				continue
 			}
-			skate(dd, heats[h], q, rng, snapshot)
+			skate(dd, heats[h], q, rng, snapshot, shorten)
 		}
 		dd.IsLive = false
 		if di+1 < len(doc.Distances) {
 			doc.Distances[di+1].IsLive = true // the next distance takes over in the same frame, so the match stays live
 		}
 		snapshot()
+		if m.distances[di].massLaps == 0 {
+			shorten()
+		}
 	}
 	m.massPass = massPasses
 	return frames
@@ -371,7 +379,7 @@ type heatQuirks struct {
 // skate runs one heat: a frame announces it, then every frame completes a lap, and the races finish together
 // with the last lap. As in the live feed, a running race keeps status 0 and only gets its laps; the status
 // becomes 4 on finish. A skater who does not start or drops out finishes with status 4 and an invalid reason.
-func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot func()) {
+func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot, shorten func()) {
 	if q.replaced && len(idx) > 1 {
 		r := &dd.Races[idx[1]]
 		r.ID = uuid(rng)
@@ -379,6 +387,7 @@ func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot
 		r.Competitor.Name = generatedNames[rng.IntN(len(generatedNames))] + " Jr"
 	}
 	snapshot()
+	shorten()
 	if q.inPlace {
 		r := &dd.Races[idx[0]]
 		r.Competitor.ID = uuid(rng)

@@ -444,3 +444,28 @@ func TestDemoMatchHasFewPersonalRecordsAndOneTrackRecord(t *testing.T) {
 		t.Errorf("%d record codes, want one record remark", records)
 	}
 }
+
+// A frame that only announces the next heat or distance is replayed after a fraction of the sample interval,
+// the laps after the whole interval.
+func TestAnnouncingFramesAreReplayedSooner(t *testing.T) {
+	m := generatedMatches(1)[0]
+	s := &server{cfg: config{interval: 8 * time.Second}, generated: map[string]*genMatch{"m": m}}
+	out, err := s.samples("m")
+	if err != nil {
+		t.Fatal(err)
+	}
+	short, full := 0, 0
+	for i, smp := range out {
+		switch {
+		case m.massPass[i].short && smp.wait == 2*time.Second:
+			short++
+		case !m.massPass[i].short && smp.wait == 0:
+			full++
+		default:
+			t.Fatalf("frame %d (short %v) waits %s", i, m.massPass[i].short, smp.wait)
+		}
+	}
+	if short == 0 || full == 0 {
+		t.Errorf("%d announcing and %d lap frames, want both", short, full)
+	}
+}

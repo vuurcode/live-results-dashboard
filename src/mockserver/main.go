@@ -146,6 +146,9 @@ var (
 	errNoSamples          = errors.New("competition has no valid samples")
 )
 
+// announceDivisor shortens the wait for a frame that only announces the next heat or distance.
+const announceDivisor = 4
+
 // sample is one step of a competition's replay.
 type sample struct {
 	name string
@@ -162,7 +165,9 @@ func (s *server) samples(id string) ([]sample, error) {
 		var previous time.Duration // when the previous mass start update is due
 		for i, f := range m.frames {
 			out[i] = sample{name: fmt.Sprintf("frame-%03d", i), load: func() []byte { return f }}
-			if p := m.massPass[i]; p.lap >= 0 {
+			if p := m.massPass[i]; p.short {
+				out[i].wait = s.cfg.interval / announceDivisor
+			} else if p.lap >= 0 {
 				if previous == 0 && s.cfg.lapInterval > 0 {
 					scale = s.cfg.lapInterval.Seconds() / p.at // the first update is the leader's first lap
 				}
