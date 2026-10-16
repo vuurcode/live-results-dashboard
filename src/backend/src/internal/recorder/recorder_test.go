@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -239,5 +240,50 @@ func TestFollowingWhileLiveRepliesComeIn(t *testing.T) {
 	var nilStore *Store
 	if nilStore.Following("m1") {
 		t.Fatal("nil store follows")
+	}
+}
+
+func TestCompetitorsAreAnonymized(t *testing.T) {
+	s, _ := clockedStore(t, 0)
+	r := s.Open("m1")
+	in := `{"name":"Cup Name","distances":[{"id":"d1","name":"500 meter","races":[` +
+		`{"id":"r1","heat":1,"competitor":{"id":"c-1","name":"Jan Jansen","startNumber":"3","clubCode":"ABC","category":"M","birth":"x"}},` +
+		`{"id":"r2","heat":2,"competitor":{"id":"c-1","name":"Jan Jansen","startNumber":"3","clubCode":"ABC","category":"M","birth":"x"}}]}]}`
+	r.Add([]byte(in))
+	var buf bytes.Buffer
+	if err := s.Write(&buf, "m1_2026-03-08"); err != nil {
+		t.Fatal(err)
+	}
+	for _, got := range readArchive(t, buf.Bytes()) {
+		if strings.Contains(got, "Jansen") || strings.Contains(got, "c-1") {
+			t.Fatalf("personal data in the recording: %s", got)
+		}
+		var doc struct {
+			Name      string
+			Distances []struct {
+				Name  string
+				Races []struct {
+					Competitor map[string]string
+				}
+			}
+		}
+		if err := json.Unmarshal([]byte(got), &doc); err != nil {
+			t.Fatal(err)
+		}
+		a, b := doc.Distances[0].Races[0].Competitor, doc.Distances[0].Races[1].Competitor
+		if doc.Name != "Cup Name" || doc.Distances[0].Name != "500 meter" || a["clubCode"] != "ABC" || a["startNumber"] != "3" || a["birth"] != "x" {
+			t.Fatalf("other data changed: %s", got)
+		}
+		if a["name"] != "Competitor 3" || a["name"] != b["name"] || a["id"] != b["id"] || a["id"] == "c-1" {
+			t.Fatalf("pseudonyms: %v %v", a, b)
+		}
+	}
+}
+
+func TestRepliesThatAreNotJSONAreNotStored(t *testing.T) {
+	s, _ := clockedStore(t, 0)
+	s.Open("m1").Add([]byte("Jan Jansen"))
+	if infos, _ := s.List(); len(infos) != 0 {
+		t.Fatalf("got %+v", infos)
 	}
 }

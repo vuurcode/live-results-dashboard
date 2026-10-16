@@ -117,7 +117,7 @@ func (r *Recording) begin(day string) {
 	r.last = r.latestOnDisk()
 }
 
-// Add stores body when it differs from the snapshot before it. The first reply of a new day opens the next recording.
+// Add stores body, without the names of the competitors, when it differs from the snapshot before it. The first reply of a new day opens the next recording.
 func (r *Recording) Add(body []byte) {
 	if r == nil {
 		return
@@ -132,7 +132,16 @@ func (r *Recording) Add(body []byte) {
 		r.started = false
 		r.begin(day)
 	}
-	if r.skip || bytes.Equal(body, r.last) {
+	if r.skip {
+		return
+	}
+	// stored without who the competitors are; a reply that cannot be read is not stored at all
+	body, err := anonymize(body)
+	if err != nil {
+		slog.Error("Recording failed, reply is not JSON", "competition", r.id, "err", err)
+		return
+	}
+	if bytes.Equal(body, r.last) {
 		return
 	}
 	if err := os.MkdirAll(r.dir, 0o750); err != nil {
