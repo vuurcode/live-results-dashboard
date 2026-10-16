@@ -71,7 +71,7 @@ export const nl: Translations = {
   headOfRace: 'Kop van de race',
   tailOfRace: 'Staart van de race',
   groupLabel: 'Groep {n}',
-  heatLabel: 'Serie {n}',
+  heatLabel: 'Rit {n}',
   lapCompleted: 'Ronde voltooid',
   finished: 'Gefinisht',
   finishLabel: 'Finish',
