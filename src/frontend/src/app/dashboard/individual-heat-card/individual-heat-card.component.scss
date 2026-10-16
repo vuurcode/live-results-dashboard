@@ -27,7 +27,8 @@
 .individual-heat-lane-bgs {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(var(--lane-count, 4), minmax(0, 1fr)); // the columns of the cards below
   // Hide lane colour strips when cards stack to single column
   @media (max-width: $four-lanes-min - 1px) { display: none; }
 }
@@ -36,7 +37,6 @@
   --lane-tint: 9%;
 }
 .individual-heat-lane-bg {
-  flex: 1 1 0;
   background: color-mix(in srgb, var(--lane-color, transparent) var(--lane-tint, 5%), transparent);
 }
 .individual-heat-label-text,

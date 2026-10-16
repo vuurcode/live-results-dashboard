@@ -215,6 +215,16 @@ test.describe('a heat of two skaters', () => {
   }
 });
 
+test('the lane colours of a heat of two skaters sit behind the columns of its cards', async ({ page }) => {
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await page.goto('/?competitionId=e2e-lanes');
+  const row = page.locator('.individual-heat-row').first();
+  const bg = await row.locator('.individual-heat-lane-bg').nth(1).boundingBox();
+  const col = await row.locator('.individual-lane-col').nth(1).boundingBox();
+  expect(Math.abs(bg!.x - col!.x)).toBeLessThan(2);
+  expect(Math.abs(bg!.width - col!.width)).toBeLessThan(2);
+});
+
 test('unfolding a distance does not change the height of its heats halfway', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/?competitionId=e2e-individual');
