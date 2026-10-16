@@ -40,13 +40,21 @@ test.describe('card watermark placement', () => {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/?competitionId=e2e-pairs');
     const card = page.locator('.individual-competitor-card', { hasText: 'Competitor A' });
-    await expect(card.locator('.individual-watermark')).toBeVisible({ timeout: 15_000 });
-    await stamped(card);
-    return card.evaluate((c) => {
-      const t = c.querySelector('.individual-comp-title')!.getBoundingClientRect();
-      const w = c.querySelector('.individual-watermark')!.getBoundingClientRect();
-      return { dx: (w.left + w.width / 2 - (t.left + t.width / 2)) / t.width, dy: w.top + w.height / 2 - (t.top + t.height / 2), rightGap: (t.right - w.right) / t.width, topGap: w.top - t.top };
-    });
+    // measured in the same step that sees the watermark settled: the replay moves on every few seconds and the watermark
+    // can be gone by the time a separate step looks for it
+    let placement: Placement | null = null;
+    await expect.poll(async () => {
+      placement = await card.evaluate((c): Placement | null => {
+        const title = c.querySelector('.individual-comp-title');
+        const mark = c.querySelector('.individual-watermark');
+        if (!title || !mark || getComputedStyle(mark).scale !== 'none') return null;
+        const t = title.getBoundingClientRect();
+        const w = mark.getBoundingClientRect();
+        return { dx: (w.left + w.width / 2 - (t.left + t.width / 2)) / t.width, dy: w.top + w.height / 2 - (t.top + t.height / 2), rightGap: (t.right - w.right) / t.width, topGap: w.top - t.top };
+      }).catch(() => null);
+      return placement !== null;
+    }, { timeout: 15_000 }).toBe(true);
+    return placement!;
   }
 
   // the label of a card without a time is a pseudo-element: its computed position is relative to what it is placed against

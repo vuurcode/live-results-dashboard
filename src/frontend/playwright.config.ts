@@ -27,6 +27,7 @@ export default defineConfig({
       env: {
         MOCKSERVER_LISTEN_ADDR: `:${MOCK_PORT}`,
         MOCKSERVER_DATA_SAMPLE_DIRECTORY: path.join(__dirname, 'e2e/fixtures/matches'),
+        MOCKSERVER_DATA_GENERATE: 'false', // only the fixtures, whatever the shell or the container sets
         MOCKSERVER_DATA_SAMPLE_INTERVAL: '1.5',
         MOCKSERVER_DATA_EXPIRE_AFTER: '0', // the tests keep the last sample of a competition for as long as they need
       },
