@@ -95,9 +95,9 @@ func generatedMatches(count int) []*genMatch {
 			id: "mock-match-1", name: "Demo Sprint Day", firstNames: 0, notLiveFrames: 2,
 			venue: genVenue{"MK1", "Demo Ice Rink", "Faketown"},
 			distances: []genDistance{
+				{name: "1000 meter", meters: 1000, skaters: 8, resetHeat: 2, flicker: true, retime: true},
 				{name: "100 meter", meters: 100, skaters: 8},
 				{name: "500 meter", meters: 500, skaters: 8},
-				{name: "1000 meter", meters: 1000, skaters: 8, resetHeat: 2, flicker: true, retime: true},
 				{name: "5000 meter", meters: 5000, skaters: 8},
 				{name: "10000 meter", meters: 10000, skaters: 8},
 			},
@@ -269,14 +269,14 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 	// Before the competition is live the feed answers with an error and no data (the first match for two steps, the later ones for minutes).
 	notLive, _ := json.Marshal(map[string]any{
 		"id": nil, "name": nil, "isInternational": false, "distances": []any{}, "success": false,
-		"errorMessage": "Deze wedstrijd is op (nog) niet live.", "errorMode": 0, "resultUrl": nil,
+		"errorMessage": "Deze demo-wedstrijd wordt over een paar seconden gestart.", "errorMode": 0, "resultUrl": nil,
 	})
 	for range m.notLiveFrames {
 		frames = append(frames, notLive)
 		massPasses = append(massPasses, massPass{lap: -1})
 	}
-	// a mass start that opens the day is live from the very first frame
-	if len(m.distances) > 0 && m.distances[0].massLaps > 0 {
+	// the first distance is live from the first frame of data
+	if len(doc.Distances) > 0 {
 		doc.Distances[0].IsLive = true
 	}
 	snapshot()
@@ -320,6 +320,9 @@ func (m *genMatch) generate(seed uint64) [][]byte {
 			skate(dd, heats[h], q, rng, snapshot)
 		}
 		dd.IsLive = false
+		if di+1 < len(doc.Distances) {
+			doc.Distances[di+1].IsLive = true // the next distance takes over in the same frame, so the match stays live
+		}
 		snapshot()
 	}
 	m.massPass = massPasses
