@@ -100,10 +100,10 @@ func generatedMatches(count int) []*genMatch {
 			distances: []genDistance{
 				{name: "1000 meter - fake live results for demo purposes", meters: 1000, skaters: 8, fourLane: true, pbs: 2, resetHeat: 2, flicker: true, retime: true},
 				{name: "1500 meter - fake live results for demo purposes", meters: 1500, skaters: 8, fourLane: true, pbs: 1},
-				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8, pbs: 1},
 				{name: "5000 meter - fake live results for demo purposes", meters: 5000, skaters: 8, fourLane: true, pbs: 2},
 				{name: "10000 meter - fake live results for demo purposes", meters: 10000, skaters: 8, fourLane: true, pbs: 1},
 				{name: "500 meter - fake live results for demo purposes", meters: 500, skaters: 8, pbs: 2, record: true},
+				{name: "100 meter - fake live results for demo purposes", meters: 100, skaters: 8, pbs: 1},
 			},
 		},
 		{
