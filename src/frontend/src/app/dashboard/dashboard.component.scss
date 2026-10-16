@@ -532,3 +532,16 @@
   h2 { font-weight: 600; }
   .text-body-secondary { color: inherit !important; }
 }
+
+// A distance of quartets (two pairs per quartet) shows the two heats side by side where four lanes fit in a row
+.heat-rows-pairs {
+  @media (min-width: $four-lanes-min) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0;
+    --heats-per-row: 2;
+    // a quartet is a white/red heat with the yellow/blue heat after it; any other heat takes the first half of a row of its own
+    > app-individual-heat-card { grid-column: 1; }
+    > .quartet-second { grid-column: 2; }
+  }
+}

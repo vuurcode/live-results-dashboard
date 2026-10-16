@@ -55,7 +55,7 @@
   --card-lanes: 1; // the watermarks size themselves from the card width, about the viewport width over the lanes in a row
   @media (min-width: 768px) { --card-lanes: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   // as many columns as the widest heat of the distance has lanes, so a distance of two-lane heats uses the full width
-  @media (min-width: $four-lanes-min) { --card-lanes: var(--lane-count, 4); grid-template-columns: repeat(var(--lane-count, 4), minmax(0, 1fr)); }
+  @media (min-width: $four-lanes-min) { --card-lanes: calc(var(--lane-count, 4) * var(--heats-per-row, 1)); grid-template-columns: repeat(var(--lane-count, 4), minmax(0, 1fr)); }
 }
 .individual-lane-col {
   display: grid;

@@ -269,8 +269,10 @@
                     @let heatGroups = mergedHeatGroups(distance);
                     @let laneColors = heatGroupLaneColors(heatGroups);
                     @let maxLanes = distanceMaxLaneCount(heatGroups);
-                    @for (displayGroup of heatGroups; track displayGroup.label) {
+                    <div class="heat-rows" [class.heat-rows-pairs]="maxLanes <= 2 && hasQuartet(heatGroups)">
+                    @for (displayGroup of heatGroups; track displayGroup.label; let heatIdx = $index) {
                       <app-individual-heat-card
+                        [class.quartet-second]="isQuartetSecond(heatGroups, heatIdx)"
                         [label]="displayGroup.label"
                         [races]="displayGroup.races"
                         [maxLanes]="maxLanes"
@@ -285,6 +287,7 @@
                         [lapVarianceThreshold]="settings.lapVarianceIndividual.value"
                       />
                     }
+                    </div>
                   </c-col>
                 }
                 <!-- MASS-START: full-width standings -->

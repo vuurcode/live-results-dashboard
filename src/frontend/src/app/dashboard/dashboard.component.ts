@@ -364,6 +364,16 @@ export class DashboardComponent implements OnInit {
     return pairHeatGroups(distance.heatGroups, (n) => this.ts.t('heatLabel', { n }));
   }
 
+  /** Whether the distance is skated by quartets: some pair skates on yellow or blue, so two pairs make up the four lanes of a row. */
+  protected hasQuartet(groups: MergedHeatGroup<CompetitorUpdate>[]): boolean {
+    return groups.some((g) => g.races.some((r) => r?.lane === 'yellow' || r?.lane === 'blue'));
+  }
+
+  /** Whether the heat is the yellow/blue pair that completes the quartet started by the heat before it. */
+  protected isQuartetSecond(groups: MergedHeatGroup<CompetitorUpdate>[], index: number): boolean {
+    return index > 0 && this.hasQuartet([groups[index]]) && !this.hasQuartet([groups[index - 1]]);
+  }
+
   /** Max trimmed lane count across all heat groups in a distance, so narrower heats don't spread wider than their siblings. */
   protected distanceMaxLaneCount(groups: MergedHeatGroup<CompetitorUpdate>[]): number {
     return Math.max(0, ...groups.map(g => this.trimmedRaces(g.races).length));

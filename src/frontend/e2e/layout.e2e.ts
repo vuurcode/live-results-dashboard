@@ -225,6 +225,16 @@ test('the lane colours of a heat of two skaters sit behind the columns of its ca
   expect(Math.abs(bg!.width - col!.width)).toBeLessThan(2);
 });
 
+test('the heats of a distance with white and red pairs only stay one below the other on a wide screen', async ({ page }) => {
+  await page.setViewportSize({ width: 2000, height: 900 });
+  await page.goto('/?competitionId=e2e-pairs');
+  const rows = page.locator('.individual-heat-row');
+  await expect(rows).toHaveCount(3);
+  const first = await rows.nth(0).boundingBox();
+  const second = await rows.nth(1).boundingBox();
+  expect(second!.y).toBeGreaterThan(first!.y + first!.height - 2);
+});
+
 test('unfolding a distance does not change the height of its heats halfway', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/?competitionId=e2e-individual');
