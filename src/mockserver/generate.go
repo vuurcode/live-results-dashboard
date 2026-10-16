@@ -416,7 +416,7 @@ func skate(dd *genDistanceDoc, idx []int, q heatQuirks, rng *rand.Rand, snapshot
 				t := clock(total)
 				r.Time = &t
 				r.Status = 4
-				r.Remark = r.remarkFor(total < r.prSeconds, rng)
+				r.Remark = finishRemark(r, total < r.prSeconds, rng)
 			}
 		}
 		rank(dd)
@@ -476,7 +476,7 @@ func skateMassStart(dd *genDistanceDoc, idx []int, rng *rand.Rand, snapshot func
 			t := clock(p.at)
 			r.Time = &t
 			r.Status = 4
-			r.Remark = r.remarkFor(p.at < r.prSeconds, rng)
+			r.Remark = finishRemark(r, p.at < r.prSeconds, rng)
 		}
 		rank(dd)
 		snapshot()
@@ -505,6 +505,12 @@ func rank(dd *genDistanceDoc) {
 	}
 }
 
+// The positions in a distance of the skaters that set a personal record where only one or two do.
+const (
+	firstPBSkater  = 2
+	secondPBSkater = 6
+)
+
 // fixRemark makes the race at position si of a distance with pbs a personal record or not, by moving its personal record
 // to either side of its total time, and decides its remark: PR for the few that set one, now and then a plain FL or MT for the rest.
 func fixRemark(r *genRace, si int, d genDistance, rng *rand.Rand) {
@@ -513,10 +519,10 @@ func fixRemark(r *genRace, si int, d genDistance, rng *rand.Rand) {
 		total += s
 	}
 	r.fixed = true
-	if pbSkaters := [...]int{2, 6}; si == pbSkaters[0] || (d.pbs > 1 && si == pbSkaters[1]) {
+	if si == firstPBSkater || (d.pbs > 1 && si == secondPBSkater) {
 		r.prSeconds = total * 1.02
 		remark := "PR"
-		if d.record && si == pbSkaters[0] {
+		if d.record && si == firstPBSkater {
 			remark = "TR TRC PR"
 		}
 		r.remark = &remark
@@ -529,8 +535,8 @@ func fixRemark(r *genRace, si int, d genDistance, rng *rand.Rand) {
 	r.PersonalRecord = clock(r.prSeconds)
 }
 
-// remarkFor is the remark of a race that has just finished.
-func (r *genRace) remarkFor(personalRecord bool, rng *rand.Rand) *string {
+// finishRemark is the remark of a race that has just finished.
+func finishRemark(r *genRace, personalRecord bool, rng *rand.Rand) *string {
 	if r.fixed {
 		return r.remark
 	}
