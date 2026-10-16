@@ -61,6 +61,38 @@ test.describe('competition selection', () => {
     await expect(page.locator('#competitionSelect')).toHaveCount(0);
   });
 
+  test.describe('the remembered venue', () => {
+    const entry = (id: string, venue: string, live: boolean) => ({
+      id, code: id, name: `Match ${id}`, start: '2026-10-24T10:00:00Z', allowToSendLive: true, live, venue: { code: venue, name: venue, city: 'City' },
+    });
+    const list = [entry('e2e-individual', 'V1', false), entry('e2e-pairs', 'V1', true), entry('e2e-lanes', 'V2', true)];
+
+    test('opens the live competition of the venue viewed last, when the page has no competition or an invalid one', async ({ page }) => {
+      await page.route('**/api/competitions/today', (route) => route.fulfill({ json: list }));
+      await page.addInitScript(() => { if (!localStorage.getItem('lastVenueCode')) localStorage.setItem('lastVenueCode', 'V1'); });
+      await page.goto('/');
+      await expect(page).toHaveURL(/competitionId=e2e-pairs$/);
+      await page.goto('/?competitionId=not%20valid');
+      await expect(page).toHaveURL(/competitionId=e2e-pairs$/);
+    });
+
+    test('opens the first competition of the venue when none is live', async ({ page }) => {
+      await page.route('**/api/competitions/today', (route) => route.fulfill({ json: [entry('e2e-individual', 'V1', false), entry('e2e-pairs', 'V1', false)] }));
+      await page.addInitScript(() => localStorage.setItem('lastVenueCode', 'V1'));
+      await page.goto('/');
+      await expect(page).toHaveURL(/competitionId=e2e-individual$/);
+    });
+
+    test('remembers the venue of the competition being viewed, and stays on the page without one remembered', async ({ page }) => {
+      await page.route('**/api/competitions/today', (route) => route.fulfill({ json: list }));
+      await page.goto('/');
+      await expect(page.locator('#competitionSelect')).toBeVisible();
+      expect(page.url()).not.toContain('competitionId');
+      await page.goto('/?competitionId=e2e-lanes');
+      await expect.poll(() => page.evaluate(() => localStorage.getItem('lastVenueCode'))).toBe('V2');
+    });
+  });
+
   test('marks the live competitions in the list with a red circle and the others with a grey one', async ({ page }) => {
     const entry = (id: string, live: boolean) => ({
       id, code: id, name: `Match ${id}`, start: '2026-10-24T10:00:00Z', allowToSendLive: true, live, venue: { code: 'V', name: 'Venue', city: 'City' },

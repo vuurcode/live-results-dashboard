@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { competitionIdFromSearch, withCompetitionId, withResume } from './competition.util';
+import type { TodayCompetition } from './data.models';
+import { competitionIdFromSearch, preselectCompetition, withCompetitionId, withResume } from './competition.util';
 
 describe('competitionIdFromSearch', () => {
   it('reads a valid id', () => {
@@ -39,5 +40,22 @@ describe('withResume', () => {
 
   it('leaves the url alone for a page that has seen nothing', () => {
     expect(withResume('ws://h/ws', null)).toBe('ws://h/ws');
+  });
+});
+
+describe('preselectCompetition', () => {
+  const at = (id: string, venue: string, live: boolean) => ({ id, live, venue: { code: venue } }) as TodayCompetition;
+
+  it('takes the live competition of the venue', () => {
+    expect(preselectCompetition([at('a', 'V1', false), at('b', 'V1', true), at('c', 'V2', true)], 'V1')?.id).toBe('b');
+  });
+
+  it('takes the first competition of the venue when none is live', () => {
+    expect(preselectCompetition([at('a', 'V2', false), at('b', 'V1', false), at('c', 'V1', false)], 'V1')?.id).toBe('b');
+  });
+
+  it('takes nothing without a remembered venue or a competition there', () => {
+    expect(preselectCompetition([at('a', 'V1', true)], null)).toBeNull();
+    expect(preselectCompetition([at('a', 'V1', true)], 'V2')).toBeNull();
   });
 });

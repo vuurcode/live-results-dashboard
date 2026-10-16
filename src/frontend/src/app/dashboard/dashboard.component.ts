@@ -7,7 +7,7 @@ import { DataService } from '../results/data.service';
 import type { ColorSchemeChoice } from '../color-scheme';
 import { parseInteger, parseNumber, SettingsService } from '../settings/settings.service';
 import { FeedStatus, TodayCompetition, ProcessedDistance, StandingsGroup, CompetitorUpdate } from '../results/data.models';
-import { Observable, combineLatest, concat, filter, from, map, merge, of, startWith, switchMap, take, timer } from 'rxjs';
+import { Observable, combineLatest, concat, filter, from, map, merge, of, shareReplay, startWith, switchMap, take, timer } from 'rxjs';
 import { TranslateService, TranslationKey } from '../i18n/translate.service';
 import { TranslatePipe } from '../i18n/translate.pipe';
 import { MassStartTimelineComponent } from './mass-start-timeline/mass-start-timeline.component';
@@ -31,6 +31,7 @@ import {
   heatGroupLaneColors as heatGroupLaneColorsUtil,
   type MergedHeatGroup,
 } from '../results/heats.util';
+import { lastViewedVenue, preselectCompetition, rememberVenue } from '../results/competition.util';
 import { SettledScroller } from './scroll.util';
 import { AutoFollow } from './auto-follow';
 import { raceListAnimation, raceListKey } from './dashboard.animations';
@@ -99,6 +100,7 @@ export class DashboardComponent implements OnInit {
   protected readonly todayCompetitions$: Observable<TodayCompetition[]> = merge(timer(0, 5 * 60_000), this.dataService.competitionsChanged$.pipe(map(() => -1))).pipe(
     filter(n => n === 0 || document.visibilityState !== 'hidden'), // nobody sees the list of a hidden page
     switchMap(() => from(this.dataService.todayCompetitions())),
+    shareReplay({ bufferSize: 1, refCount: true }), // the list in the page and the venue preselection share one request
   );
 
   /** Length of the shown option text; on narrow screens a longer one gets a smaller font. */
@@ -265,6 +267,15 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit() {
+    // The venue of the viewed competition is remembered; a page without a competition (or with one the backend does not know)
+    // opens the live competition of the remembered venue, else its first.
+    combineLatest([this.todayCompetitions$, this.dataService.status$]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([competitions, { status }]) => {
+      const current = competitions.find((c) => c.id === this.dataService.competitionId);
+      if (current) rememberVenue(current.venue.code);
+      if (status !== 'No competition') return;
+      const target = preselectCompetition(competitions, lastViewedVenue());
+      if (target && target.id !== this.dataService.competitionId) window.location.replace(`?competitionId=${encodeURIComponent(target.id)}`);
+    });
     // the browser would restore the previous scroll position on reload, after the page has landed on the live distance
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     this.destroyRef.onDestroy(() => this.resizeObserver?.disconnect());
