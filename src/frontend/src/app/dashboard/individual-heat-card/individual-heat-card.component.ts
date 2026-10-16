@@ -318,8 +318,9 @@ export class IndividualHeatCardComponent {
     return Math.min(4, Math.max(1, this.maxLanes || this.races.length));
   }
 
-  /** Lane colour of a slot: the competitor's own, else the colour other heats show for it, else the standard order. */
+  /** Lane colour of a slot: the competitor's own; an empty slot of a pair has none, else the colour other heats show for it, else the standard order. */
   protected laneColor(race: CompetitorUpdate | null, slot: number): string | null {
+    if (!race && this.races.length <= 2) return null;
     return race?.lane ?? this.laneColors[slot] ?? DEFAULT_LANE_ORDER[slot] ?? null;
   }
 
