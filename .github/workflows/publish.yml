@@ -1,4 +1,4 @@
-name: Publish images
+name: Publish and deploy
 
 # Pushes the production image (frontend and backend in one) to the GitHub Container Registry once CI has passed on main,
 # then rolls the existing DigitalOcean app out again, which pulls that image. The app, its settings and its image are
