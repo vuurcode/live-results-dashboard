@@ -122,9 +122,7 @@ func TestFolderIsKeptForAnHourAndThenPacked(t *testing.T) {
 	r.Add([]byte(`{"a":1}`))
 	*now = now.Add(time.Second)
 	r.Add([]byte(`{"a":2}`))
-	if err := s.Finish("m1"); err != nil {
-		t.Fatal(err)
-	}
+	s.Finish("m1")
 	age(t, s, "m1_2026-03-08", 59*time.Minute)
 	s.Sweep()
 	if infos, _ := s.List(); infos[0].State != "recording" {
@@ -209,11 +207,37 @@ func TestSweepRemovesPastRetention(t *testing.T) {
 	}
 }
 
-func TestANilStoreAndRecordingDoNothing(t *testing.T) {
+func TestANilStoreAndRecordingDoNothing(_ *testing.T) {
 	var s *Store
 	r := s.Open("m1")
 	r.Add([]byte("x"))
-	if err := s.Finish("m1"); err != nil {
-		t.Fatal(err)
+	s.Finish("m1")
+}
+
+func TestFollowingWhileLiveRepliesComeIn(t *testing.T) {
+	s, now := clockedStore(t, 0)
+	if s.Following("m1") {
+		t.Fatal("following before anything came in")
+	}
+	r := s.Open("m1")
+	r.Add([]byte(`{"a":1}`))
+	if !s.Following("m1") {
+		t.Fatal("not following")
+	}
+	*now = now.Add(settle + time.Second)
+	if s.Following("m1") {
+		t.Fatal("following without live replies for an hour")
+	}
+	r.Add([]byte(`{"a":1}`)) // unchanged replies count too
+	if !s.Following("m1") {
+		t.Fatal("not following")
+	}
+	s.Finish("m1")
+	if s.Following("m1") {
+		t.Fatal("following a finished match")
+	}
+	var nilStore *Store
+	if nilStore.Following("m1") {
+		t.Fatal("nil store follows")
 	}
 }

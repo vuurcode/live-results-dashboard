@@ -27,9 +27,12 @@ func recordingsServer(t *testing.T, limiter *ratelimit.Limiter) (*httptest.Serve
 	return ts, name
 }
 
-func call(t *testing.T, method, url, key string) (*http.Response, string) {
+func call(t *testing.T, method, url, key string) (int, http.Header, string) {
 	t.Helper()
-	req, _ := http.NewRequest(method, url, nil)
+	req, err := http.NewRequestWithContext(t.Context(), method, url, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
@@ -39,41 +42,41 @@ func call(t *testing.T, method, url, key string) (*http.Response, string) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(resp.Body)
-	return resp, string(b)
+	return resp.StatusCode, resp.Header, string(b)
 }
 
 func TestRecordingsNeedTheKey(t *testing.T) {
 	ts, name := recordingsServer(t, nil)
 	for _, key := range []string{"", "wrong", "secre", "secret2"} {
-		if resp, _ := call(t, "GET", ts.URL+"/api/recordings", key); resp.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("key %q: status %d", key, resp.StatusCode)
+		if status, _, _ := call(t, "GET", ts.URL+"/api/recordings", key); status != http.StatusUnauthorized {
+			t.Fatalf("key %q: status %d", key, status)
 		}
 	}
-	if resp, _ := call(t, "DELETE", ts.URL+"/api/recordings/"+name, "wrong"); resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("status %d", resp.StatusCode)
+	if status, _, _ := call(t, "DELETE", ts.URL+"/api/recordings/"+name, "wrong"); status != http.StatusUnauthorized {
+		t.Fatalf("status %d", status)
 	}
 }
 
 func TestRecordingsListDownloadDelete(t *testing.T) {
 	ts, name := recordingsServer(t, nil)
-	resp, body := call(t, "GET", ts.URL+"/api/recordings", "secret")
-	if resp.StatusCode != 200 || !strings.Contains(body, `"id":"`+name+`"`) || !strings.Contains(body, `"state":"recording"`) {
-		t.Fatalf("list: %d %s", resp.StatusCode, body)
+	status, _, body := call(t, "GET", ts.URL+"/api/recordings", "secret")
+	if status != http.StatusOK || !strings.Contains(body, `"id":"`+name+`"`) || !strings.Contains(body, `"state":"recording"`) {
+		t.Fatalf("list: %d %s", status, body)
 	}
-	resp, body = call(t, "GET", ts.URL+"/api/recordings/"+name, "secret")
-	if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "application/gzip" || len(body) == 0 {
-		t.Fatalf("download: %d %v", resp.StatusCode, resp.Header)
+	status, header, body := call(t, "GET", ts.URL+"/api/recordings/"+name, "secret")
+	if status != http.StatusOK || header.Get("Content-Type") != "application/gzip" || len(body) == 0 {
+		t.Fatalf("download: %d %v", status, header)
 	}
-	if resp, _ = call(t, "GET", ts.URL+"/api/recordings/nope_2026-03-08", "secret"); resp.StatusCode != 404 {
-		t.Fatalf("unknown: %d", resp.StatusCode)
+	if status, _, _ = call(t, "GET", ts.URL+"/api/recordings/nope_2026-03-08", "secret"); status != http.StatusNotFound {
+		t.Fatalf("unknown: %d", status)
 	}
-	if resp, _ = call(t, "GET", ts.URL+"/api/recordings/a.b", "secret"); resp.StatusCode != 400 {
-		t.Fatalf("bad id: %d", resp.StatusCode)
+	if status, _, _ = call(t, "GET", ts.URL+"/api/recordings/a.b", "secret"); status != http.StatusBadRequest {
+		t.Fatalf("bad id: %d", status)
 	}
-	if resp, _ = call(t, "DELETE", ts.URL+"/api/recordings/"+name, "secret"); resp.StatusCode != 204 {
-		t.Fatalf("delete: %d", resp.StatusCode)
+	if status, _, _ = call(t, "DELETE", ts.URL+"/api/recordings/"+name, "secret"); status != http.StatusNoContent {
+		t.Fatalf("delete: %d", status)
 	}
-	if _, body = call(t, "GET", ts.URL+"/api/recordings", "secret"); strings.TrimSpace(body) != "[]" {
+	if _, _, body = call(t, "GET", ts.URL+"/api/recordings", "secret"); strings.TrimSpace(body) != "[]" {
 		t.Fatalf("after delete: %s", body)
 	}
 }
@@ -82,8 +85,7 @@ func TestRecordingsAreRateLimitedEvenWithAWrongKey(t *testing.T) {
 	ts, _ := recordingsServer(t, ratelimit.New(1, 3, 2))
 	var last int
 	for range 5 {
-		resp, _ := call(t, "GET", ts.URL+"/api/recordings", "wrong")
-		last = resp.StatusCode
+		last, _, _ = call(t, "GET", ts.URL+"/api/recordings", "wrong")
 	}
 	if last != http.StatusTooManyRequests {
 		t.Fatalf("status %d after a burst of wrong keys", last)
@@ -96,7 +98,7 @@ func TestRecordingsAreOffWithoutAKey(t *testing.T) {
 	(&RecordingsAPI{Store: store}).register(mux)
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
-	if resp, _ := call(t, "GET", ts.URL+"/api/recordings", ""); resp.StatusCode != 404 {
-		t.Fatalf("status %d", resp.StatusCode)
+	if status, _, _ := call(t, "GET", ts.URL+"/api/recordings", ""); status != http.StatusNotFound {
+		t.Fatalf("status %d", status)
 	}
 }

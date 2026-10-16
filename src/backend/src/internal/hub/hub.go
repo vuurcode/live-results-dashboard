@@ -41,8 +41,9 @@ type Hub struct {
 	// Ended says whether a competition is over for good; nil means no competition ever is. Set it before the hub is used.
 	Ended func(id string) bool
 
-	// Recorder keeps what the followed competitions reply; nil means nothing is recorded. With it, a competition is
-	// followed until it is over, also when nobody is connected, so that the recording is complete. Set it before the hub is used.
+	// Recorder keeps what the followed competitions reply; nil means nothing is recorded. With it, a competition that
+	// has been recording recently is followed until it is over, also when nobody is connected, so that the recording
+	// is complete. Set it before the hub is used.
 	Recorder *recorder.Store
 
 	// Now is the clock the connection allowance is counted by.
@@ -172,23 +173,34 @@ func (m *Hub) Announce(msg []byte) {
 	}
 }
 
-// Leave unregisters a client and, once the room is empty, schedules its teardown. A room that is being recorded is
-// not torn down: it is followed until the competition is over.
+// Leave unregisters a client and, once the room is empty, schedules its teardown.
 func (m *Hub) Leave(r *room.Room, c *room.Client) {
 	r.Unregister(c)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if r.ClientCount() > 0 || r.IdleTime != nil || m.Recorder != nil {
+	if r.ClientCount() > 0 || r.IdleTime != nil {
 		return
 	}
+	m.armIdleLocked(r)
+}
+
+// armIdleLocked closes the empty room r after the idle grace. A room whose competition is being recorded stays: it is
+// followed until the competition is over. Other rooms (an id that is not live) go, so that clients cannot fill the
+// room slots with them.
+func (m *Hub) armIdleLocked(r *room.Room) {
 	r.IdleTime = time.AfterFunc(m.cfg.IdleGrace, func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 		if m.rooms[r.ID] != r || r.ClientCount() > 0 {
 			return
 		}
+		if m.Recorder.Following(r.ID) {
+			m.armIdleLocked(r)
+			return
+		}
 		delete(m.rooms, r.ID)
+		r.IdleTime = nil
 		r.Cancel()
 		slog.Info("Competition closed (no clients)", "competition", r.ID, "open", len(m.rooms))
 	})
@@ -207,13 +219,7 @@ func (m *Hub) CloseEnded() {
 		}
 		m.closeLocked(id, r, websocket.StatusPolicyViolation, ErrCompetitionEnded.Error())
 		slog.Info("Competition closed (competition over)", "competition", id, "open", len(m.rooms))
-		if m.Recorder != nil {
-			go func() {
-				if err := m.Recorder.Finish(id); err != nil {
-					slog.Error("Packing the recording failed", "competition", id, "err", err)
-				}
-			}()
-		}
+		m.Recorder.Finish(id)
 	}
 }
 

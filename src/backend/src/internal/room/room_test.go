@@ -179,10 +179,12 @@ func TestLogStartsAtAReset(t *testing.T) {
 
 func TestIntervalFollowsTheLiveDistance(t *testing.T) {
 	r := New("A", "http://x", testPace, func() {})
-	want := func(seconds time.Duration) {
+	want := func(seconds int) {
 		t.Helper()
-		if got := r.Interval(); got != seconds*time.Second {
-			t.Fatalf("interval %v, want %v", got, seconds*time.Second)
+		d := time.Duration(seconds) * time.Second
+		t.Helper()
+		if got := r.Interval(); got != d {
+			t.Fatalf("interval %v, want %v", got, d)
 		}
 	}
 	want(15) // nothing fetched yet

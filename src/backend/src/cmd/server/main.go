@@ -50,33 +50,7 @@ func main() {
 	set := source.NewSet(cfg.Upstreams...)
 	h := hub.New(ctx, cfg, set, ua)
 
-	var recordings *server.RecordingsAPI
-	if cfg.RecordingsDir != "" {
-		store, err := recorder.New(cfg.RecordingsDir, cfg.RecordingsRetention)
-		if err != nil {
-			slog.Error("Recording disabled", "dir", cfg.RecordingsDir, "err", err)
-		} else {
-			h.Recorder = store
-			go func() {
-				for {
-					store.Sweep()
-					select {
-					case <-ctx.Done():
-						return
-					case <-time.After(time.Hour):
-					}
-				}
-			}()
-			if cfg.RecordingsAPIKey == "" {
-				slog.Warn("Recordings API off: BACKEND_RECORDINGS_API_KEY is not set")
-			} else {
-				recordings = &server.RecordingsAPI{
-					Store: store, Key: cfg.RecordingsAPIKey, ClientIPHeader: cfg.ClientIPHeader,
-					Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsConcurrent),
-				}
-			}
-		}
-	}
+	recordings := startRecordings(ctx, cfg, h)
 
 	limiter := ratelimit.New(cfg.ConnectsPerMinute, cfg.ConnectBurst, cfg.MaxClientsPerIP)
 
@@ -115,4 +89,36 @@ func main() {
 		os.Exit(1)
 	}
 	<-shutdownDone
+}
+
+// startRecordings switches recording on for the hub when a folder is configured and returns the API to reach the
+// recordings, which is nil without an API key.
+func startRecordings(ctx context.Context, cfg config.Config, h *hub.Hub) *server.RecordingsAPI {
+	if cfg.RecordingsDir == "" {
+		return nil
+	}
+	store, err := recorder.New(cfg.RecordingsDir, cfg.RecordingsRetention)
+	if err != nil {
+		slog.Error("Recording disabled", "dir", cfg.RecordingsDir, "err", err)
+		return nil
+	}
+	h.Recorder = store
+	go func() {
+		for {
+			store.Sweep()
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Hour):
+			}
+		}
+	}()
+	if cfg.RecordingsAPIKey == "" {
+		slog.Warn("Recordings API off: BACKEND_RECORDINGS_API_KEY is not set")
+		return nil
+	}
+	return &server.RecordingsAPI{
+		Store: store, Key: cfg.RecordingsAPIKey, ClientIPHeader: cfg.ClientIPHeader,
+		Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsConcurrent),
+	}
 }

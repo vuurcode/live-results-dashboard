@@ -104,7 +104,7 @@ func (a *RecordingsAPI) remove(w http.ResponseWriter, req *http.Request) {
 
 // exists answers 400 or 404 and returns false when there is no recording under id.
 func (a *RecordingsAPI) exists(w http.ResponseWriter, id string) bool {
-	if _, err := a.Store.Info(id); err != nil {
+	if err := a.Store.Exists(id); err != nil {
 		if errors.Is(err, recorder.ErrBadID) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {

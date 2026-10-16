@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -82,7 +83,8 @@ type Recording struct {
 	dir     string
 	last    []byte // the latest snapshot, to leave out replies that did not change
 	skip    bool   // the day is not recorded: it has an archive already, or was deleted
-	closed  bool
+	closed  atomic.Bool
+	seen    atomic.Int64 // when the last reply came in (unix nanoseconds), whether or not it was stored
 }
 
 // Open returns the recording of a match, which carries on across restarts and days. It returns nil when recording is
@@ -122,9 +124,10 @@ func (r *Recording) Add(body []byte) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.closed {
+	if r.closed.Load() {
 		return
 	}
+	r.seen.Store(r.store.now().UnixNano())
 	if day := r.store.now().UTC().Format(time.DateOnly); !r.started || day != r.day {
 		r.started = false
 		r.begin(day)
@@ -161,13 +164,13 @@ func (r *Recording) latestOnDisk() []byte {
 	if len(names) == 0 {
 		return nil
 	}
-	b, _ := os.ReadFile(filepath.Join(r.dir, names[len(names)-1])) //nolint:gosec // a name read from the recording's own folder
+	b, _ := os.ReadFile(filepath.Join(r.dir, names[len(names)-1]))
 	return b
 }
 
 func writeFile(name string, body []byte) error {
 	tmp := name + ".tmp"
-	if err := os.WriteFile(tmp, body, 0o640); err != nil {
+	if err := os.WriteFile(tmp, body, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, name)
@@ -187,21 +190,17 @@ func snapshotNames(dir string) []string {
 }
 
 // Finish ends the recording of a match that is over. Its folder is packed by Sweep once it has been quiet for an hour.
-func (s *Store) Finish(id string) error {
-	if s == nil || !idRe.MatchString(id) {
-		return nil
+func (s *Store) Finish(id string) {
+	if s == nil {
+		return
 	}
 	s.mu.Lock()
 	r := s.active[id]
 	delete(s.active, id)
 	s.mu.Unlock()
-	if r == nil {
-		return nil
+	if r != nil {
+		r.closed.Store(true)
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.closed = true
-	return nil
 }
 
 // pack turns the folder of snapshots of a recording into <name>.tar.gz and removes the folder. A folder without
@@ -305,7 +304,7 @@ func (s *Store) Write(w io.Writer, name string) error {
 	if !nameRe.MatchString(name) {
 		return ErrBadID
 	}
-	if f, err := os.Open(s.archive(name)); err == nil { //nolint:gosec // named by a validated name
+	if f, err := os.Open(s.archive(name)); err == nil {
 		defer func() { _ = f.Close() }()
 		_, err = io.Copy(w, f)
 		return err
@@ -320,8 +319,8 @@ func (s *Store) Write(w io.Writer, name string) error {
 
 // Info describes the recording stored under name.
 func (s *Store) Info(name string) (Info, error) {
-	if !nameRe.MatchString(name) {
-		return Info{}, ErrBadID
+	if err := s.Exists(name); err != nil {
+		return Info{}, err
 	}
 	infos, err := s.List()
 	if err != nil {
@@ -335,20 +334,31 @@ func (s *Store) Info(name string) (Info, error) {
 	return Info{}, ErrNotFound
 }
 
+// Exists returns ErrBadID for a name that is no recording name and ErrNotFound when nothing is stored under it.
+func (s *Store) Exists(name string) error {
+	if !nameRe.MatchString(name) {
+		return ErrBadID
+	}
+	for _, p := range []string{s.archive(name), filepath.Join(s.dir, name)} {
+		if _, err := os.Stat(p); err == nil {
+			return nil
+		}
+	}
+	return ErrNotFound
+}
+
 // Delete removes a recording, also one that is still going: the rest of its day is not stored.
 func (s *Store) Delete(name string) error {
-	if _, err := s.Info(name); err != nil {
+	if err := s.Exists(name); err != nil {
 		return err
 	}
-	s.mu.Lock()
-	for _, r := range s.active {
+	for _, r := range s.recordings() {
 		r.mu.Lock()
 		if r.started && r.name == name {
 			r.skip = true
 		}
 		r.mu.Unlock()
 	}
-	s.mu.Unlock()
 	if err := os.RemoveAll(filepath.Join(s.dir, name)); err != nil {
 		return err
 	}
@@ -361,9 +371,8 @@ func (s *Store) Delete(name string) error {
 // Sweep packs the folders that have had no snapshot for an hour and removes the recordings that are older than the
 // retention. It is meant to run regularly.
 func (s *Store) Sweep() {
-	s.mu.Lock()
 	open := map[string]bool{}
-	for _, r := range s.active {
+	for _, r := range s.recordings() {
 		r.mu.Lock()
 		if r.started && s.idle(r.name) {
 			r.packLocked()
@@ -373,7 +382,6 @@ func (s *Store) Sweep() {
 		}
 		r.mu.Unlock()
 	}
-	s.mu.Unlock()
 
 	infos, err := s.List()
 	if err != nil {
@@ -404,4 +412,27 @@ func (s *Store) Sweep() {
 func (s *Store) idle(name string) bool {
 	i, err := s.Info(name)
 	return err == nil && i.State == "recording" && s.now().Sub(i.Modified) > settle
+}
+
+// Following reports whether a live reply of id came in within the settle time, which is what makes a competition
+// worth following without clients. It does not wait for a disk write.
+func (s *Store) Following(id string) bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	r := s.active[id]
+	s.mu.Unlock()
+	return r != nil && !r.closed.Load() && s.now().Sub(time.Unix(0, r.seen.Load())) < settle
+}
+
+// recordings returns the recordings that are open, so that they can be worked on without holding the store's lock.
+func (s *Store) recordings() []*Recording {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]*Recording, 0, len(s.active))
+	for _, r := range s.active {
+		out = append(out, r)
+	}
+	return out
 }
