@@ -13,6 +13,9 @@ The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL_*`, `BACKEND_CATALOG_TTL_
 | `BACKEND_VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `BACKEND_VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
 | `BACKEND_CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (capped at one hour; venues are refetched at most once an hour). Rooms of competitions that ended more than a day ago are closed within a minute |
+| `BACKEND_RECORDINGS_DIR` | empty (the image sets `/data/recordings`) | Folder where the replies of the followed competitions are recorded, only while they are live. While it is set, a competition that has been opened is followed until it is over, also when nobody is connected. Empty: nothing is recorded |
+| `BACKEND_RECORDINGS_RETENTION_DAYS` | `30` (baked) | Recordings are removed this many days after their last snapshot |
+| `BACKEND_RECORDINGS_API_KEY` | none | Bearer token for the recordings API below. Without it the API is off. Generate one with `openssl rand -hex 32` and set it as a secret |
 | `BACKEND_USER_AGENT` | mirrors the viewer's browser | User-Agent header sent on every request to the data source and catalog. When unset, the most recent inbound User-Agent is mirrored (some sources block Go's default one) |
 | `BACKEND_DEFAULT_COMPETITION_ID` | none | Competition followed when the page names none |
 | `BACKEND_MAX_COMPETITIONS` | `25` | Competitions the backend follows at the same time |
@@ -36,3 +39,20 @@ In `compose.yml` (prod profile) the variables are read from the optional `.env.p
 ## Demo match
 
 The combined image carries the mockserver. With `MOCKSERVER_ENABLED=true` it runs on loopback with one generated match, `mock-match-1`, restarted `MOCKSERVER_DATA_EXPIRE_AFTER` seconds (default 300) after it has finished, and the backend reads it as its extra source (`BACKEND_EXTRA_BASE_URL`). Without the variable the service idles and the backend has only its primary source.
+
+## Recordings
+
+Each UTC day of a competition is a recording of its own, named `<competitionId>_<YYYY-MM-DD>`: a folder with a `.json` file for every reply of the data source that differs from the one before, named by UTC time (`20260301T101502.123Z.json`), the layout the mockserver replays. Only live replies are recorded, plus the one after the last live reply, which carries the final results. The mock competitions are recorded too. A folder is left as it is for an hour after its last snapshot, so a competition whose live timing drops or restarts carries on in the same recording. After that it is packed into `<name>.tar.gz`, which extracts to the same layout, and that day is not recorded again. Recordings are not anonymized. A competition is only recorded once something has opened it (a client connected) and the backend is running.
+
+The API needs `Authorization: Bearer <BACKEND_RECORDINGS_API_KEY>` and is limited per client address (20 requests a minute, bursts of 10, two at a time), also for requests with a wrong key.
+
+| Request | Answer |
+|---|---|
+| `GET /api/recordings` | `[{"id", "state": "recording" or "complete", "snapshots" (while recording), "bytes", "modified"}]` |
+| `GET /api/recordings/{id}` | the recording as `application/gzip` (a recording still going is packed on the fly) |
+| `DELETE /api/recordings/{id}` | `204`; also for one that is still going, the snapshots that follow are not stored |
+
+```sh
+curl -H "Authorization: Bearer $KEY" https://<host>/api/recordings
+curl -H "Authorization: Bearer $KEY" -o A.tar.gz https://<host>/api/recordings/<id>
+```

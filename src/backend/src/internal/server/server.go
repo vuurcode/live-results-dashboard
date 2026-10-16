@@ -33,6 +33,8 @@ type Options struct {
 	CORSAllowedOrigins []string
 	// WebSocketOrigins are the origins whose pages may open the websocket, next to the host the request is made to; "*" or empty allows all.
 	WebSocketOrigins []string
+	// Recordings serves the stored recordings under /api/recordings; nil leaves the routes out.
+	Recordings *RecordingsAPI
 }
 
 // Server connects websocket clients to the rooms of a hub.
@@ -57,6 +59,7 @@ func (s *Server) Handler(ua *useragent.Mirror, today http.HandlerFunc) http.Hand
 	if today != nil {
 		mux.HandleFunc("GET /api/competitions/today", today)
 	}
+	s.opts.Recordings.register(mux)
 	return ua.Middleware(securityHeaders(cors(s.opts.CORSAllowedOrigins, mux)))
 }
 

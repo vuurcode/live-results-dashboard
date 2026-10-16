@@ -18,6 +18,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/hub"
 	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
+	"github.com/vuurcode/live-results-experiment/backend/internal/recorder"
 	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
 )
@@ -51,7 +52,7 @@ func newTestBackend(t *testing.T, mutate func(*config.Config)) *testBackend {
 			_, _ = w.Write([]byte(body))
 			return
 		}
-		_, _ = w.Write([]byte(`{"name":"Event ` + id + `","distances":[{"id":"d1","name":"500 meter","eventNumber":1,"races":[
+		_, _ = w.Write([]byte(`{"name":"Event ` + id + `","distances":[{"id":"d1","name":"500 meter","eventNumber":1,"isLive":true,"races":[
 			{"id":"r1","heat":1,"lane":"white","competitor":{"name":"A","startNumber":"7"},"laps":[{"time":"00:00:40.000","lapTime":"00:00:40.000"}]}]}]}`))
 	}))
 	t.Cleanup(upstream.Close)
@@ -470,6 +471,39 @@ func TestIdleRoomLeavesNothingRunning(t *testing.T) {
 	tb.m.CloseIdleConnections() // the upstream connections are kept alive for reuse, with a goroutine each
 	tb.srv.CloseClientConnections()
 	waitFor(t, "the goroutines to end", func() bool { return runtime.NumGoroutine() <= before+4 })
+}
+
+func TestRecordedRoomKeepsPollingWithoutClients(t *testing.T) {
+	store, err := recorder.New(t.TempDir(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tb := newTestBackend(t, func(c *config.Config) {
+		c.DataSourceIntervals = config.Intervals{NotStarted: 0.02, MassStart: 0.02, Distance: 0.02}
+	})
+	tb.m.Recorder = store
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := tb.dial(ctx, t, "?competitionId=A", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readUntilCompetitor(ctx, t, conn)
+	_ = conn.Close(websocket.StatusNormalClosure, "")
+
+	time.Sleep(200 * time.Millisecond) // well past the idle grace
+	if tb.m.RoomCount() != 1 {
+		t.Fatal("the room of a recorded competition was closed for having no clients")
+	}
+	hits := tb.hitCount("A")
+	time.Sleep(100 * time.Millisecond)
+	if tb.hitCount("A") == hits {
+		t.Fatal("the recorded competition is no longer polled")
+	}
+	if infos, _ := store.List(); len(infos) != 1 || !strings.HasPrefix(infos[0].ID, "A_") || infos[0].Snapshots != 1 {
+		t.Fatalf("recordings: %+v", infos)
+	}
 }
 
 func TestRoomRefusesClientsBeyondItsLimit(t *testing.T) {

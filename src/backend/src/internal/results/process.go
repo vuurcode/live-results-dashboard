@@ -21,6 +21,20 @@ type RawData struct {
 	Distances    []rawDistance `json:"distances"`
 }
 
+// Live reports whether the source flags a distance as live: a competition that is not live has none, nor has a
+// competition between its distances.
+func (r *RawData) Live() bool {
+	if r.Success != nil && !*r.Success {
+		return false
+	}
+	for _, d := range r.Distances {
+		if d.IsLive {
+			return true
+		}
+	}
+	return false
+}
+
 type rawDistance struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

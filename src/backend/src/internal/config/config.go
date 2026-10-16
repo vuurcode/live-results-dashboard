@@ -18,6 +18,14 @@ const dataSourcePath = "/Competition"
 // ListWatchInterval is how often the competitions list is checked for changes to tell the clients about.
 const ListWatchInterval = 30 * time.Second
 
+// The recordings API is limited per client address: requests per minute on average, how many back to back, and how
+// many downloads at once. The limit applies before the key is checked, so guessing the key is slow too.
+const (
+	RecordingsRequestsPerMinute = 20.0
+	RecordingsBurst             = 10
+	RecordingsConcurrent        = 2
+)
+
 // DefaultPingInterval keeps a quiet connection busy enough for proxies (nginx closes after 60s of silence).
 const DefaultPingInterval = 25 * time.Second
 
@@ -26,6 +34,9 @@ type Config struct {
 	Upstreams            []source.Upstream // the primary upstream, then the extra one if BACKEND_EXTRA_BASE_URL is set
 	DataSourceIntervals  Intervals         // seconds between upstream fetches of a competition, by what it is doing
 	ListenAddr           string
+	RecordingsDir        string        // where the replies of the followed competitions are recorded; empty = nothing is recorded
+	RecordingsRetention  time.Duration // how long a recording is kept after its last snapshot
+	RecordingsAPIKey     string        // bearer token for the recordings API; empty = the API is off
 	DefaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	MaxCompetitions      int           // distinct competitions followed at once
 	MaxClientsPerRoom    int           // clients following one competition at once
@@ -76,7 +87,10 @@ func Load() Config {
 			MassStart:  number("BACKEND_LIVE_RESULTS_INTERVAL_MASS_START", positive),
 			Distance:   number("BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE", positive),
 		},
-		ListenAddr: getenv("BACKEND_LISTEN_ADDR", ":5000"),
+		ListenAddr:          getenv("BACKEND_LISTEN_ADDR", ":5000"),
+		RecordingsDir:       os.Getenv("BACKEND_RECORDINGS_DIR"),
+		RecordingsAPIKey:    os.Getenv("BACKEND_RECORDINGS_API_KEY"),
+		RecordingsRetention: time.Duration(number("BACKEND_RECORDINGS_RETENTION_DAYS", positive) * float64(24*time.Hour)),
 
 		DefaultCompetitionID: os.Getenv("BACKEND_DEFAULT_COMPETITION_ID"),
 		MaxCompetitions:      int(number("BACKEND_MAX_COMPETITIONS", positive)),

@@ -14,6 +14,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/catalog"
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/fetch"
+	"github.com/vuurcode/live-results-experiment/backend/internal/recorder"
 	"github.com/vuurcode/live-results-experiment/backend/internal/room"
 	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 )
@@ -39,6 +40,10 @@ type Hub struct {
 
 	// Ended says whether a competition is over for good; nil means no competition ever is. Set it before the hub is used.
 	Ended func(id string) bool
+
+	// Recorder keeps what the followed competitions reply; nil means nothing is recorded. With it, a competition is
+	// followed until it is over, also when nobody is connected, so that the recording is complete. Set it before the hub is used.
+	Recorder *recorder.Store
 
 	// Now is the clock the connection allowance is counted by.
 	Now func() time.Time
@@ -95,7 +100,11 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 		ctx, cancel := context.WithCancel(m.ctx)
 		r = room.New(id, upstream, m.cfg.DataSourceIntervals, cancel)
 		m.rooms[id] = r
-		go (&fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: r.Interval, Log: r.Log}).Run(ctx)
+		f := &fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: r.Interval, Log: r.Log}
+		if rec := m.Recorder.Open(id); rec != nil {
+			f.Record = rec.Add
+		}
+		go f.Run(ctx)
 		slog.Info("Competition opened", "competition", id, "open", len(m.rooms))
 	}
 	if r.ClientCount() >= m.cfg.MaxClientsPerRoom {
@@ -163,13 +172,14 @@ func (m *Hub) Announce(msg []byte) {
 	}
 }
 
-// Leave unregisters a client and, once the room is empty, schedules its teardown.
+// Leave unregisters a client and, once the room is empty, schedules its teardown. A room that is being recorded is
+// not torn down: it is followed until the competition is over.
 func (m *Hub) Leave(r *room.Room, c *room.Client) {
 	r.Unregister(c)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if r.ClientCount() > 0 || r.IdleTime != nil {
+	if r.ClientCount() > 0 || r.IdleTime != nil || m.Recorder != nil {
 		return
 	}
 	r.IdleTime = time.AfterFunc(m.cfg.IdleGrace, func() {
@@ -197,6 +207,13 @@ func (m *Hub) CloseEnded() {
 		}
 		m.closeLocked(id, r, websocket.StatusPolicyViolation, ErrCompetitionEnded.Error())
 		slog.Info("Competition closed (competition over)", "competition", id, "open", len(m.rooms))
+		if m.Recorder != nil {
+			go func() {
+				if err := m.Recorder.Finish(id); err != nil {
+					slog.Error("Packing the recording failed", "competition", id, "err", err)
+				}
+			}()
+		}
 	}
 }
 

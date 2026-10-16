@@ -45,9 +45,12 @@ FROM nginx:alpine-slim
 # API address the browser uses (empty: the same origin). FRONTEND_CSP_CONNECT_SRC lists the origins the page may call;
 # FRONTEND_CSP_FRAME_ANCESTORS the hosts that may embed it ('none': nobody). The backend settings (such as the
 # BACKEND_LIVE_RESULTS_INTERVAL_* seconds between requests to the upstream source per competition) are passed through as is.
+# BACKEND_RECORDINGS_DIR is where the followed competitions are recorded (empty: no recording); mount a volume there to keep
+# them across deploys. BACKEND_RECORDINGS_API_KEY, set as a secret, switches on the API to list, download and delete them.
 # MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
 ENV FRONTEND_LISTEN_PORT="8080" \
     FRONTEND_BACKEND_UPSTREAM="127.0.0.1:5000" \
+    BACKEND_RECORDINGS_DIR="/data/recordings" \
     FRONTEND_BACKEND_URL="" \
     FRONTEND_CSP_CONNECT_SRC="'self'" \
     FRONTEND_CSP_FRAME_ANCESTORS="'none'" \

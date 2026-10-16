@@ -32,6 +32,7 @@ import (
 	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/hub"
 	"github.com/vuurcode/live-results-experiment/backend/internal/ratelimit"
+	"github.com/vuurcode/live-results-experiment/backend/internal/recorder"
 	"github.com/vuurcode/live-results-experiment/backend/internal/server"
 	"github.com/vuurcode/live-results-experiment/backend/internal/source"
 	"github.com/vuurcode/live-results-experiment/backend/internal/useragent"
@@ -49,6 +50,34 @@ func main() {
 	set := source.NewSet(cfg.Upstreams...)
 	h := hub.New(ctx, cfg, set, ua)
 
+	var recordings *server.RecordingsAPI
+	if cfg.RecordingsDir != "" {
+		store, err := recorder.New(cfg.RecordingsDir, cfg.RecordingsRetention)
+		if err != nil {
+			slog.Error("Recording disabled", "dir", cfg.RecordingsDir, "err", err)
+		} else {
+			h.Recorder = store
+			go func() {
+				for {
+					store.Sweep()
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(time.Hour):
+					}
+				}
+			}()
+			if cfg.RecordingsAPIKey == "" {
+				slog.Warn("Recordings API off: BACKEND_RECORDINGS_API_KEY is not set")
+			} else {
+				recordings = &server.RecordingsAPI{
+					Store: store, Key: cfg.RecordingsAPIKey, ClientIPHeader: cfg.ClientIPHeader,
+					Limiter: ratelimit.New(config.RecordingsRequestsPerMinute, config.RecordingsBurst, config.RecordingsConcurrent),
+				}
+			}
+		}
+	}
+
 	limiter := ratelimit.New(cfg.ConnectsPerMinute, cfg.ConnectBurst, cfg.MaxClientsPerIP)
 
 	var today http.HandlerFunc
@@ -64,7 +93,7 @@ func main() {
 	}
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
-		Handler:           server.New(h, server.Options{PingInterval: cfg.PingInterval, Limiter: limiter, ClientIPHeader: cfg.ClientIPHeader, CORSAllowedOrigins: cfg.CORSAllowedOrigins, WebSocketOrigins: cfg.WebSocketOrigins}).Handler(ua, today),
+		Handler:           server.New(h, server.Options{PingInterval: cfg.PingInterval, Limiter: limiter, ClientIPHeader: cfg.ClientIPHeader, CORSAllowedOrigins: cfg.CORSAllowedOrigins, WebSocketOrigins: cfg.WebSocketOrigins, Recordings: recordings}).Handler(ua, today),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

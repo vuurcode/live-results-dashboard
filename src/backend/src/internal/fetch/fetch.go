@@ -39,6 +39,10 @@ type Fetcher struct {
 	UA       UserAgent
 	Client   *http.Client
 	Log      *slog.Logger
+	// Record, when set, gets the replies of a live competition, as the data source sent them.
+	Record func([]byte)
+
+	wasLive bool // whether the previous reply had a live distance
 }
 
 func (f *Fetcher) once(ctx context.Context) error {
@@ -61,10 +65,20 @@ func (f *Fetcher) once(ctx context.Context) error {
 		return &statusError{code: resp.StatusCode, retryAfter: parseRetryAfter(resp.Header)}
 	}
 
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
+	if err != nil {
+		return err
+	}
 	var raw results.RawData
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxBodyBytes)).Decode(&raw); err != nil {
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return fmt.Errorf("decode (content type %q): %w", resp.Header.Get("Content-Type"), err)
 	}
+	// A recording holds what is live, plus the reply that follows the last live one, which has the final results.
+	live := raw.Live()
+	if f.Record != nil && (live || f.wasLive) {
+		f.Record(body)
+	}
+	f.wasLive = live
 	f.Sink.Apply(results.Process(&raw))
 	if raw.Success != nil && !*raw.Success {
 		f.Sink.SetFeed("not_live", raw.ErrorMessage)

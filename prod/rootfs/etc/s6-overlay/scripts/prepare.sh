@@ -6,3 +6,9 @@ envsubst '${FRONTEND_LISTEN_PORT} ${FRONTEND_BACKEND_UPSTREAM}' < /etc/nginx/def
 envsubst '${FRONTEND_CSP_CONNECT_SRC} ${FRONTEND_CSP_FRAME_ANCESTORS}' < /etc/nginx/security-headers.conf.template > /etc/nginx/security-headers.conf
 envsubst '${FRONTEND_BACKEND_URL}' < /etc/nginx/env-inject.js.template > /usr/share/nginx/html/env-inject.js
 nginx -t
+
+# the backend runs as nobody and writes its recordings here
+if [ -n "${BACKEND_RECORDINGS_DIR:-}" ]; then
+    mkdir -p "$BACKEND_RECORDINGS_DIR"
+    chown nobody "$BACKEND_RECORDINGS_DIR"
+fi
