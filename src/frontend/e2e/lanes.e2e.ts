@@ -193,7 +193,7 @@ test.describe('card content is never clipped', () => {
 test('a finished race shows no rings around its laps, a running one keeps them on all its laps', async ({ page }) => {
   await page.goto('/?competitionId=e2e-lanes');
   const ring = (card: import('@playwright/test').Locator) =>
-    card.locator('.individual-compact-ringed:not(.individual-compact-start-ring)').evaluateAll((els) => els.map((el) => getComputedStyle(el, '::after').opacity));
+    card.locator('.individual-compact-ringed').evaluateAll((els) => els.map((el) => getComputedStyle(el, '::after').opacity));
   const finished = page.locator('.individual-competitor-card.race-finished').first();
   await expect(finished).toBeVisible();
   await expect.poll(async () => (await ring(finished)).every((o) => o === '0')).toBe(true);

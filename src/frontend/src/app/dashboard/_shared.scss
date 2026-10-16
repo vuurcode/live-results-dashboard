@@ -297,17 +297,15 @@
   &.lap-badge-fast   { background-color: $tint-fast-bg; color: $tint-fast-fg; }
   &.individual-compact-partial { background-color: var(--lr-neutral-bg); color: var(--lr-neutral-fg); } // the first lap has no previous lap to differ from: light grey while the diff colours are on
   // every lap of a running race has a ring that a snake draws around the badge counter-clockwise, once, when the lap arrives
-  // (a badge that is merely rendered, such as when a distance is unfolded, shows the finished ring);
-  // a first lap shorter than a full lap keeps its ring, as it shows where the distance starts on the oval
-  &.individual-compact-ringed[class*='lap-badge-'],
-  &.individual-compact-start-ring[class*='lap-badge-'] {
+  // (a badge that is merely rendered, such as when a distance is unfolded, shows the finished ring)
+  &.individual-compact-ringed[class*='lap-badge-'] {
     @include lap-ring;
   }
   &.individual-flash-update[class*='lap-badge-'] { animation: none; }
 }
 // once the race is finished the rings of its laps fade away after the last snake has been drawn, so a done heat shows no ring
 // (a card rendered finished never has it); the ring itself fades, not the card, which keeps its contrast
-.race-finished .individual-compact-ringed:not(.individual-compact-start-ring)[class*='lap-badge-']::after {
+.race-finished .individual-compact-ringed[class*='lap-badge-']::after {
   opacity: 0;
   transition: opacity 0.6s ease-out 1.5s;
   @media (prefers-reduced-motion: reduce) { transition: none; }

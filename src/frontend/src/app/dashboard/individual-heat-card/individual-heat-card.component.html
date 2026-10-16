@@ -68,7 +68,7 @@
           @for (lap of race.lap_times; track $index; let last = $last) {
             <span class="individual-compact-lap">
               <span class="compact-dist">{{ lapSchedule[$index] }}m</span>
-              <c-badge class="individual-split-badge individual-compact-badge {{ compactLapColor(race, $index) }}" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-partial]="noDeltaLap($index)" [class.individual-compact-latest]="last" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)" [class.individual-compact-start-ring]="lapFraction($index) < 1" [class.individual-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
+              <c-badge class="individual-split-badge individual-compact-badge {{ compactLapColor(race, $index) }}" [style.--lap-fraction]="lapFraction($index)" [style.--ring-from]="ringFinish" [attr.title]="compactBadgeTitle(race, $index)" [class.individual-compact-partial]="noDeltaLap($index)" [class.individual-compact-latest]="last" [class.individual-compact-ringed]="true" [class.individual-snake-fresh]="last && snakeFresh(race)" [class.individual-flash-update]="last && isSplitFlashing(race.lastUpdated)">{{ splitFormattedTime(truncateLapTime(lap, 1))[0] }}<small class="time-decimal">{{ splitFormattedTime(truncateLapTime(lap, 1))[1] }}</small></c-badge>
             </span>
           } @empty {
             @if (lapSchedule.length > 0) {
