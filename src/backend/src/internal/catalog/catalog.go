@@ -168,11 +168,14 @@ func localDay(t time.Time, loc *time.Location) time.Time {
 	return time.Date(y, mo, d, 0, 0, 0, 0, time.UTC)
 }
 
-// maxCacheAge caps how long venues and competitions are kept before they are fetched again, whatever the TTL says.
+// maxCacheAge caps how long competitions are kept before they are fetched again, whatever the TTL says.
 const maxCacheAge = time.Hour
 
-// Catalog merges the competitions of the upstreams of a source set. Per upstream it fetches the venues at most once an
-// hour and the competitions at most once per TTL (never more than an hour), both lazily on first use. A failed
+// venuesCacheAge is how long venues are kept: they practically never change.
+const venuesCacheAge = 365 * 24 * time.Hour
+
+// Catalog merges the competitions of the upstreams of a source set. Per upstream it fetches the venues at most once a
+// year and the competitions at most once per TTL (never more than an hour), both lazily on first use. A failed
 // refresh keeps serving the old data.
 type Catalog struct {
 	set        *source.Set
@@ -364,7 +367,7 @@ func (c *Catalog) reload(ctx context.Context) error {
 }
 
 func (c *Catalog) loadUpstream(ctx context.Context, u *upstream) error {
-	if u.venues == nil || c.now().Sub(u.venuesAt) >= maxCacheAge {
+	if u.venues == nil || c.now().Sub(u.venuesAt) >= venuesCacheAge {
 		if err := c.loadVenues(ctx, u); err != nil {
 			if u.venues == nil {
 				return err

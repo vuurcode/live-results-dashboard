@@ -138,8 +138,15 @@ func TestCatalogCaching(t *testing.T) {
 	if _, err := e.cat.Today(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if e.venueHits.Load() != 2 || e.compHits.Load() != 2 {
-		t.Fatalf("after an hour hits venues=%d competitions=%d, want 2/2", e.venueHits.Load(), e.compHits.Load())
+	if e.venueHits.Load() != 1 || e.compHits.Load() != 2 {
+		t.Fatalf("after an hour hits venues=%d competitions=%d, want 1/2", e.venueHits.Load(), e.compHits.Load())
+	}
+	e.now = e.now.Add(venuesCacheAge)
+	if _, err := e.cat.Today(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if e.venueHits.Load() != 2 {
+		t.Fatalf("after a year venue hits = %d, want 2", e.venueHits.Load())
 	}
 }
 
