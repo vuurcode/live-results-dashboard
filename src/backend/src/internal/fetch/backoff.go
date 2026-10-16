@@ -47,5 +47,5 @@ func fetchDelay(interval time.Duration, failures int, retryAfter time.Duration, 
 	return time.Duration(float64(delay) * jitter)
 }
 
-// randomJitter returns a factor in [0.75, 1.25).
-func randomJitter() float64 { return 0.75 + 0.5*rand.Float64() } //nolint:gosec // spreads out retries, not a security matter
+// randomJitter returns a factor in [0.6, 1.4).
+func randomJitter() float64 { return 0.6 + 0.8*rand.Float64() } //nolint:gosec // spreads out retries, not a security matter

@@ -34,7 +34,7 @@ type UserAgent interface {
 // Fetcher polls the upstream for one competition and feeds its sink.
 type Fetcher struct {
 	URL      string
-	Interval time.Duration
+	Interval func() time.Duration // asked before every wait, so the pace can follow the competition
 	Sink     Sink
 	UA       UserAgent
 	Client   *http.Client
@@ -74,9 +74,9 @@ func (f *Fetcher) once(ctx context.Context) error {
 	return nil
 }
 
-// Run fetches until ctx ends, waiting Interval between fetches and longer while the data source keeps failing.
+// Run fetches until ctx ends, waiting Interval() between fetches and longer while the data source keeps failing.
 func (f *Fetcher) Run(ctx context.Context) {
-	f.Log.Debug("Fetch loop started", "url", f.URL, "interval", f.Interval)
+	f.Log.Debug("Fetch loop started", "url", f.URL, "interval", f.Interval())
 	defer f.Log.Debug("Fetch loop stopped")
 	failures := 0
 	for {
@@ -95,7 +95,7 @@ func (f *Fetcher) Run(ctx context.Context) {
 			}
 			f.Sink.SetFeed("unavailable", "") // details stay in the log: they can name the data source
 		}
-		wait := time.NewTimer(fetchDelay(f.Interval, failures, retryAfter, randomJitter()))
+		wait := time.NewTimer(fetchDelay(f.Interval(), failures, retryAfter, randomJitter()))
 		select {
 		case <-ctx.Done():
 			wait.Stop()

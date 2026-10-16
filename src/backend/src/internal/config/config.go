@@ -24,7 +24,7 @@ const DefaultPingInterval = 25 * time.Second
 // Config is everything the backend is configured with.
 type Config struct {
 	Upstreams            []source.Upstream // the primary upstream, then the extra one if BACKEND_EXTRA_BASE_URL is set
-	DataSourceInterval   float64           // seconds between upstream fetches, per competition
+	DataSourceIntervals  Intervals         // seconds between upstream fetches of a competition, by what it is doing
 	ListenAddr           string
 	DefaultCompetitionID string        // used when a client does not send competitionId; empty = required
 	MaxCompetitions      int           // distinct competitions followed at once
@@ -46,8 +46,17 @@ type Config struct {
 	VenueDiscipline string        // only venues and competitions of this discipline
 }
 
-func (c Config) Interval() time.Duration {
-	return time.Duration(c.DataSourceInterval * float64(time.Second))
+// Intervals are the seconds between upstream fetches of one competition. Which one applies depends on what the
+// competition is doing, and changes while it runs.
+type Intervals struct {
+	NotStarted float64 // no distance is live yet (or any more)
+	MassStart  float64 // the live distance is a mass start
+	Distance   float64 // any other live distance
+}
+
+// Duration converts seconds to a duration.
+func Duration(seconds float64) time.Duration {
+	return time.Duration(seconds * float64(time.Second))
 }
 
 // Load reads the configuration from the environment and the baked limits. It exits when the base URL is set but empty or a
@@ -62,8 +71,12 @@ func Load() Config {
 		base = "http://localhost:8080"
 	}
 	cfg := Config{
-		DataSourceInterval: number("BACKEND_LIVE_RESULTS_INTERVAL", positive),
-		ListenAddr:         getenv("BACKEND_LISTEN_ADDR", ":5000"),
+		DataSourceIntervals: Intervals{
+			NotStarted: number("BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED", positive),
+			MassStart:  number("BACKEND_LIVE_RESULTS_INTERVAL_MASS_START", positive),
+			Distance:   number("BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE", positive),
+		},
+		ListenAddr: getenv("BACKEND_LISTEN_ADDR", ":5000"),
 
 		DefaultCompetitionID: os.Getenv("BACKEND_DEFAULT_COMPETITION_ID"),
 		MaxCompetitions:      int(number("BACKEND_MAX_COMPETITIONS", positive)),

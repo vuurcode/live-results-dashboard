@@ -4,9 +4,13 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/results"
 )
+
+var testPace = config.Intervals{NotStarted: 15, MassStart: 1, Distance: 5}
 
 func processed(laps int) *results.Processed {
 	c := results.Competitor{ID: "1", Name: "C1", DistanceID: "d1", LapsCount: laps}
@@ -30,7 +34,7 @@ func next(t *testing.T, c *Client) (typ string, seq uint64, data json.RawMessage
 }
 
 func TestLiveMessagesCountOnFromTheReplay(t *testing.T) {
-	r := New("A", "http://x", 1, func() {})
+	r := New("A", "http://x", testPace, func() {})
 	r.Apply(processed(0)) // event_name, distance_meta, competitor_update: seq 3
 
 	c := r.Register(nil)
@@ -79,7 +83,7 @@ func drain(c *Client) (types []string) {
 }
 
 func TestReconnectingClientGetsOnlyWhatItMissed(t *testing.T) {
-	r := New("A", "http://x", 1, func() {})
+	r := New("A", "http://x", testPace, func() {})
 	r.Apply(processed(0)) // seq 1-3
 	epoch := epochOf(t, r.Register(nil))
 
@@ -115,7 +119,7 @@ func TestReconnectingClientGetsOnlyWhatItMissed(t *testing.T) {
 }
 
 func TestUpToDateClientGetsNoReplay(t *testing.T) {
-	r := New("A", "http://x", 1, func() {})
+	r := New("A", "http://x", testPace, func() {})
 	r.Apply(processed(0))
 	epoch := epochOf(t, r.Register(nil))
 	c := r.Register(&Resume{Epoch: epoch, Seq: 3})
@@ -125,7 +129,7 @@ func TestUpToDateClientGetsNoReplay(t *testing.T) {
 }
 
 func TestClientThatCannotBeCaughtUpGetsTheReplay(t *testing.T) {
-	r := New("A", "http://x", 1, func() {})
+	r := New("A", "http://x", testPace, func() {})
 	r.Apply(processed(0))
 	epoch := epochOf(t, r.Register(nil))
 	r.Apply(processed(1))
@@ -147,7 +151,7 @@ func TestClientThatCannotBeCaughtUpGetsTheReplay(t *testing.T) {
 }
 
 func TestLogKeepsTheLatestMessages(t *testing.T) {
-	r := New("A", "http://x", 1, func() {})
+	r := New("A", "http://x", testPace, func() {})
 	for i := range maxLog + 10 {
 		r.Apply(processed(i + 1))
 	}
@@ -160,7 +164,7 @@ func TestLogKeepsTheLatestMessages(t *testing.T) {
 }
 
 func TestLogStartsAtAReset(t *testing.T) {
-	r := New("A", "http://x", 1, func() {})
+	r := New("A", "http://x", testPace, func() {})
 	r.Apply(processed(3))
 	epoch := epochOf(t, r.Register(nil))
 	r.Apply(processed(0)) // fewer laps than before: the source restarted
@@ -170,5 +174,45 @@ func TestLogStartsAtAReset(t *testing.T) {
 	}
 	if got := strings.Join(drain(r.Register(&Resume{Epoch: epoch, Seq: 2})), ","); strings.Contains(got, "reset") {
 		t.Errorf("a client from before the reset's predecessor should get the replay, got %s", got)
+	}
+}
+
+func TestIntervalFollowsTheLiveDistance(t *testing.T) {
+	r := New("A", "http://x", testPace, func() {})
+	want := func(seconds time.Duration) {
+		t.Helper()
+		if got := r.Interval(); got != seconds*time.Second {
+			t.Fatalf("interval %v, want %v", got, seconds*time.Second)
+		}
+	}
+	want(15) // nothing fetched yet
+	live := func(mass bool) *results.Processed {
+		p := processed(0)
+		p.Distances[0].Meta.IsLive, p.Distances[0].Meta.IsMassStart = true, mass
+		return p
+	}
+	r.Apply(live(false))
+	want(5)
+	r.Apply(live(true))
+	want(1)
+	r.Apply(processed(1)) // no distance live any more
+	want(15)
+}
+
+func TestIntervalDropsBackAfterTheLastRace(t *testing.T) {
+	r := New("A", "http://x", testPace, func() {})
+	p := processed(0) // 500 meter: two laps needed
+	p.Distances[0].Meta.IsLive = true
+	m := 500
+	p.Distances[0].Meta.DistanceMeters = &m
+	r.Apply(p)
+	if got := r.Interval(); got != 5*time.Second {
+		t.Fatalf("interval %v while racing, want 5s", got)
+	}
+	p = processed(2)
+	p.Distances[0].Meta.IsLive, p.Distances[0].Meta.DistanceMeters = true, &m
+	r.Apply(p)
+	if got := r.Interval(); got != 15*time.Second {
+		t.Fatalf("interval %v after the last race, want 15s", got)
 	}
 }

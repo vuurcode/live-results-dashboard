@@ -57,7 +57,7 @@ func newTestBackend(t *testing.T, mutate func(*config.Config)) *testBackend {
 	t.Cleanup(upstream.Close)
 
 	cfg := config.Config{
-		Upstreams: []source.Upstream{{DataSourceURL: upstream.URL}}, DataSourceInterval: 3600, // one fetch per room: the test controls timing
+		Upstreams: []source.Upstream{{DataSourceURL: upstream.URL}}, DataSourceIntervals: config.Intervals{NotStarted: 3600, MassStart: 3600, Distance: 3600}, // one fetch per room: the test controls timing
 		MaxCompetitions: 2, MaxClientsPerRoom: 100, MaxClients: 1000, MaxClients30Days: 100000, IdleGrace: 50 * time.Millisecond, PingInterval: time.Hour,
 	}
 	if mutate != nil {
@@ -446,7 +446,9 @@ func TestCloseAllTellsClientsAndStopsRooms(t *testing.T) {
 }
 
 func TestIdleRoomLeavesNothingRunning(t *testing.T) {
-	tb := newTestBackend(t, func(c *config.Config) { c.DataSourceInterval = 0.02 })
+	tb := newTestBackend(t, func(c *config.Config) {
+		c.DataSourceIntervals = config.Intervals{NotStarted: 0.02, MassStart: 0.02, Distance: 0.02}
+	})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	time.Sleep(50 * time.Millisecond) // let the server's own goroutines settle
@@ -538,7 +540,9 @@ func TestHealthcheckIsAnEmpty200(t *testing.T) {
 }
 
 func TestFailingDataSourceIsAskedLessOften(t *testing.T) {
-	tb := newTestBackend(t, func(c *config.Config) { c.DataSourceInterval = 0.05 })
+	tb := newTestBackend(t, func(c *config.Config) {
+		c.DataSourceIntervals = config.Intervals{NotStarted: 0.05, MassStart: 0.05, Distance: 0.05}
+	})
 	tb.mu.Lock()
 	tb.status = http.StatusServiceUnavailable
 	tb.mu.Unlock()

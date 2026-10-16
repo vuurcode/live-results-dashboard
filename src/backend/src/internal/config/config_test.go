@@ -20,7 +20,7 @@ func TestLiveResultsBaseURL(t *testing.T) {
 func TestBakedSettingsAreComplete(t *testing.T) {
 	cfg := Load()
 	if cfg.MaxClients30Days != 50000 || cfg.MaxClients <= 0 || cfg.MaxClientsPerRoom <= 0 || cfg.MaxCompetitions <= 0 ||
-		cfg.IdleGrace <= 0 || cfg.CatalogTTL <= 0 || cfg.DataRetention <= 0 || cfg.DataSourceInterval <= 0 {
+		cfg.IdleGrace <= 0 || cfg.CatalogTTL <= 0 || cfg.DataRetention <= 0 || cfg.DataSourceIntervals.NotStarted <= 0 || cfg.DataSourceIntervals.MassStart <= 0 || cfg.DataSourceIntervals.Distance <= 0 {
 		t.Fatalf("limits.conf does not define every setting: %+v", cfg)
 	}
 	t.Setenv("BACKEND_MAX_CLIENTS", "7")

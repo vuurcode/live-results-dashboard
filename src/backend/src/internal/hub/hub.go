@@ -93,9 +93,9 @@ func (m *Hub) Join(id string, from *room.Resume) (*room.Room, *room.Client, erro
 			return nil, nil, err
 		}
 		ctx, cancel := context.WithCancel(m.ctx)
-		r = room.New(id, upstream, m.cfg.DataSourceInterval, cancel)
+		r = room.New(id, upstream, m.cfg.DataSourceIntervals, cancel)
 		m.rooms[id] = r
-		go (&fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: m.cfg.Interval(), Log: r.Log}).Run(ctx)
+		go (&fetch.Fetcher{URL: upstream, Sink: r, UA: m.ua, Client: m.client, Interval: r.Interval, Log: r.Log}).Run(ctx)
 		slog.Info("Competition opened", "competition", id, "open", len(m.rooms))
 	}
 	if r.ClientCount() >= m.cfg.MaxClientsPerRoom {

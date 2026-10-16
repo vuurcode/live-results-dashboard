@@ -131,3 +131,34 @@ func TestProcessReadsTheDistanceOfAPairedEventFromItsFirstNumber(t *testing.T) {
 		}
 	}
 }
+
+func TestDistanceComplete(t *testing.T) {
+	meters, none := 1000, 0
+	individual := func(laps ...int) Distance {
+		d := Distance{Meta: DistanceMeta{DistanceMeters: &meters}}
+		for _, n := range laps {
+			d.Competitors = append(d.Competitors, Competitor{LapsCount: n})
+		}
+		return d
+	}
+	if individual().Complete() {
+		t.Fatal("a distance without skaters is not complete")
+	}
+	if individual(3, 3, 0).Complete() || !individual(3, 3, 3).Complete() { // 1000 m is three laps of the 400 m track
+		t.Fatal("an individual distance is complete when everyone has skated all laps")
+	}
+	dnf := "DNF"
+	d := individual(3, 1)
+	d.Competitors[1].InvalidReason = &dnf
+	if !d.Complete() {
+		t.Fatal("a skater with an invalid result counts as done")
+	}
+	mass := Distance{Meta: DistanceMeta{IsMassStart: true}, Competitors: []Competitor{{LapsRemaining: &none}, {LapsRemaining: &meters}}}
+	if mass.Complete() {
+		t.Fatal("a mass start with laps to go is not complete")
+	}
+	mass.Competitors[1].LapsRemaining = &none
+	if !mass.Complete() {
+		t.Fatal("a mass start where everyone finished is complete")
+	}
+}

@@ -27,7 +27,9 @@ services:
       # also serve the generated matches (mock-match-1..3) next to the recordings
       MOCKSERVER_DATA_GENERATE: ${MOCKSERVER_DATA_GENERATE:-true}
       BACKEND_LIVE_RESULTS_BASE_URL: http://localhost:8080
-      BACKEND_LIVE_RESULTS_INTERVAL: 1
+      BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED: 1
+      BACKEND_LIVE_RESULTS_INTERVAL_MASS_START: 1
+      BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE: 1
       BACKEND_DEFAULT_COMPETITION_ID: ${BACKEND_DEFAULT_COMPETITION_ID:-dummy}
     volumes:
       - .:/app

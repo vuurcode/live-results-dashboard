@@ -34,8 +34,8 @@ func TestFetchDelay(t *testing.T) {
 
 func TestRandomJitterRange(t *testing.T) {
 	for range 1000 {
-		if j := randomJitter(); j < 0.75 || j >= 1.25 {
-			t.Fatalf("jitter %v outside [0.75, 1.25)", j)
+		if j := randomJitter(); j < 0.6 || j >= 1.4 {
+			t.Fatalf("jitter %v outside [0.6, 1.4)", j)
 		}
 	}
 }

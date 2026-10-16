@@ -43,12 +43,11 @@ FROM nginx:alpine-slim
 
 # Runtime settings. FRONTEND_LISTEN_PORT is the port nginx listens on (DigitalOcean App Platform expects 8080). FRONTEND_BACKEND_URL is the
 # API address the browser uses (empty: the same origin). FRONTEND_CSP_CONNECT_SRC lists the origins the page may call;
-# FRONTEND_CSP_FRAME_ANCESTORS the hosts that may embed it ('none': nobody). BACKEND_LIVE_RESULTS_INTERVAL is the
-# seconds between requests to the upstream source per competition; the other backend settings are passed through as is.
+# FRONTEND_CSP_FRAME_ANCESTORS the hosts that may embed it ('none': nobody). The backend settings (such as the
+# BACKEND_LIVE_RESULTS_INTERVAL_* seconds between requests to the upstream source per competition) are passed through as is.
 # MOCKSERVER_ENABLED=true adds a demo match, simulated and restarted every few minutes, to the competition list.
 ENV FRONTEND_LISTEN_PORT="8080" \
     FRONTEND_BACKEND_UPSTREAM="127.0.0.1:5000" \
-    BACKEND_LIVE_RESULTS_INTERVAL="5" \
     FRONTEND_BACKEND_URL="" \
     FRONTEND_CSP_CONNECT_SRC="'self'" \
     FRONTEND_CSP_FRAME_ANCESTORS="'none'" \

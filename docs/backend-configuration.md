@@ -1,13 +1,15 @@
 # Backend configuration
 
-The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL`, `BACKEND_CATALOG_TTL_SECONDS`, `BACKEND_MAX_COMPETITIONS`, `BACKEND_MAX_CLIENTS`, `BACKEND_MAX_CLIENTS_30_DAYS`, `BACKEND_MAX_CLIENTS_PER_ROOM`, `BACKEND_MAX_CLIENTS_PER_IP`, `BACKEND_CONNECTS_PER_MINUTE`, `BACKEND_CONNECT_BURST`, `BACKEND_IDLE_GRACE_SECONDS`, `BACKEND_DATA_RETENTION_HOURS`) are defined in `src/backend/src/internal/config/limits.conf` and baked into the image when it is built; the defaults below are the values in that file. Setting the variable at run time overrides the baked value.
+The limits and timings (`BACKEND_LIVE_RESULTS_INTERVAL_*`, `BACKEND_CATALOG_TTL_SECONDS`, `BACKEND_MAX_COMPETITIONS`, `BACKEND_MAX_CLIENTS`, `BACKEND_MAX_CLIENTS_30_DAYS`, `BACKEND_MAX_CLIENTS_PER_ROOM`, `BACKEND_MAX_CLIENTS_PER_IP`, `BACKEND_CONNECTS_PER_MINUTE`, `BACKEND_CONNECT_BURST`, `BACKEND_IDLE_GRACE_SECONDS`, `BACKEND_DATA_RETENTION_HOURS`) are defined in `src/backend/src/internal/config/limits.conf` and baked into the image when it is built; the defaults below are the values in that file. Setting the variable at run time overrides the baked value.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `BACKEND_LIVE_RESULTS_BASE_URL` | `http://localhost:8080` | Base URL (`https://host`) of the live results API, without the path; the backend requests `/Competition?competitionId=<id>`. A trailing `/` is optional. Must not be set to an empty value |
 | `BACKEND_MATCH_INFO_BASE_URL` | `BACKEND_LIVE_RESULTS_BASE_URL` | Base URL (`https://host`) of the competition info API, without the path: the venues and today's competitions (`/api/venues`, `/api/competitions`) |
 | `BACKEND_EXTRA_BASE_URL` | none | Base URL of a second source serving both the competitions list and the live results, such as the demo mockserver. Its competitions are added to the list and fetched from it; when both sources list an id, the primary wins. Off when empty |
-| `BACKEND_LIVE_RESULTS_INTERVAL` | `1` | Seconds between live results requests per competition |
+| `BACKEND_LIVE_RESULTS_INTERVAL_NOT_STARTED` | `15` | Seconds between live results requests per competition while no distance is live, or the live one has been skated out by everyone |
+| `BACKEND_LIVE_RESULTS_INTERVAL_MASS_START` | `0.5` | The same while a mass start is live |
+| `BACKEND_LIVE_RESULTS_INTERVAL_DISTANCE` | `5` | The same while any other distance is live |
 | `BACKEND_VENUE_COUNTRY_CODE` | `NED` | Only venues in this country are listed |
 | `BACKEND_VENUE_DISCIPLINE` | `SpeedSkating.LongTrack` | Only venues and competitions of this discipline are listed |
 | `BACKEND_CATALOG_TTL_SECONDS` | `900` | Cache time of the competitions list (capped at one hour; venues are refetched at most once an hour). Rooms of competitions that ended more than a day ago are closed within a minute |

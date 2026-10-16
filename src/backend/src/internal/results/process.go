@@ -120,6 +120,34 @@ type Distance struct {
 	Competitors []Competitor // stable broadcast order: laps desc, time asc, no-time last
 }
 
+// Complete tells whether every skater of the distance has skated it out: all laps of a mass start, or the laps of an
+// individual distance on a 400 m track (the first one takes the remainder). Skaters with an invalid result count as
+// done, and a distance without skaters is not complete.
+func (d Distance) Complete() bool {
+	if len(d.Competitors) == 0 {
+		return false
+	}
+	lapsNeeded := 0
+	if !d.Meta.IsMassStart {
+		if d.Meta.DistanceMeters == nil {
+			return false
+		}
+		lapsNeeded = (*d.Meta.DistanceMeters + 399) / 400
+	}
+	for _, c := range d.Competitors {
+		if c.InvalidReason != nil {
+			continue
+		}
+		if d.Meta.IsMassStart && (c.LapsRemaining == nil || *c.LapsRemaining > 0) {
+			return false
+		}
+		if !d.Meta.IsMassStart && c.LapsCount < lapsNeeded {
+			return false
+		}
+	}
+	return true
+}
+
 // Processed is the processed state of one competition.
 type Processed struct {
 	Name      string

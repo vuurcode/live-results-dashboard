@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vuurcode/live-results-experiment/backend/internal/config"
 	"github.com/vuurcode/live-results-experiment/backend/internal/results"
 	"github.com/vuurcode/live-results-experiment/backend/internal/store"
 	"github.com/vuurcode/live-results-experiment/backend/internal/wire"
@@ -40,13 +41,14 @@ type Room struct {
 	ID  string
 	Log *slog.Logger
 
-	url      string
-	interval float64 // seconds between upstream fetches, reported to clients
+	url  string
+	pace config.Intervals // seconds between upstream fetches for each state of the competition
 
 	Cancel   func()      // stops the polling loop
 	IdleTime *time.Timer // set while the room is empty and waiting to be closed; guarded by the hub
 
 	mu      sync.Mutex
+	every   float64     // seconds between upstream fetches now; follows what the data says
 	epoch   string      // identifies this incarnation of the room; the numbers of a room opened anew mean something else
 	log     [][]byte    // the latest live messages, the last of them numbered seq, for clients that reconnect
 	seq     uint64      // number of the last message broadcast; a client's replay is the state as of this number
@@ -56,12 +58,13 @@ type Room struct {
 	closed  *CloseInfo // why the room disconnected its clients; nil while it is open
 }
 
-// New creates an empty room for a competition fetched from url every interval seconds. cancel stops the polling loop.
-func New(id, url string, interval float64, cancel func()) *Room {
+// New creates an empty room for a competition fetched from url at the pace given, until it has data the slowest one.
+// cancel stops the polling loop.
+func New(id, url string, pace config.Intervals, cancel func()) *Room {
 	log := slog.With("competition", id)
 	return &Room{
 		epoch: strconv.FormatInt(time.Now().UnixNano(), 36),
-		ID:    id, url: url, interval: interval, Cancel: cancel,
+		ID:    id, url: url, pace: pace, every: pace.NotStarted, Cancel: cancel,
 		Log:     log,
 		st:      store.New(log),
 		clients: map[*Client]struct{}{},
@@ -88,10 +91,38 @@ func (r *Room) SetFeed(state, message string) {
 	r.broadcastLocked([][]byte{wire.Wrap("feed_status", wire.Marshal(next))})
 }
 
+// Interval is the wait before the next upstream fetch: slow while no distance is live, fast during a mass start.
+func (r *Room) Interval() time.Duration {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return config.Duration(r.every)
+}
+
+// paceFor picks the fetch interval for what the data says is going on. A distance whose skaters have all finished
+// no longer counts as live, so the pace drops back until the next one starts.
+func (r *Room) paceFor(curr *results.Processed) float64 {
+	every := r.pace.NotStarted
+	for _, d := range curr.Distances {
+		if !d.Meta.IsLive || d.Complete() {
+			continue
+		}
+		if d.Meta.IsMassStart {
+			return r.pace.MassStart
+		}
+		every = r.pace.Distance
+	}
+	return every
+}
+
 // Apply diffs freshly processed data and broadcasts the changes.
 func (r *Room) Apply(curr *results.Processed) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if every := r.paceFor(curr); every != r.every {
+		r.Log.Info("Fetch interval", "seconds", every)
+		r.every = every
+	}
 
 	res := r.st.Update(curr)
 	if len(res.Messages) == 0 {
@@ -192,7 +223,7 @@ func (r *Room) Register(from *Resume) *Client {
 		"following":            following,
 		"competition_id":       r.ID,
 		"data_source_url":      r.url,
-		"data_source_interval": r.interval,
+		"data_source_interval": r.every,
 		"seq":                  r.seq,
 		"epoch":                r.epoch,
 	}))
