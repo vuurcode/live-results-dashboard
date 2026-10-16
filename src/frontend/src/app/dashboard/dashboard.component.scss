@@ -524,11 +524,11 @@
   border-bottom: 1px solid var(--lr-notice-line);
 }
 
-// Notices shown instead of or above results: the shared notice colours keep them readable in both themes
+// Notices shown instead of or above results: the shared callout colours keep them readable in both themes
 .empty-notice.alert {
-  background: var(--lr-notice-bg);
-  color: var(--lr-notice-fg);
-  border-color: var(--lr-notice-line);
+  background: var(--lr-callout-bg);
+  color: var(--lr-callout-fg);
+  border-color: var(--lr-callout-line);
   h2 { font-weight: 600; }
   .text-body-secondary { color: inherit !important; }
 }
