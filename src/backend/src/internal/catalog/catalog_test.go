@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -476,5 +477,28 @@ func TestLiveStateIsAskedOnceForConcurrentCallers(t *testing.T) {
 	}
 	if hits.Load() != 1 {
 		t.Fatalf("data source asked %d times, want 1", hits.Load())
+	}
+}
+
+func TestGzipIsAskedForAndRead(t *testing.T) {
+	var asked atomic.Value
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked.Store(r.Header.Get("Accept-Encoding"))
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		_, _ = gz.Write([]byte(`["a"]`))
+		_ = gz.Close()
+	}))
+	defer srv.Close()
+	cat, err := New(config.Config{CatalogTTL: time.Minute}, source.NewSet(source.Upstream{CatalogURL: srv.URL}), fakeUA{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	if err := cat.getURL(t.Context(), srv.URL, "test", &out); err != nil {
+		t.Fatal(err)
+	}
+	if asked.Load() != "gzip" || len(out) != 1 || out[0] != "a" {
+		t.Fatalf("Accept-Encoding %v, decoded %v", asked.Load(), out)
 	}
 }
