@@ -44,7 +44,7 @@
             }
           }
           <div class="individual-comp-header" [class.individual-comp-header-merged]="!titleExpanded(race)">
-            <span class="individual-comp-name">{{ race.name }}@if (showLive(race)) { <c-badge color="danger" class="glowing-badge individual-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
+            <span class="individual-comp-name"><span class="individual-comp-name-text" [attr.data-lane]="laneColor(race, $index)">{{ race.name }}</span>@if (showLive(race)) { <c-badge color="danger" class="glowing-badge individual-comp-live">{{ ts.t('badgeLive') }}</c-badge>}</span>
             <!-- category name and (club code), small below the name; the line keeps its height when there is none -->
             <span class="individual-comp-meta">{{ metaLine(race) }}</span>
             <!-- Badges on their own line; the row keeps its height when there are none -->

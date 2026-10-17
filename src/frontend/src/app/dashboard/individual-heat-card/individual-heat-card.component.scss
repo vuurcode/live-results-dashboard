@@ -100,6 +100,20 @@
   max-width: 100%;
   overflow-wrap: anywhere; // ... and only a name longer than the card wraps instead of being cut off
 }
+// In the dark theme the lane colours are hard to see on the page, so the name is a badge in the colour of the lane.
+:host-context([data-coreui-theme='dark']) .individual-comp-name-text {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.45em;
+  border-radius: 0.4em;
+  background: var(--lane-color, transparent);
+  color: #fff;
+}
+:host-context([data-coreui-theme='dark']) .individual-comp-name-text[data-lane='white'],
+:host-context([data-coreui-theme='dark']) .individual-comp-name-text[data-lane='yellow'] { color: #212529; }
 .individual-comp-meta {
   flex: 0 0 100%;
   min-height: 1.1em; // the line is there (empty) on every card, so titles have the same height
