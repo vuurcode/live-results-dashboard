@@ -56,6 +56,11 @@ export class SettledScroller {
   /** `smooth` tells whether a scroll glides (true) or jumps. */
   constructor(private readonly smooth: () => boolean = () => true) {}
 
+  /** Drops a scroll that is still waiting or underway. */
+  cancel(): void {
+    this.run++;
+  }
+
   /** Scrolls the element competitioning `selector` into place; a newer call replaces one that is still waiting. */
   async scrollTo(selector: string, anchorRatio: number): Promise<void> {
     const run = ++this.run;

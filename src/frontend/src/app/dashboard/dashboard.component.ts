@@ -33,6 +33,7 @@ import {
 } from '../results/heats.util';
 import { lastViewedVenue, preselectCompetition, rememberVenue } from '../results/competition.util';
 import { SettledScroller } from './scroll.util';
+import { UserScrollGuard } from './user-scroll';
 import { AutoFollow } from './auto-follow';
 import { raceListAnimation, raceListKey } from './dashboard.animations';
 
@@ -84,13 +85,17 @@ export class DashboardComponent implements OnInit {
   private readonly autoFollow = new AutoFollow({
     follow: () => this.settings.follow.value,
     heatGroups: (distance) => this.mergedHeatGroups(distance),
-    scrollTo: (selector, anchor) => this.scroller.scrollTo(selector, anchor),
+    scrollTo: (selector, anchor) => (this.viewerScrolled ? undefined : this.scroller.scrollTo(selector, anchor)),
     liveDistanceChanged: (live) => {
       this.initialLiveId = live.id;
       this.liveEventNumber = live.eventNumber;
       this.cdr.markForCheck();
     },
   });
+  /** The viewer scrolled themselves: the page stays where they put it until the live heat is in view again and they have stopped. */
+  private viewerScrolled = false;
+  private resumeTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly userScroll = new UserScrollGuard(() => this.viewerTookOver());
   private resizeObserver: ResizeObserver | null = null;
 
   // Hide mass start settings if no mass start present
@@ -279,6 +284,11 @@ export class DashboardComponent implements OnInit {
     // the browser would restore the previous scroll position on reload, after the page has landed on the live distance
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
     this.destroyRef.onDestroy(() => this.resizeObserver?.disconnect());
+    const detach = this.userScroll.attach();
+    this.destroyRef.onDestroy(() => {
+      detach();
+      if (this.resumeTimer) clearInterval(this.resumeTimer);
+    });
     this.dataService.eventName$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(name => {
       const pageTitle = this.ts.t('pageTitle');
       this.titleService.setTitle(name ? `${name} | ${pageTitle}` : pageTitle);
@@ -315,6 +325,29 @@ export class DashboardComponent implements OnInit {
       }
     }
     return result;
+  }
+
+  private viewerTookOver(): void {
+    this.viewerScrolled = true;
+    this.scroller.cancel();
+    this.resumeTimer ??= setInterval(() => this.resumeFollowing(), 500);
+  }
+
+  /** Follows the live heat again once the viewer has stopped scrolling and the heat is in view. */
+  private resumeFollowing(): void {
+    if (this.userScroll.scrolling() || !this.liveHeatInView()) return;
+    clearInterval(this.resumeTimer ?? undefined);
+    this.resumeTimer = null;
+    this.viewerScrolled = false;
+    this.autoFollow.restart();
+    this.sortedDistances$.pipe(take(1)).subscribe(distances => this.autoFollow.update(distances));
+  }
+
+  private liveHeatInView(): boolean {
+    const el = document.querySelector('[data-live]') ?? (this.initialLiveId ? document.querySelector(`[data-distance-body="${this.initialLiveId}"]`) : null);
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
   }
 
   protected isActiveHeatRow(distanceId: string, label: string): boolean {

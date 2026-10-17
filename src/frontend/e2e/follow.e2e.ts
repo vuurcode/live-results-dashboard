@@ -24,3 +24,24 @@ for (const [width, height] of [[390, 740], [1024, 768]] as const) {
     expect(box.bottom, 'heat is in view').toBeLessThanOrEqual(height + 1);
   });
 }
+
+test('the page stays where the viewer scrolled to, and follows the live heat again once it is back in view', async ({ page, request }) => {
+  await request.post(`${MOCK_URL}/api/reset`, { params: { competitionId: 'e2e-multi' } });
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/?competitionId=e2e-multi');
+  await page.waitForTimeout(4000);
+  await page.mouse.move(500, 400);
+  await page.mouse.wheel(0, -10_000);
+  await page.waitForTimeout(500);
+  const away = await page.evaluate(() => window.scrollY);
+  expect(away, 'the viewer scrolled away from the live heat').toBeLessThan(50);
+  await page.waitForTimeout(7000); // the replay moves the live heat on a few times meanwhile
+  expect(await page.evaluate(() => window.scrollY), 'the page left the viewer where they were').toBeLessThan(50);
+
+  // the viewer scrolls the live heat into view near the top, and the page then puts it back at its place
+  const liveTop = await page.evaluate(() => document.querySelector('[data-live]')!.getBoundingClientRect().top);
+  await page.mouse.wheel(0, liveTop - 120);
+  await expect
+    .poll(async () => page.evaluate(() => document.querySelector('[data-live]')!.getBoundingClientRect().top), { timeout: 8000 })
+    .toBeGreaterThan(180);
+});
